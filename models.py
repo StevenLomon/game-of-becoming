@@ -16,7 +16,8 @@ class User(Base):
 
     # Relationships - added as I go
     daily_intentions = relationship("DailyIntention", back_populates="user")
-    auth = relationship("UserAuth", uselist=False, back_populates="user") # One-to-one relationship with UserAuth
+    ai_coaching_logs = relationship("AICoachingLog", back_populates="user")
+    auth = relationship("UserAuth", back_populates="user", uselist=False) # One-to-one relationship with UserAuth
 
 class UserAuth(Base):
     __tablename__ = "user_auth"
@@ -43,3 +44,32 @@ class DailyIntention(Base):
 
     # Relationships
     user = relationship("User", back_populates="daily_intentions")
+    daily_results = relationship("DailyResult", back_populates="daily_intentions", uselist=False) # One-to-one relationship with DailyResult
+
+class DailyResult(Base):
+    __tablename__ = "daily_results"
+
+    id = Column(Integer, primary_key=True, index=True)
+    daily_intention_id = Column(Integer, ForeignKey("daily_intentions.id"), nullable=False)
+    succeeded_failed = Column(Boolean, nullable=False)
+    ai_feedback = Column(Text, nullable=True)
+    user_confirmation_correction = Column(Boolean, nullable=True) # User can confirm or correct AI feedback. True is confirmation, False is correction
+    recovery_quest = Column(Text, nullable=True) # Null if user succeeded in their Daily Intention
+    recovery_quest_response = Column(Text, nullable=True) # Null if no Recovery Quest was given
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+
+    # Relationships
+    daily_intention = relationship("DailyIntention", back_populates="daily_results")
+
+class AICoachingLog(Base):
+    __tablename__ = "ai_coaching_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user_text = Column(Text, nullable=False) # What someone submitted/said
+    ai_feedback = Column(Text, nullable=False) # AI's coaching response
+    coaching_trigger = Column(String(50), nullable=False) # Trigger for the AI coaching, e.g. 'daily_intention', 'evening_assessment', 'recovery_quest' etc. String now, Enum in V2
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+
+    # Relationships
+    user = relationship("User", back_populates="ai_coaching_logs")
