@@ -12,9 +12,10 @@ class User(Base):
     name = Column(String(100), nullable=False)
     email = Column(String(255), unique=True, nullable=False, index=True)
     hrga = Column(Text, nullable=False) # Highest Revenue Generated Activity. Unlimited text field - let users be as comprehensive as they wish
+    default_focus_block_duration = Column(Integer, default=50, nullable=False) # In minutes
     registered_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
 
-    # Relationships - added as I go
+    # Relationships
     daily_intentions = relationship("DailyIntention", back_populates="user")
     ai_coaching_logs = relationship("AICoachingLog", back_populates="user")
     auth = relationship("UserAuth", back_populates="user", uselist=False) # One-to-one relationship with UserAuth
