@@ -45,3 +45,31 @@ class DailyIntentionAIResponse(BaseModel):
     """Schema for user's response to AI feedback"""
     user_response_to_ai_feedback: str
     user_agreed_with_ai: bool
+
+    @validator('user_response_to_ai_feedback')
+    def validate_response_text(cls, v):
+        v = v.strip()
+        if not v:
+            raise ValueError("Response to AI feedback cannot be empty or just whitespace")
+        if len(v) > 1000:
+            raise ValueError("Response to AI feedback cannot exceed 1000 characters")
+        return v    
+    
+
+class DailyIntentionAIResponseResult(BaseModel):
+    """Schema for AI feedback response result"""
+    success: bool
+    message: str
+
+    class Config:
+        from_attributes = True
+
+
+# =============================================================================
+# USER SCHEMAS
+# =============================================================================
+
+class UserBase(BaseModel):
+    """Base schema for User"""
+    name: str = Field(..., min_length=1, max_length=100)
+    email: str = Field(..., regex=r'^[\w\.\-\+\'_]+@[\w\.\-]+\.\w+$', max_length=255)
