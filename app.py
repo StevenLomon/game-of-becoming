@@ -124,3 +124,13 @@ def register_user(user_data: UserCreate, db: Session = Depends(get_db)):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to create user account: {str(e)}"
         )
+
+@app.get("/health")
+def health_check():
+    """Health check endpoint for monitoring and deployment verification"""
+    return {
+        "status": "healthy",
+        "timestamp": datetime.now(timezone.utc),
+        "service": "Game of Becoming API",
+        "version": "1.0.0"
+    }
