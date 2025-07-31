@@ -36,3 +36,11 @@ def get_db():
     finally:
         db.close() # The session is closed after use. Guaranteed clean up and no memory leaks
 
+# Utility functions
+def hash_password(password: str) -> str:
+    """Hash a password using bcrypt."""
+    return pwd_context.hash(password)
+
+def get_user_by_email(db: Session, email: str) -> User | None:
+    """Get a user by email."""
+    return db.query(User).filter(User.email == email).first()
