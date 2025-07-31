@@ -73,3 +73,31 @@ class UserBase(BaseModel):
     """Base schema for User"""
     name: str = Field(..., min_length=1, max_length=100)
     email: str = Field(..., regex=r'^[\w\.\-\+\'_]+@[\w\.\-]+\.\w+$', max_length=255)
+    hrga: str = Field(..., min_length=1, max_length=8000) # Reasonable cap
+
+    @validator('name', 'hrga')
+    def validate_text_fields(cls, v):
+        v = v.strip()
+        if not v:
+            raise ValueError("Field cannot be empty or just whitespace")
+        return v
+    
+
+class UserCreate(UserBase):
+    """Schema for creating a new User"""
+    password: str = Field(..., min_length=12, max_length=128)
+
+    @validator('password')
+    def validate_password(cls, v):
+        if len(v) < 12:
+            raise ValueError("Password must be at least 12 characters long")
+        return v
+    
+
+class UserResponse(BaseModel):
+    """Schema for User response (without password)"""
+    id: int
+    registered_at: datetime
+
+    class Config:
+        from_attributes = True
