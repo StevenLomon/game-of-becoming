@@ -60,7 +60,7 @@ def read_root():
         "docs": "Visit /docs for interactive API documentation.",
     }
 
-@app.post("register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+@app.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 def register_user(user_data: UserCreate, db: Session = Depends(get_db)):
     """
     Register a new user. Handles the complete registration flow:
@@ -134,3 +134,21 @@ def health_check():
         "service": "Game of Becoming API",
         "version": "1.0.0"
     }
+
+@app.get("/users/{user_id}", response_model=UserResponse)
+def get_user(user_id: int, db: Session = Depends(get_db)):
+    """Get user profile by ID. Userful for frontend to display user informaiton."""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    
+    return UserResponse(
+        id=user.id,
+        name=user.name,
+        email=user.email,
+        hrga=user.hrga,
+        registered_at=user.registered_at
+    )
