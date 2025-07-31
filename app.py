@@ -26,7 +26,7 @@ app = FastAPI(
     title="Game of Becoming API",
     description="Gamify your business growth with AI-driven daily intentions and feedback.",
     version="1.0.0",
-    docs_url="/" # Show docs at root for easy access
+    docs_url="/docs" # Interactive API docs at /docs
 )
 
 # Dependency generator to get the database session
@@ -49,3 +49,13 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 def get_user_by_email(db: Session, email: str) -> User | None:
     """Get a user by email. Returns None if not found."""
     return db.query(User).filter(User.email == email).first()
+
+# ENDPOINTS
+@app.get("/")
+def read_root():
+    """Welcome root endpoint - the beginning of the transformational journey!"""
+    return {
+        "message": "Welcome to The Game of Becoming API!",
+        "description": "Ready to turn your exectution blockers into breakthrough momentum?",
+        "docs": "Visit /docs for interactive API documentation.",
+    }
