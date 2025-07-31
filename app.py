@@ -26,6 +26,7 @@ app = FastAPI(
     title="Game of Becoming API",
     description="Gamify your business growth with AI-driven daily intentions and feedback.",
     version="1.0.0",
+    docs_url="/" # Show docs at root for easy access
 )
 
 # Dependency generator to get the database session
@@ -41,6 +42,10 @@ def hash_password(password: str) -> str:
     """Hash a password using bcrypt."""
     return pwd_context.hash(password)
 
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """Verify a plain password against its hashed password."""
+    return pwd_context.verify(plain_password, hashed_password)
+
 def get_user_by_email(db: Session, email: str) -> User | None:
-    """Get a user by email."""
+    """Get a user by email. Returns None if not found."""
     return db.query(User).filter(User.email == email).first()
