@@ -8,7 +8,9 @@ from datetime import datetime
 
 class DailyIntentionCreate(BaseModel):
     """Schema for creating a new Daily Intention"""
+    user_id: int
     daily_intention_text: str
+    target_quantity: int
     focus_block_count: int 
 
     @validator('daily_intention_text')
@@ -19,6 +21,14 @@ class DailyIntentionCreate(BaseModel):
             raise ValueError("Daily intention cannot be empty or just whitespace")
         if len(v) > 2000:
             raise ValueError("Daily intention cannot exceed 2000 characters")
+        return v
+    
+    @validator('target_quantity')
+    def validate_target_quantity(cls, v):
+        if v < 1:
+            raise ValueError('Target quantity must be at least 1')
+        if v > 100:
+            raise ValueError('Target quantity cannot exceed 100. Let\'s focus on what truly matters today!')
         return v
 
     @validator('focus_block_count')
