@@ -41,8 +41,16 @@ class DailyIntentionCreate(BaseModel):
     
 
 class DailyIntentionResponse(BaseModel):
-    """Schema for Daily Intention creation response"""
-    success: bool
+    """Unified response for all Daily Intention endpoints"""
+    id: int
+    user_id: int
+    daily_intention_text: str
+    target_quantity: int
+    completed_quantity: int
+    focus_block_count: int
+    completion_percentage: float
+    status: str # 'pending', 'in_progress', 'completed', 'failed'
+    created_at: datetime
     daily_intention_id: int
     ai_feedback: Optional[str] = None # AI feedback can be null if Claude API fails
     message: str
