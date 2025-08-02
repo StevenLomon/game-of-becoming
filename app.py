@@ -63,7 +63,8 @@ def get_today_intention(db: Session, user_id: int) -> DailyIntention | None:
     ).first()
 
 
-# ENDPOINTS
+# GENERAL ENDPOINTS
+
 @app.get("/")
 def read_root():
     """Welcome root endpoint - the beginning of the transformational journey!"""
@@ -72,6 +73,19 @@ def read_root():
         "description": "Ready to turn your exectution blockers into breakthrough momentum?",
         "docs": "Visit /docs for interactive API documentation.",
     }
+
+@app.get("/health")
+def health_check():
+    """Health check endpoint for monitoring and deployment verification"""
+    return {
+        "status": "healthy",
+        "timestamp": datetime.now(timezone.utc),
+        "service": "Game of Becoming API",
+        "version": "1.0.0"
+    }
+
+
+# USER ENDPOINTS
 
 @app.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 def register_user(user_data: UserCreate, db: Session = Depends(get_db)):
@@ -137,16 +151,6 @@ def register_user(user_data: UserCreate, db: Session = Depends(get_db)):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to create user account: {str(e)}"
         )
-
-@app.get("/health")
-def health_check():
-    """Health check endpoint for monitoring and deployment verification"""
-    return {
-        "status": "healthy",
-        "timestamp": datetime.now(timezone.utc),
-        "service": "Game of Becoming API",
-        "version": "1.0.0"
-    }
 
 @app.get("/users/{user_id}", response_model=UserResponse)
 def get_user(user_id: int, db: Session = Depends(get_db)):
@@ -446,3 +450,6 @@ def fail_daily_intention(intention_id: int, db: Session = Depends(get_db)):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to mark Daily Intention as failed: {str(e)}"
         )
+    
+
+# DAILY RESULTS ENDPOINTS
