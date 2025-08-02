@@ -4,11 +4,14 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm import sessionmaker
 from passlib.context import CryptContext
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 # Improt models and schemas
-from models import Base, User, UserAuth
-from schemas import UserCreate, UserUpdate, UserResponse
+from models import Base, User, UserAuth, DailyIntention
+from schemas import (
+    UserCreate, UserUpdate, UserResponse,
+    DailyIntentionCreate, DailyIntentionUpdate, DailyIntentionResponse
+)
 
 # Database setup
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./game_of_becoming.db")
@@ -49,6 +52,16 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 def get_user_by_email(db: Session, email: str) -> User | None:
     """Get a user by email. Returns None if not found."""
     return db.query(User).filter(User.email == email).first()
+
+def get_today_intention(db: Session, user_id: int) -> DailyIntention | None:
+    """Get today's Daily Intention for a user. Returns None if not found."""
+    today = datetime.now(timezone.utc).date()
+    return db.query(DailyIntention).filter(
+        DailyIntention.user_id == user_id,
+        DailyIntention.created_at >= datetime.combine(today, datetime.min.time()),
+        DailyIntention.created_at < datetime.combine(today + timedelta(days=1), datetime.min.time())
+    ).first()
+
 
 # ENDPOINTS
 @app.get("/")
