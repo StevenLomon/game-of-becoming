@@ -65,9 +65,13 @@ class DailyResult(Base):
     succeeded_failed = Column(Boolean, nullable=False)
     ai_feedback = Column(Text, nullable=True)
     user_confirmation_correction = Column(Boolean, nullable=True) # User can confirm or correct AI feedback. True is confirmation, False is correction
-    recovery_quest = Column(Text, nullable=True) # Null if user succeeded in their Daily Intention
-    recovery_quest_response = Column(Text, nullable=True) # Null if no Recovery Quest was given
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+
+    # Recovery Quest fields - Action Quests will be added in V2!
+    recovery_quest = Column(Text, nullable=True) # Null if user succeeded in their Daily Intention
+    recovery_quest_type = Column(String(20), default='reflection', nullable=False) # 'reflection' or 'action'
+    recovery_quest_response = Column(Text, nullable=True) # Users's response/proof. Null if no Recovery Quest was given
+    recovery_quest_completed = Column(Boolean, default=False, nullable=False) # V2 feature
 
     # Relationships
     daily_intention = relationship("DailyIntention", back_populates="daily_results")

@@ -7,7 +7,7 @@ import os
 from datetime import datetime, timezone, timedelta
 
 # Improt models and schemas
-from models import Base, User, UserAuth, DailyIntention
+from models import Base, User, UserAuth, DailyIntention, DailyResult
 from schemas import (
     UserCreate, UserUpdate, UserResponse,
     DailyIntentionCreate, DailyIntentionUpdate, DailyIntentionResponse,
@@ -477,4 +477,49 @@ def create_daily_result(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Daily Intention not found"
+        )
+    
+    # Check if Daily Result already exists for this intention
+    existing_result = db.query(DailyResult).filter(
+        DailyResult.daily_intention_id == result_data.daily_intention_id
+    ).first()
+    if not existing_result:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Daily Result already exists for this intention. Sacred finality!"
+        )
+    
+    try:
+        # Determine if intention succeeded or failed
+        succeeded = intention.status == 'completed'
+
+        # Generate AI feedback for evening reflection
+        if succeeded:
+            ai_feedback = f"Excellent execution. You completed your intention: '{intention.daily_intention_text}'. This is how sacred momentum builds!"
+            recovery_quest = None
+        else: # Failed intention
+            # Calculate what they managed to achieve
+            completion_rate = (
+                (intention.completed_quantity / intention.target_quantity) * 100
+                if intention.target_quantity > 0 else 0.0
+            )
+            ai_feedback = f"You did not complete your intention: '{intention.daily_intention_text}'. You achieved {completion_rate:.2f}% of your target. Let's turn this into a sacred learning opportunity!"
+
+            # Generate Recovery Quest based on failure pattern
+            if completion_rate == 0:
+                recovery_quest = "What prevented you from starting? Was it fear, overwhelm, or unclear next steps?"
+            elif completion_rate < 50:
+                recovery_quest = "You started but struggled to maintain momentum. What distracted you or broke your focus?"
+            else:
+                recovery_quest = "You made solid progress but didn't quite finish. What would have helped you cross the finish line?"
+
+        # Create the Daily Result record
+        db_result = DailyResult(
+            daily_intention_id=result_data.daily_intention_id,
+            succeeded_failed=succeeded,
+            ai_feedback=ai_feedback,
+            recovery_quest=recovery_quest,
+            # user_confirmation_correction defaults to None
+            # recovery_quest_response defaults to None  
+            # created_at defaults to current UTC time
         )
