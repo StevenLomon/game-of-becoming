@@ -397,3 +397,52 @@ def complete_daily_intention(intention_id: int, db: Session = Depends(get_db)):
             detail=f"Failed to complete Daily Intention: {str(e)}"
         )
     
+@app.post("/intentions/{intention_id}/fail", response_model=DailyIntentionResponse)
+def fail_daily_intention(intention_id: int, db: Session = Depends(get_db)):
+    """
+    Mark Daily Intention as failed
+    
+    This triggers the "Fail Forward" mechanism!
+    - AI feedback on failure in order to re-frame failure
+    - AI generates and initiates Recovery Quest
+    - Opportunity to gain Resilience stat
+    """
+
+    intention = db.query(DailyIntention).filter(DailyIntention.id == intention_id).first()
+    if not intention:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Daily Intention not found"
+        )
+    
+    try:
+        # Mark as failed
+        intention.status = 'failed'
+        
+        db.commit()
+        db.refresh(intention)
+
+        # Calculate the final completion percentage
+        completion_percentage = (
+            (intention.completed_quantity / intention.target_quantity) * 100
+            if intention.target_quantity > 0 else 0.0
+        )
+
+        return DailyIntentionResponse(
+            id=intention.id,
+            user_id=intention.user_id,
+            daily_intention_text=intention.daily_intention_text,
+            target_quantity=intention.target_quantity,
+            completed_quantity=intention.completed_quantity,
+            focus_block_count=intention.focus_block_count,
+            completion_percentage=completion_percentage,  # Percentage at the time of failure
+            status=intention.status,
+            created_at=intention.created_at
+        )
+    
+    except Exception as e:
+        db.rollback()  # Roll back on any error
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to mark Daily Intention as failed: {str(e)}"
+        )
