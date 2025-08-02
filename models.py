@@ -37,17 +37,19 @@ class DailyIntention(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
 
+    # Core execution tracking
     daily_intention_text = Column(Text, nullable=False)
     target_quantity = Column(Integer, nullable=False)
     completed_quantity = Column(Integer, default=0, nullable=False) # Default to 0, updated as user completes tasks
     status = Column(String(20), default='pending', nullable=False) # 'pending', 'in_progress', 'completed', 'failed'
     focus_block_count = Column(Integer, nullable=False)
     
-    # AI Coach
+    # AI Coaching (keeping for V2)
     ai_feedback = Column(Text, nullable=True) # Null if Claude API is to fail. Will be given using async retry if this was to be the case
     user_response_to_ai_feedback = Column(Text, nullable=True)
     user_agreed_with_ai = Column(Boolean, nullable=True)
     
+    # Timestamps
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False, index=True) # Index for quick retrieval of daily intentions
 
     # Relationships

@@ -51,36 +51,23 @@ class DailyIntentionResponse(BaseModel):
     completion_percentage: float
     status: str # 'pending', 'in_progress', 'completed', 'failed'
     created_at: datetime
-    daily_intention_id: int
-    ai_feedback: Optional[str] = None # AI feedback can be null if Claude API fails
-    message: str
+    ai_feedback: Optional[str] = None # AI coach's immediate feedback. Can be null if Claude API fails
 
     class Config:
         from_attributes = True # Allows model to be created from ORM attributes
 
 
-class DailyIntentionAIResponse(BaseModel):
-    """Schema for user's response to AI feedback"""
-    user_response_to_ai_feedback: str
-    user_agreed_with_ai: bool
+class DailyIntentionUpdate(BaseModel):
+    """Schema for updating Daily Intention progress"""
+    completed_quantity: int
 
-    @validator('user_response_to_ai_feedback')
-    def validate_response_text(cls, v):
-        v = v.strip()
-        if not v:
-            raise ValueError("Response to AI feedback cannot be empty or just whitespace")
-        if len(v) > 1000:
-            raise ValueError("Response to AI feedback cannot exceed 1000 characters")
-        return v    
-    
-
-class DailyIntentionAIResponseResult(BaseModel):
-    """Schema for AI feedback response result"""
-    success: bool
-    message: str
-
-    class Config:
-        from_attributes = True
+    @validator('completed_quantity')
+    def validate_completed_quantity(cls, v):
+        if v < 0:
+            raise ValueError('Completed quantity cannot be negative')
+        if v > 1000:
+            raise ValueError('Completed quantity cannot exceed 1000')
+        return v
 
 
 # =============================================================================
@@ -115,6 +102,9 @@ class UserCreate(UserBase):
 class UserResponse(BaseModel):
     """Schema for User response (without password)"""
     id: int
+    name: str
+    email: str
+    hrga: str
     registered_at: datetime
 
     class Config:
