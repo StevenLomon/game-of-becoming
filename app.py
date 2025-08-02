@@ -165,3 +165,43 @@ def get_user(user_id: int, db: Session = Depends(get_db)):
         hrga=user.hrga,
         registered_at=user.registered_at
     )
+
+
+# DAILY INTENTIONS ENDPOINTS
+
+@app.post("/intentions", response_model=DailyIntentionResponse, status_code=status.HTTP_201_CREATED)
+def create_daily_intention(
+    intention_data: DailyIntentionCreate,
+    db: Session = Depends(get_db),
+):
+    """
+    Create today's Daily Intention - The One Thing that matters!
+
+    AI Coach forces clarity upfront:
+    - AI Coach analyzes intention before saving
+    - Value intentions will trigger refinement process
+    - Only clear, actionable intentions are saved
+    - This prevents clutter, confusion and failure before it starts!
+
+    Core App Mechanics:
+    - One intention per day (enforces clarity and focus)
+    - Must be measurable with target quantity
+    - User estimates focus block count needed (self-awareness building!)
+    - This starts the daily execution and learning loop!
+    """
+
+    # Check if user exists
+    user = db.query(User).filter(User.id == intention_data.user_id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    
+    # Check if today's intention already exists
+    existing_intention = get_today_intention(db, intention_data.user_id)
+    if existing_intention:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Daily intention already exists for today. Ready to update it instead?"
+        )
