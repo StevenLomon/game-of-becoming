@@ -523,3 +523,50 @@ def create_daily_result(
             # recovery_quest_response defaults to None  
             # created_at defaults to current UTC time
         )
+
+        db.add(db_result)
+        db.commit()
+        db.refresh(db_result)
+
+        return DailyResultResponse(
+            id=db_result.id,
+            daily_intention_id=db_result.daily_intention_id,
+            succeeded_failed=db_result.succeeded_failed,
+            ai_feedback=db_result.ai_feedback,
+            recovery_quest=db_result.recovery_quest,
+            recovery_quest_response=db_result.recovery_quest_response,
+            user_confirmation_correction=db_result.user_confirmation_correction,
+            created_at=db_result.created_at
+        )
+    
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to create Daily Result: {str(e)}"
+        )
+    
+@app.get("/daily-results/{intention_id}", response_model=DailyResultResponse)
+def get_daily_result(intention_id: int, db: Session = Depends(get_db)):
+    """
+    Get Daily Result evening reflection for a specific intention
+    Used for disaplying reflection insights and Recovery Quests
+    """
+    
+    result = db.query(DailyResult).filter(DailyResult.id == intention_id).first()
+    if not result:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Daily Result not found"
+        )
+    
+    return DailyResultResponse(
+        id=result.id,
+        daily_intention_id=result.daily_intention_id,
+        succeeded_failed=result.succeeded_failed,
+        ai_feedback=result.ai_feedback,
+        recovery_quest=result.recovery_quest,
+        recovery_quest_response=result.recovery_quest_response,
+        user_confirmation_correction=result.user_confirmation_correction,
+        created_at=result.created_at
+    )
