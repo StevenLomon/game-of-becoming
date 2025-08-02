@@ -198,10 +198,202 @@ def create_daily_intention(
             detail="User not found"
         )
     
-    # Check if today's intention already exists
+    # Check if today's Daily Intention already exists
     existing_intention = get_today_intention(db, intention_data.user_id)
     if existing_intention:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Daily intention already exists for today. Ready to update it instead?"
+            detail="Daily Intention already exists for today. Ready to update it instead?"
         )
+    
+    # TODO: AI COACH INTEGRATION POINT
+    # AI Accountability and Clarity Coach analyzes the intention immediately after it is created
+    # For MVP, we'll assume all intentions are clear and actionable enough to save
+    # V2: Add actual AI analysis and refinement logic here
+    ai_feedback = f"Great! '{intention_data.daily_intention_text}' is clear and actionable. You've planned {intention_data.validate_focus_block_count} focus blocks. Let's make it happen!"
+
+    try:
+        # Create today's intention
+        db_intention = DailyIntention(
+            user_id=intention_data.user_id,
+            daily_intention_text=intention_data.daily_intention_text.strip(),
+            target_quantity=intention_data.target_quantity,
+            focus_block_count=intention_data.focus_block_count,
+            ai_feedback=ai_feedback,  # AI feedback on intention clarity
+            # completed_quantity defaults to 0 (from model)
+            # status defaults to 'pending' (from model)
+            # created_at defaults to current UTC time (from model)
+        )
+
+        db.add(db_intention)
+        db.commit()
+        db.refresh(db_intention)  # Refresh to get all default values from the database
+
+        return DailyIntentionResponse(
+            id=db_intention.id,
+            user_id=db_intention.user_id,
+            daily_intention_text=db_intention.daily_intention_text,
+            target_quantity=db_intention.target_quantity,
+            completed_quantity=db_intention.completed_quantity,
+            focus_block_count=db_intention.focus_block_count,
+            completion_percentage=0.0,  # Initial percentage is 0%
+            status=db_intention.status,
+            created_at=db_intention.created_at,
+            ai_feedback=db_intention.ai_feedback #AI Coach's immediate feedback
+        )
+    
+    except Exception as e:
+        db.rollback()  # Roll back on any error
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to create Daily Intention: {str(e)}"
+        )
+    
+
+@app.get("/intentions/today/{user_id}", response_model=DailyIntentionResponse)
+def get_today_daily_intention(user_id: int, db: Session = Depends(get_db)):
+    """
+    Get today's Daily Intention for a user.
+    
+    The core of the Daily Commitment Screen!
+    """
+
+    # Check if user exists
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    
+    # Get today's intention
+    intention = get_today_intention(db, user_id)
+    if not intention:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No Daily Intention found for today. Ready to create one?"
+        )
+    
+    # Calculate completion percentage
+    completion_percentage = (
+        (intention.completed_quantity / intention.target_quantity) * 100
+        if intention.target_quantity > 0 else 0.0
+    )
+
+    return DailyIntentionResponse(
+        id=intention.id,
+        user_id=intention.user_id,
+        daily_intention_text=intention.daily_intention_text,
+        target_quantity=intention.target_quantity,
+        completed_quantity=intention.completed_quantity,
+        focus_block_count=intention.focus_block_count,
+        completion_percentage=completion_percentage,
+        status=intention.status,
+        created_at=intention.created_at
+    )
+
+@app.put("/intentions/{intention_id}/progress", response_model=DailyIntentionResponse)
+def update_daily_intention_progress(
+    intention_id: int,
+    progress_data: DailyIntentionUpdate,
+    db: Session = Depends(get_db)
+):
+    """
+    Update Daily Intenttion progress - the core of the Daily Execution Loop!
+    - User reports progress after each Focus Block
+    - System calculates completion percentage
+    - Determines if intention is completed, in progress or failed
+    """
+
+    # Get the Daily Intention by id
+    intention = db.query(DailyIntention).filter(DailyIntention.id == intention_id).first()
+    if not intention:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Daily Intention not found"
+        )
+    
+
+    try:
+        # Update progress: absolute, not incremental! Simpler mental model - "Where am I vs my goal?"
+        intention.completed_quantity = progress_data.completed_quantity
+        if intention.completed_quantity >= intention.target_quantity:
+            intention.status = 'completed'
+        elif intention.completed_quantity > 0:
+            intention.status = 'in_progress'
+        else:
+            intention.status = 'pending'
+
+        db.commit()
+        db.refresh(intention)
+
+        # Calculate completion percentage
+        completion_percentage = (
+            (intention.completed_quantity / intention.target_quantity) * 100
+            if intention.target_quantity > 0 else 0.0
+        )
+
+        return DailyIntentionResponse(
+            id=intention.id,
+            user_id=intention.user_id,
+            daily_intention_text=intention.daily_intention_text,
+            target_quantity=intention.target_quantity,
+            completed_quantity=intention.completed_quantity,
+            focus_block_count=intention.focus_block_count,
+            completion_percentage=completion_percentage,
+            status=intention.status,
+            created_at=intention.created_at
+        )
+    
+    except Exception as e:
+        db.rollback()  # Roll back on any error
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to update Daily Intention progress: {str(e)}"
+        )
+    
+@app.post("intentions/{intention_id}/complete", response_model=DailyIntentionResponse)
+def complete_daily_intention(intention_id: int, db: Session = Depends(get_db)):
+    """
+    Mark Daily Intention as completed
+    
+    This triggers:
+    - XP gain for the user
+    - Discipline stat increase
+    - Streak continuation
+    """
+
+    intention = db.query(DailyIntention).filter(DailyIntention.id == intention_id).first()
+    if not intention:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Daily Intention not found"
+        )
+    
+    try:
+        # Mark as completed
+        intention.status = 'completed'
+        intention.completed_quantity = intention.target_quantity  # Ensure full completion
+
+        db.commit()
+        db.refresh(intention)
+
+        return DailyIntentionResponse(
+            id=intention.id,
+            user_id=intention.user_id,
+            daily_intention_text=intention.daily_intention_text,
+            target_quantity=intention.target_quantity,
+            completed_quantity=intention.completed_quantity,
+            focus_block_count=intention.focus_block_count,
+            completion_percentage=100.0,  # Fully completed
+            status=intention.status,
+            created_at=intention.created_at
+        )
+    
+    except Exception as e:
+        db.rollback()  # Roll back on any error
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to complete Daily Intention: {str(e)}"
+        )
+    
