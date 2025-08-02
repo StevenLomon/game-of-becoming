@@ -10,7 +10,8 @@ from datetime import datetime, timezone, timedelta
 from models import Base, User, UserAuth, DailyIntention
 from schemas import (
     UserCreate, UserUpdate, UserResponse,
-    DailyIntentionCreate, DailyIntentionUpdate, DailyIntentionResponse
+    DailyIntentionCreate, DailyIntentionUpdate, DailyIntentionResponse,
+    DailyResultCreate, DailyResultResponse, RecoveryQuestResponse
 )
 
 # Database setup
@@ -453,3 +454,27 @@ def fail_daily_intention(intention_id: int, db: Session = Depends(get_db)):
     
 
 # DAILY RESULTS ENDPOINTS
+
+@app.post("/daily-results", response_mode=DailyResultResponse, status_code=status.HTTP_201_CREATED)
+def create_daily_result(
+    result_data: DailyResultCreate,
+    db: Session = Depends(get_db)
+):
+    """
+    Create Daily Result evening reflection - The Learning and Growth phase
+    
+    Evening Ritual core mechanics:
+    - Deep reflection on the day's execution
+    - AI Accountability and Clarity Coach provides personalized feedback
+    - Recovery Quest generated and initiated for failed intentions
+    - Transforms failures into valuable learning data
+    - Builds Resilience and Clarity stats
+    """
+
+    # Check if Daily Intention exists
+    intention = db.query(DailyIntention).filter(DailyIntention.id == result_data.daily_intention_id).first()
+    if not intention:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Daily Intention not found"
+        )

@@ -71,6 +71,42 @@ class DailyIntentionUpdate(BaseModel):
 
 
 # =============================================================================
+# DAILY RESULTS SCHEMAS
+# =============================================================================
+
+class DailyResultCreate(BaseModel):
+    """Schema for creating evening reflection"""
+    daily_intention_id: int
+
+class DailyResultResponse(BaseModel):
+    """Schema for daily result responses"""
+    id: int
+    daily_intention_id: int
+    succeeded_failed: bool
+    ai_feedback: Optional[str] = None
+    recovery_quest: Optional[str] = None
+    recovery_quest_response: Optional[str] = None
+    user_confirmation_correction: Optional[bool] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class RecoveryQuestResponse(BaseModel):
+    """Schema for Recovery Quest responses"""
+    recovery_quest_response: str
+    ai_coaching_feedback: Optional[str] = None
+
+    @validator('recovery_quest_response')
+    def validate_response(cls, v):
+        v = v.strip()
+        if not v:
+            raise ValueError("Recovery quest response cannot be empty")
+        if len(v) > 2000:
+            raise ValueError("Response cannot exceed 2000 characters")
+        return v
+
+# =============================================================================
 # USER SCHEMAS
 # =============================================================================
 
