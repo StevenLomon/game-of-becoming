@@ -357,7 +357,7 @@ def update_daily_intention_progress(
             detail=f"Failed to update Daily Intention progress: {str(e)}"
         )
     
-@app.post("intentions/{intention_id}/complete", response_model=DailyIntentionResponse)
+@app.post("/intentions/{intention_id}/complete", response_model=DailyIntentionResponse)
 def complete_daily_intention(intention_id: int, db: Session = Depends(get_db)):
     """
     Mark Daily Intention as completed
@@ -455,7 +455,7 @@ def fail_daily_intention(intention_id: int, db: Session = Depends(get_db)):
 
 # DAILY RESULTS ENDPOINTS
 
-@app.post("/daily-results", response_mode=DailyResultResponse, status_code=status.HTTP_201_CREATED)
+@app.post("/daily-results", response_model=DailyResultResponse, status_code=status.HTTP_201_CREATED)
 def create_daily_result(
     result_data: DailyResultCreate,
     db: Session = Depends(get_db)
@@ -483,7 +483,7 @@ def create_daily_result(
     existing_result = db.query(DailyResult).filter(
         DailyResult.daily_intention_id == result_data.daily_intention_id
     ).first()
-    if not existing_result:
+    if existing_result:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Daily Result already exists for this intention. Sacred finality!"
@@ -553,7 +553,7 @@ def get_daily_result(intention_id: int, db: Session = Depends(get_db)):
     Used for disaplying reflection insights and Recovery Quests
     """
     
-    result = db.query(DailyResult).filter(DailyResult.id == intention_id).first()
+    result = db.query(DailyResult).filter(DailyResult.daily_intention_id == intention_id).first()
     if not result:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -570,3 +570,58 @@ def get_daily_result(intention_id: int, db: Session = Depends(get_db)):
         user_confirmation_correction=result.user_confirmation_correction,
         created_at=result.created_at
     )
+
+@app.post("/daily-results/{result_id}/recovery-quest", response_model=RecoveryQuestResponse)
+def respond_to_recovery_quest(
+    result_id: int,
+    quest_response: RecoveryQuestResponse,
+    db: Session = Depends(get_db)
+):
+    """
+    Respond to Recovery Quest - the "Fail Forward" moagic and the sacred learning opportunity!
+    
+    This is where users transforms failure into growth and wisdom:
+    - User reflects on what went less than optimal
+    - AI Accountability and Clarity Coach provides personalized guidance
+    - Resilience stat increases
+    - Learning through failure becomes part of character progression
+    """
+
+    # Get the Daily Result by id
+    result = db.query(DailyResult).filter(DailyResult.id == result_id).first()
+    if not result:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Daily Result not found"
+        )
+    
+    # Check if Recovery Quest exists
+    if not result.recovery_quest:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No Recovery Quest available for this result"
+        )
+    
+    try:
+        # Save user's response to the Recovery Quest
+        result.recovery_quest_response = quest_response.recovery_quest_response.strip()
+
+        # TODO: AI COACH INTEGRATION POINT
+        # AI Coach analyzes the response and provides personalized coaching
+        # For MVP, provide encouraging feedback
+        ai_coaching_response = f"Thank you for that honest reflection. Recognizing '{quest_response.recovery_quest_response}' as a pattern is the first step to breaking through it. Tomorrow's intention will be even stronger because of this insight!"
+
+        db.commit()
+        db.refresh(result)
+
+        return RecoveryQuestResponse(
+            recovery_quest_response=result.recovery_quest_response,
+            ai_coaching_feedback=ai_coaching_response
+        )
+    
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to respond to Recovery Quest: {str(e)}"
+        )
