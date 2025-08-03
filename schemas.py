@@ -3,6 +3,53 @@ from typing import Optional
 from datetime import datetime
 
 # =============================================================================
+# USER SCHEMAS
+# =============================================================================
+
+class UserBase(BaseModel):
+    """Base schema for User"""
+    name: str = Field(..., min_length=1, max_length=100)
+    email: str = Field(..., regex=r'^[\w\.\-\+\'_]+@[\w\.\-]+\.\w+$', max_length=255)
+    hrga: str = Field(..., min_length=1, max_length=8000) # Reasonable cap
+
+    @validator('name', 'hrga')
+    def validate_text_fields(cls, v):
+        v = v.strip()
+        if not v:
+            raise ValueError("Field cannot be empty or just whitespace")
+        return v
+    
+
+class UserCreate(UserBase):
+    """Schema for creating a new User"""
+    password: str = Field(..., min_length=12, max_length=128)
+
+    @validator('password')
+    def validate_password(cls, v):
+        if len(v) < 12:
+            raise ValueError("Password must be at least 12 characters long")
+        return v
+    
+    
+class UserUpdate(UserBase):
+    """Schema for updating User information"""
+    # Inherits all fields from UserBase
+    pass
+    
+
+class UserResponse(BaseModel):
+    """Schema for User response (without password)"""
+    id: int
+    name: str
+    email: str
+    hrga: str
+    registered_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# =============================================================================
 # DAILY INTENTIONS SCHEMAS
 # =============================================================================
 
@@ -40,6 +87,19 @@ class DailyIntentionCreate(BaseModel):
         return v
     
 
+class DailyIntentionUpdate(BaseModel):
+    """Schema for updating Daily Intention progress"""
+    completed_quantity: int
+
+    @validator('completed_quantity')
+    def validate_completed_quantity(cls, v):
+        if v < 0:
+            raise ValueError('Completed quantity cannot be negative')
+        if v > 1000:
+            raise ValueError('Completed quantity cannot exceed 1000')
+        return v
+    
+
 class DailyIntentionResponse(BaseModel):
     """Unified response for all Daily Intention endpoints"""
     id: int
@@ -57,26 +117,20 @@ class DailyIntentionResponse(BaseModel):
         from_attributes = True # Allows model to be created from ORM attributes
 
 
-class DailyIntentionUpdate(BaseModel):
-    """Schema for updating Daily Intention progress"""
-    completed_quantity: int
-
-    @validator('completed_quantity')
-    def validate_completed_quantity(cls, v):
-        if v < 0:
-            raise ValueError('Completed quantity cannot be negative')
-        if v > 1000:
-            raise ValueError('Completed quantity cannot exceed 1000')
-        return v
-
-
 # =============================================================================
-# DAILY RESULTS SCHEMAS
+# DAILY RESULTS SCHEMAS (Evening Reflection)
 # =============================================================================
 
 class DailyResultCreate(BaseModel):
     """Schema for creating evening reflection"""
     daily_intention_id: int
+
+    @validator('daily_intention_id')
+    def validate_daily_intention_id(cls, v):
+        if v < 1:
+            raise ValueError('Daily intention ID must be a positive integer')
+        return v
+
 
 class DailyResultResponse(BaseModel):
     """Schema for daily result responses"""
@@ -92,6 +146,7 @@ class DailyResultResponse(BaseModel):
     class Config:
         from_attributes = True
 
+
 class RecoveryQuestResponse(BaseModel):
     """Schema for Recovery Quest responses"""
     recovery_quest_response: str
@@ -105,43 +160,3 @@ class RecoveryQuestResponse(BaseModel):
         if len(v) > 2000:
             raise ValueError("Response cannot exceed 2000 characters")
         return v
-
-# =============================================================================
-# USER SCHEMAS
-# =============================================================================
-
-class UserBase(BaseModel):
-    """Base schema for User"""
-    name: str = Field(..., min_length=1, max_length=100)
-    email: str = Field(..., regex=r'^[\w\.\-\+\'_]+@[\w\.\-]+\.\w+$', max_length=255)
-    hrga: str = Field(..., min_length=1, max_length=8000) # Reasonable cap
-
-    @validator('name', 'hrga')
-    def validate_text_fields(cls, v):
-        v = v.strip()
-        if not v:
-            raise ValueError("Field cannot be empty or just whitespace")
-        return v
-    
-
-class UserCreate(UserBase):
-    """Schema for creating a new User"""
-    password: str = Field(..., min_length=12, max_length=128)
-
-    @validator('password')
-    def validate_password(cls, v):
-        if len(v) < 12:
-            raise ValueError("Password must be at least 12 characters long")
-        return v
-    
-
-class UserResponse(BaseModel):
-    """Schema for User response (without password)"""
-    id: int
-    name: str
-    email: str
-    hrga: str
-    registered_at: datetime
-
-    class Config:
-        from_attributes = True
