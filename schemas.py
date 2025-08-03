@@ -9,7 +9,7 @@ from datetime import datetime
 class UserBase(BaseModel):
     """Base schema for User"""
     name: str = Field(..., min_length=1, max_length=100)
-    email: str = Field(..., regex=r'^[\w\.\-\+\'_]+@[\w\.\-]+\.\w+$', max_length=255)
+    email: str = Field(..., pattern=r'^[\w\.\-\+\'_]+@[\w\.\-]+\.\w+$', max_length=255)
     hrga: str = Field(..., min_length=1, max_length=8000) # Reasonable cap
 
     @validator('name', 'hrga')
