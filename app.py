@@ -825,13 +825,21 @@ def respond_to_recovery_quest(
             detail="No Recovery Quest available for this result"
         )
     
+    # Query for the original Daily Intention for personalized AI coacihing response
+    original_intention = db.query(DailyIntention).filter(DailyIntention.id == result.daily_intention_id).first()
+
+    # Calculate what the user managed to achieve
+    completion_rate = (
+        (original_intention.completed_quantity / original_intention.target_quantity) * 100
+        if original_intention.target_quantity > 0 else 0.0
+    )
+    
     try:
         # Save user's response to the Recovery Quest
         result.recovery_quest_response = quest_response.recovery_quest_response.strip()
 
         # AI Coach analyzes the response and provides personalized coaching
-        # For MVP, provide encouraging feedback
-        ai_coaching_response = f"Thank you for that honest reflection. Recognizing '{quest_response.recovery_quest_response}' as a pattern is the first step to breaking through it. Tomorrow's intention will be even stronger because of this insight!"
+        ai_coaching_response = generate_coaching_response(quest_response.recovery_quest_response, original_intention.daily_intention_text, completion_rate)
 
         db.commit()
         db.refresh(result)
