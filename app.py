@@ -3,8 +3,12 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import sessionmaker
 from passlib.context import CryptContext
-import os
 from datetime import datetime, timezone, timedelta
+from dotenv import load_dotenv
+import os, anthropic
+
+# Load environment variables
+load_dotenv()
 
 # Improt models and schemas
 from models import Base, User, UserAuth, DailyIntention, DailyResult
@@ -62,6 +66,58 @@ def get_today_intention(db: Session, user_id: int) -> DailyIntention | None:
         DailyIntention.created_at >= datetime.combine(today, datetime.min.time()),
         DailyIntention.created_at < datetime.combine(today + timedelta(days=1), datetime.min.time())
     ).first()
+
+# Claude AI setup
+anthropic_client = anthropic.Anthropic(
+    api_key=os.getenv("ANTHROPIC_API_KEY")
+)
+
+# AI COACH FUNCTIONS
+def analyze_daily_intention(
+        intention_text: str, target_quantity: int, focus_block_count: int, user_hrga: str
+        ) -> str:
+    """
+    Claude analyzes the Daily Intention for clarity, aciontability and alignment with user's HRGA.
+    This is the AI Coach's "Clarity Enforcer" role.
+    """
+    try:
+        prompt = f"""
+        You are the AI Accountablity and Clarity Coach for The Game of Becoming™. Your role is to 
+        analyze daily intentions and provide encouraging, actionable feedback.
+
+        User's Highest Revenue Generated Activity (HRGA): {user_hrga}
+        Today's Daily Intention: {intention_text}
+        Target Quantity: {target_quantity}
+        Planned Focus Block Count: {focus_block_count}
+
+        Analyze this intention and provide feedback that:
+        1. Acknowledges if it's clear, measurable and actionable
+        2. Celebrates alignment with their HRGA
+        3. Encourages them about their planned approach
+        4. Keeps the tone supportive and empowering
+
+        Provide 1-2 sentences maximum. Be encouraging and action-oriented.
+
+        Example good responses:
+        - "Excellent! 'Send 10 outreaches' is crystal clear and directly drives new client acquisition. Your 4 focus blocks should give you perfect execution rhythm."
+        - "Love the specificity! This intention aligns perfectly with your revenue generation goals. 3 focus blocks for 5 calls shows smart time planning!"
+
+        Your response:
+        """
+
+        response = anthropic_client.messages.create(
+            model="claude-3-5-sonnet-20241022",
+            max_tokens=150,
+            messages=[{"role": "user", 
+                       "content": prompt
+                }]
+        )
+
+        return response.content[0].text.strip()
+    
+    except Exception as e:
+        # Fallback to static respones if Claude API fails
+        return f"Great! '{intention_text}' is clear and actionable. You've planned {focus_block_count} focus blocks. Let's make it happen!"
 
 
 # GENERAL ENDPOINTS
