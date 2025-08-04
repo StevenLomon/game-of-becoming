@@ -215,7 +215,7 @@ def create_daily_intention(
     # AI Accountability and Clarity Coach analyzes the intention immediately after it is created
     # For MVP, we'll assume all intentions are clear and actionable enough to save
     # V2: Add actual AI analysis and refinement logic here
-    ai_feedback = f"Great! '{intention_data.daily_intention_text}' is clear and actionable. You've planned {intention_data.validate_focus_block_count} focus blocks. Let's make it happen!"
+    ai_feedback = f"Great! '{intention_data.daily_intention_text}' is clear and actionable. You've planned {intention_data.focus_block_count} focus blocks. Let's make it happen!"
 
     try:
         # Create today's intention
