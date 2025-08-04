@@ -702,13 +702,21 @@ def create_daily_result(
             detail="Daily Result already exists for this intention. Sacred finality!"
         )
     
+    # Get the user in order to generate personalized AI feedback
+    user = db.query(User).filter(User.id == intention.user_id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    
     try:
         # Determine if intention succeeded or failed
         succeeded = intention.status == 'completed'
 
         # Generate AI feedback for evening reflection
         if succeeded:
-            ai_feedback = f"Excellent execution. You completed your intention: '{intention.daily_intention_text}'. This is how sacred momentum builds!"
+            ai_feedback = generate_success_feedback(intention.daily_intention_text, intention.target_quantity, user.hrga)
             recovery_quest = None
         else: # Failed intention
             # Calculate what they managed to achieve
