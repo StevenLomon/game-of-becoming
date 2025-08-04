@@ -724,15 +724,17 @@ def create_daily_result(
                 (intention.completed_quantity / intention.target_quantity) * 100
                 if intention.target_quantity > 0 else 0.0
             )
-            ai_feedback = f"You did not complete your intention: '{intention.daily_intention_text}'. You achieved {completion_rate:.2f}% of your target. Let's turn this into a sacred learning opportunity!"
 
-            # Generate Recovery Quest based on failure pattern
-            if completion_rate == 0:
-                recovery_quest = "What prevented you from starting? Was it fear, overwhelm, or unclear next steps?"
-            elif completion_rate < 50:
-                recovery_quest = "You started but struggled to maintain momentum. What distracted you or broke your focus?"
-            else:
-                recovery_quest = "You made solid progress but didn't quite finish. What would have helped you cross the finish line?"
+            # Acknowledge completion rate
+            ai_feedback = f"You achieved {completion_rate:.1f}% of your intention. Let's turn this into learning..."
+
+            # AI-generated Recovery Quest based on failure pattern
+            recovery_quest = generate_recovery_quest(
+            intention.daily_intention_text,
+            completion_rate,
+            intention.target_quantity,
+            intention.completed_quantity
+            )
 
         # Create the Daily Result record
         db_result = DailyResult(
