@@ -11,7 +11,7 @@ from models import Base, User, UserAuth, DailyIntention, DailyResult
 from schemas import (
     UserCreate, UserUpdate, UserResponse,
     DailyIntentionCreate, DailyIntentionUpdate, DailyIntentionResponse,
-    DailyResultCreate, DailyResultResponse, RecoveryQuestResponse
+    DailyResultCreate, DailyResultResponse, RecoveryQuestResponse, RecoveryQuestInput
 )
 
 # Database setup
@@ -574,7 +574,7 @@ def get_daily_result(intention_id: int, db: Session = Depends(get_db)):
 @app.post("/daily-results/{result_id}/recovery-quest", response_model=RecoveryQuestResponse)
 def respond_to_recovery_quest(
     result_id: int,
-    quest_response: RecoveryQuestResponse,
+    quest_response: RecoveryQuestInput,
     db: Session = Depends(get_db)
 ):
     """
