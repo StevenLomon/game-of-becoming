@@ -10,7 +10,7 @@ import os, anthropic
 # Load environment variables
 load_dotenv()
 
-# Improt models and schemas
+# Import models and schemas
 from models import Base, User, UserAuth, DailyIntention, DailyResult
 from schemas import (
     UserCreate, UserUpdate, UserResponse,
@@ -77,12 +77,12 @@ def analyze_daily_intention(
         intention_text: str, target_quantity: int, focus_block_count: int, user_hrga: str
         ) -> str:
     """
-    Claude analyzes the Daily Intention for clarity, aciontability and alignment with user's HRGA.
+    Claude analyzes the Daily Intention for clarity, actiontability and alignment with user's HRGA.
     This is the AI Coach's "Clarity Enforcer" role.
     """
     try:
         prompt = f"""
-        You are the AI Accountablity and Clarity Coach for The Game of Becoming™. Your role is to 
+        You are the AI Accountability and Clarity Coach for The Game of Becoming™. Your role is to 
         analyze daily intentions and provide encouraging, actionable feedback.
 
         User's Highest Revenue Generated Activity (HRGA): {user_hrga}
@@ -137,14 +137,14 @@ def generate_recovery_quest(
         Achieved: {completed_quantity}
         Completion Rate: {completion_rate:.1f}%
 
-        Generate ONE spcific, thoughtful question that:
+        Generate ONE specific, thoughtful question that:
         1. Acknowledges their effort (they tried!)
         2. Focused on learning, not judgment
         3. Helps identify the root cause of the gap
         4. Is actionable for tomorrow's improvement
 
         Base the question on completion level:
-        - 0% completion: Focus on abrriers to starting
+        - 0% completion: Focus on barriers to starting
         - 1-50% completion: Focus on momentum/distraction issues
         - 51-99% completion: Focus on finishing/persistence
 
@@ -197,7 +197,7 @@ def generate_coaching_response(
         1. Validates their honest reflection
         2. Identifies the pattern/insight they've uncovered
         3. Connects this learning to future success
-        4. Builds confidence and reslience
+        4. Builds confidence and resilience
         5. Keeps it concise (2-3 sentences max)
 
         Your tone should be:
@@ -215,8 +215,8 @@ def generate_coaching_response(
         """
 
         response = anthropic_client.messages.create(
-            model="claude-3-5-haiku-20241022",
-            max_tokens=200
+            model="claude-3-5-sonnet-20241022",
+            max_tokens=200,
             messages=[{
                 "role": "user",
                 "content": prompt
@@ -228,6 +228,52 @@ def generate_coaching_response(
     except Exception as e:
         # Fallback response
         return f"Thank you for that honest reflection. Recognizing '{user_reflection}' as a pattern is the first step to breaking through it. Tomorrow's intention will be even stronger because of this insight!"
+
+def generate_success_feedback(
+        intention_text: str, target_quantity: int, user_hrga: str
+    ) -> str:
+    """
+    Claude celebrates successful intention completion.
+    This is the AI Coach's "Momentum Builder" role.
+    """
+    try:
+        prompt = f"""
+        You are the AI Accountability and Clarity Coach for The Game of Becoming™. A user has 
+        successfully completed their daily intention! Celebrate their win and build momentum.
+
+        User's HRGA: {user_hrga}
+        Completed Intention: "{intention_text}"
+        Target: {target_quantity} (achieved!)
+
+        Provide celebration that:
+        1. Acknowledges their specific achievement
+        2. Connects it to their revenue-generating goals
+        3. Builds momentum for tomorrow
+        4. Feels genuine and energizing
+        5. Is concise (1-2 sentences)
+
+        Examples:
+        - "Outstanding execution! Closing 3 deals directly fuels your client acquisition engine. This is exactly how momentum builds - one focused day at a time!"
+        - "Powerful work! Those 10 outreaches are seeds that will bloom into future revenue. Your consistency is creating compound results!"
+        
+        
+        Your celebration:
+        """
+
+        response = anthropic_client.messages.create(
+            model="claude-3-5-sonnet-20241022",
+            max_tokens=150,
+            messages=[{
+                "role": "user",
+                "content": prompt
+            }]
+        )
+        
+        return response.content[0].text.strip()
+        
+    except Exception as e:
+        # Fallback success message
+        return f"Excellent execution! You completed '{intention_text}' - this is how sacred momentum builds!"
 
 # GENERAL ENDPOINTS
 
@@ -376,7 +422,6 @@ def create_daily_intention(
             detail="Daily Intention already exists for today. Ready to update it instead?"
         )
     
-    # TODO: AI COACH INTEGRATION POINT
     # AI Accountability and Clarity Coach analyzes the intention immediately after it is created
     # For MVP, we'll assume all intentions are clear and actionable enough to save
     # V2: Add actual AI analysis and refinement logic here
@@ -771,7 +816,6 @@ def respond_to_recovery_quest(
         # Save user's response to the Recovery Quest
         result.recovery_quest_response = quest_response.recovery_quest_response.strip()
 
-        # TODO: AI COACH INTEGRATION POINT
         # AI Coach analyzes the response and provides personalized coaching
         # For MVP, provide encouraging feedback
         ai_coaching_response = f"Thank you for that honest reflection. Recognizing '{quest_response.recovery_quest_response}' as a pattern is the first step to breaking through it. Tomorrow's intention will be even stronger because of this insight!"
