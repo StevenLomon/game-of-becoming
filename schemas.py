@@ -1,4 +1,4 @@
-from pydantic import BaseModel, validator, Field
+from pydantic import BaseModel, field_validator, Field
 from typing import Optional
 from datetime import datetime
 
@@ -12,7 +12,7 @@ class UserBase(BaseModel):
     email: str = Field(..., pattern=r'^[\w\.\-\+\'_]+@[\w\.\-]+\.\w+$', max_length=255)
     hrga: str = Field(..., min_length=1, max_length=8000) # Reasonable cap
 
-    @validator('name', 'hrga')
+    @field_validator('name', 'hrga')
     def validate_text_fields(cls, v):
         v = v.strip()
         if not v:
@@ -24,7 +24,7 @@ class UserCreate(UserBase):
     """Schema for creating a new User"""
     password: str = Field(..., min_length=12, max_length=128)
 
-    @validator('password')
+    @field_validator('password')
     def validate_password(cls, v):
         if len(v) < 12:
             raise ValueError("Password must be at least 12 characters long")
@@ -60,7 +60,7 @@ class DailyIntentionCreate(BaseModel):
     target_quantity: int
     focus_block_count: int 
 
-    @validator('daily_intention_text')
+    @field_validator('daily_intention_text')
     def validate_daily_intention_text(cls, v):
         # Strip whitespace and ensure not empty
         v = v.strip()
@@ -70,7 +70,7 @@ class DailyIntentionCreate(BaseModel):
             raise ValueError("Daily intention cannot exceed 2000 characters")
         return v
     
-    @validator('target_quantity')
+    @field_validator('target_quantity')
     def validate_target_quantity(cls, v):
         if v < 1:
             raise ValueError('Target quantity must be at least 1')
@@ -78,7 +78,7 @@ class DailyIntentionCreate(BaseModel):
             raise ValueError('Target quantity cannot exceed 100. Let\'s focus on what truly matters today!')
         return v
 
-    @validator('focus_block_count')
+    @field_validator('focus_block_count')
     def validate_focus_block_count(cls, v):
         if v < 1:
             raise ValueError('Focus block count must be at least 1')
@@ -91,7 +91,7 @@ class DailyIntentionUpdate(BaseModel):
     """Schema for updating Daily Intention progress"""
     completed_quantity: int
 
-    @validator('completed_quantity')
+    @field_validator('completed_quantity')
     def validate_completed_quantity(cls, v):
         if v < 0:
             raise ValueError('Completed quantity cannot be negative')
@@ -125,7 +125,7 @@ class DailyResultCreate(BaseModel):
     """Schema for creating evening reflection"""
     daily_intention_id: int
 
-    @validator('daily_intention_id')
+    @field_validator('daily_intention_id')
     def validate_daily_intention_id(cls, v):
         if v < 1:
             raise ValueError('Daily intention ID must be a positive integer')
@@ -147,12 +147,11 @@ class DailyResultResponse(BaseModel):
         from_attributes = True
 
 
-class RecoveryQuestResponse(BaseModel):
-    """Schema for Recovery Quest responses"""
+class RecoveryQuestInput(BaseModel):
+    """Schema for user's Recovery Quest response input"""
     recovery_quest_response: str
-    ai_coaching_feedback: Optional[str] = None
 
-    @validator('recovery_quest_response')
+    @field_validator('recovery_quest_response')
     def validate_response(cls, v):
         v = v.strip()
         if not v:
@@ -160,3 +159,8 @@ class RecoveryQuestResponse(BaseModel):
         if len(v) > 2000:
             raise ValueError("Response cannot exceed 2000 characters")
         return v
+
+class RecoveryQuestResponse(BaseModel):
+    """Schema for the complete Recovery Quest response (includes AI feedback)"""
+    recovery_quest_response: str
+    ai_coaching_feedback: str  # AI generates this
