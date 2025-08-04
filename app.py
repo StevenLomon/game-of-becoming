@@ -176,6 +176,58 @@ def generate_recovery_quest(
         else:
             return "You made solid progress but didn't quite finish. What would have helped you cross the finish line?"
         
+def generate_coaching_response(
+        user_reflection: str, original_intention: str, completion_rate: float
+    ) -> str:
+    """
+    Claude provides personalized coaching based on user's Recovery Quest response.
+    This is the AI Coach's "Wisdom Builder" role.
+    """
+    try:
+        prompt = f"""
+        You are the AI Accountability and Clarity Coach for The Game of Becoming™. A user has 
+        reflected on their failed intention and shared their insight. Provide encouraging, 
+        wisdom-building coaching.
+
+        Original Intention: "{original_intention}"
+        Completion Rate: {completion_rate:.1f}%
+        User's Reflection: "{user_reflection}"
+
+        Provide coaching that:
+        1. Validates their honest reflection
+        2. Identifies the pattern/insight they've uncovered
+        3. Connects this learning to future success
+        4. Builds confidence and reslience
+        5. Keeps it concise (2-3 sentences max)
+
+        Your tone should be:
+        - Encouraging but not fake-positive
+        - Wise and supportive
+        - Forward-looking
+        - Focused on growth mindset
+
+        Examples:
+        - "That's a powerful insight about time estimation. Recognizing that you consistently underestimate task complexity is the first step to building more realistic intentions. Tomorrow, try adding a 25% buffer to your time estimates!"
+        - "Honest self-awareness like this is what separates people who grow from those who stay stuck. Now that you know social media is your kryptonite during focus blocks, you can proactively eliminate that distraction tomorrow."
+
+
+        Your coaching response:
+        """
+
+        response = anthropic_client.messages.create(
+            model="claude-3-5-haiku-20241022",
+            max_tokens=200
+            messages=[{
+                "role": "user",
+                "content": prompt
+            }]
+        )
+
+        return response.content[0].text.strip()
+    
+    except Exception as e:
+        # Fallback response
+        return f"Thank you for that honest reflection. Recognizing '{user_reflection}' as a pattern is the first step to breaking through it. Tomorrow's intention will be even stronger because of this insight!"
 
 # GENERAL ENDPOINTS
 
