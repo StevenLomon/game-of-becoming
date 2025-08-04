@@ -119,6 +119,63 @@ def analyze_daily_intention(
         # Fallback to static respones if Claude API fails
         return f"Great! '{intention_text}' is clear and actionable. You've planned {focus_block_count} focus blocks. Let's make it happen!"
 
+def generate_recovery_quest(
+        intention_text: str, completion_rate: float, target_quantity: int, completed_quantity: int
+    ) -> str:
+    """
+    Claude generates a personalized Recovery Quest based on failure pattern.
+    This is the AI Coach's "Fail Forward Guide" role.
+    """
+    try:
+        prompt = f"""
+        You are the AI Accountability and Clarity Coach for The Game of Becoming™. A user failed
+        to complete their Daily Intention, and you need to generate a Recovery Quest - a reflective
+        question that turns failure into valuable data and learning.
+
+        Failed Intention: "{intention_text}"
+        Target: {target_quantity}
+        Achieved: {completed_quantity}
+        Completion Rate: {completion_rate:.1f}%
+
+        Generate ONE spcific, thoughtful question that:
+        1. Acknowledges their effort (they tried!)
+        2. Focused on learning, not judgment
+        3. Helps identify the root cause of the gap
+        4. Is actionable for tomorrow's improvement
+
+        Base the question on completion level:
+        - 0% completion: Focus on abrriers to starting
+        - 1-50% completion: Focus on momentum/distraction issues
+        - 51-99% completion: Focus on finishing/persistence
+
+        Examples:
+        - "What specific distraction pulled you away when you were in the middle of making progress?"
+        - "When you felt resistance to starting, what was the inner voice telling you?"
+        - "You were so close to finishing - what would have given you that final push across the finish line?"
+
+        Generate ONE question (no additional text):
+        """
+
+        response = anthropic_client.messages.create(
+            model="claude-3-5-sonnet-20241022",
+            max_tokens=100,
+            messages=[{
+                "role": "user",
+                "content": prompt
+            }]
+        )
+
+        return response.content[0].text.strip()
+    
+    except Exception as e:
+        # Fallback based on completion rate
+        if completion_rate == 0:
+            return "What prevented you from starting? Was it fear, overwhelm, or unclear next steps?"
+        elif completion_rate < 50:
+            return "You started but struggled to maintain momentum. What distracted you or broke your focus?"
+        else:
+            return "You made solid progress but didn't quite finish. What would have helped you cross the finish line?"
+        
 
 # GENERAL ENDPOINTS
 
