@@ -14,8 +14,8 @@ load_dotenv()
 from models import Base, User, UserAuth, DailyIntention, DailyResult
 from schemas import (
     UserCreate, UserUpdate, UserResponse,
-    DailyIntentionCreate, DailyIntentionUpdate, DailyIntentionResponse,
-    DailyResultCreate, DailyResultResponse, RecoveryQuestResponse, RecoveryQuestInput
+    DailyIntentionCreate, DailyIntentionUpdate, DailyIntentionResponse,DailyIntentionCreateResponse, 
+    DailyIntentionRefinementResponse, DailyResultCreate, DailyResultResponse, RecoveryQuestResponse, RecoveryQuestInput
 )
 
 # Database setup
@@ -410,7 +410,8 @@ def get_user(user_id: int, db: Session = Depends(get_db)):
 
 # DAILY INTENTIONS ENDPOINTS
 
-@app.post("/intentions", response_model=DailyIntentionResponse, status_code=status.HTTP_201_CREATED)
+# Updated for Smart Detection!
+@app.post("/intentions", response_model=DailyIntentionCreateResponse, status_code=status.HTTP_201_CREATED)
 def create_daily_intention(
     intention_data: DailyIntentionCreate,
     db: Session = Depends(get_db),
@@ -447,14 +448,21 @@ def create_daily_intention(
             detail="Daily Intention already exists for today. Ready to update it instead?"
         )
     
-    # AI Accountability and Clarity Coach analyzes the intention immediately after it is created
-    ai_feedback = analyze_daily_intention(
+    # Updated: AI Accountability and Clarity Coach analyzes the intention immediately after it is created *AND* determines if refinement is needed
+    ai_feedback, needs_refinement = analyze_daily_intention(
         intention_data.daily_intention_text, 
         intention_data.target_quantity, 
         intention_data.focus_block_count, 
         user.hrga
     )
 
+    # NEW: Core Smart Detection logic
+    if needs_refinement:
+        # If the AI says the intention is vague, stop here.
+        # Do NOT save to the database. Return feedback for the user to refine
+        return DailyIntentionRefinementResponse(ai_feedback=ai_feedback)
+
+    # --- This code now only runs if the intention is APPROVED ---
     try:
         # Create today's intention
         db_intention = DailyIntention(
@@ -482,7 +490,8 @@ def create_daily_intention(
             completion_percentage=0.0,  # Initial percentage is 0%
             status=db_intention.status,
             created_at=db_intention.created_at,
-            ai_feedback=db_intention.ai_feedback #AI Coach's immediate feedback
+            ai_feedback=db_intention.ai_feedback, # AI Coach's immediate feedback
+            needs_refinement=False # Excplicitly set to False
         )
     
     except Exception as e:
