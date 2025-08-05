@@ -104,7 +104,7 @@ class DailyIntentionUpdate(BaseModel):
 # NEW: This is the response when the AI says the intention needs refinement
 class DailyIntentionRefinementResponse(BaseModel):
     """Response when an intention needs refinement by the user"""
-    needs_refinement: bool
+    needs_refinement: bool = True # Defaults to True
     ai_feedback: str
 
 
