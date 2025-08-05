@@ -418,15 +418,18 @@ def create_daily_intention(
 ):
     """
     Create today's Daily Intention - The One Thing that matters!
+    Updated: handles both initial and refined submissions!
 
     AI Coach forces clarity upfront:
     - AI Coach analyzes intention before saving
     - Value intentions will trigger refinement process
     - Only clear, actionable intentions are saved
     - This prevents clutter, confusion and failure before it starts!
+    - NEW: A refined submission is treated as a "Sacred Commitment" and is always saved, turning execution into a learning opportunity even if the goal isn't "perfect"
 
     Core App Mechanics:
     - One intention per day (enforces clarity and focus)
+    - NEW: ONE chance to refine intention!
     - Must be measurable with target quantity
     - User estimates focus block count needed (self-awareness building!)
     - This starts the daily execution and learning loop!
@@ -457,50 +460,55 @@ def create_daily_intention(
     )
 
     # NEW: Core Smart Detection logic
-    if needs_refinement:
-        # If the AI says the intention is vague, stop here.
+    # MODIFIED: The core logic now checks for the 'is_refined' flag
+    # The intentino is saved only if it's a refined intention OR if the initial intention was approved
+    if intention_data.is_refined or not needs_refinement:
+        # --- SACRED COMMITMENT PATH ---
+        # This code now only runs if the intention is APPROVED
+        try:
+            # Create today's intention
+            db_intention = DailyIntention(
+                user_id=intention_data.user_id,
+                daily_intention_text=intention_data.daily_intention_text.strip(),
+                target_quantity=intention_data.target_quantity,
+                focus_block_count=intention_data.focus_block_count,
+                ai_feedback=ai_feedback,  # AI feedback on intention clarity
+                # completed_quantity defaults to 0 (from model)
+                # status defaults to 'pending' (from model)
+                # created_at defaults to current UTC time (from model)
+            )
+
+            db.add(db_intention)
+            db.commit()
+            db.refresh(db_intention)  # Refresh to get all default values from the database
+
+            return DailyIntentionResponse(
+                id=db_intention.id,
+                user_id=db_intention.user_id,
+                daily_intention_text=db_intention.daily_intention_text,
+                target_quantity=db_intention.target_quantity,
+                completed_quantity=db_intention.completed_quantity,
+                focus_block_count=db_intention.focus_block_count,
+                completion_percentage=0.0,  # Initial percentage is 0%
+                status=db_intention.status,
+                created_at=db_intention.created_at,
+                ai_feedback=db_intention.ai_feedback, # AI Coach's immediate feedback
+                needs_refinement=False # Excplicitly set to False
+            )
+        
+        except Exception as e:
+            print(f"Database error: {e}") 
+            db.rollback()  # Roll back on any error
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to create Daily Intention: {str(e)}"
+            )
+    
+    else:
+    # --- INITIAL REFINEMENT NEEDED PATH ---
+        # This path is only taken on the first submission if it needs refinement
         # Do NOT save to the database. Return feedback for the user to refine
         return DailyIntentionRefinementResponse(ai_feedback=ai_feedback)
-
-    # --- This code now only runs if the intention is APPROVED ---
-    try:
-        # Create today's intention
-        db_intention = DailyIntention(
-            user_id=intention_data.user_id,
-            daily_intention_text=intention_data.daily_intention_text.strip(),
-            target_quantity=intention_data.target_quantity,
-            focus_block_count=intention_data.focus_block_count,
-            ai_feedback=ai_feedback,  # AI feedback on intention clarity
-            # completed_quantity defaults to 0 (from model)
-            # status defaults to 'pending' (from model)
-            # created_at defaults to current UTC time (from model)
-        )
-
-        db.add(db_intention)
-        db.commit()
-        db.refresh(db_intention)  # Refresh to get all default values from the database
-
-        return DailyIntentionResponse(
-            id=db_intention.id,
-            user_id=db_intention.user_id,
-            daily_intention_text=db_intention.daily_intention_text,
-            target_quantity=db_intention.target_quantity,
-            completed_quantity=db_intention.completed_quantity,
-            focus_block_count=db_intention.focus_block_count,
-            completion_percentage=0.0,  # Initial percentage is 0%
-            status=db_intention.status,
-            created_at=db_intention.created_at,
-            ai_feedback=db_intention.ai_feedback, # AI Coach's immediate feedback
-            needs_refinement=False # Excplicitly set to False
-        )
-    
-    except Exception as e:
-        print(f"Database error: {e}") 
-        db.rollback()  # Roll back on any error
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to create Daily Intention: {str(e)}"
-        )
     
 
 @app.get("/intentions/today/{user_id}", response_model=DailyIntentionResponse)

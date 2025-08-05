@@ -59,6 +59,7 @@ class DailyIntentionCreate(BaseModel):
     daily_intention_text: str
     target_quantity: int
     focus_block_count: int 
+    is_refined: bool = False # NEW: Flag to indicate a refine submission. Defaults to False
 
     @field_validator('daily_intention_text')
     def validate_daily_intention_text(cls, v):
