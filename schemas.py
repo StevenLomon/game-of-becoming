@@ -1,5 +1,5 @@
 from pydantic import BaseModel, field_validator, Field
-from typing import Optional
+from typing import Optional, Union
 from datetime import datetime
 
 # =============================================================================
@@ -50,7 +50,7 @@ class UserResponse(BaseModel):
 
 
 # =============================================================================
-# DAILY INTENTIONS SCHEMAS
+# DAILY INTENTIONS SCHEMAS (Updated for Smart Detection)
 # =============================================================================
 
 class DailyIntentionCreate(BaseModel):
@@ -98,10 +98,18 @@ class DailyIntentionUpdate(BaseModel):
         if v > 1000:
             raise ValueError('Completed quantity cannot exceed 1000')
         return v
-    
 
+
+# NEW: This is the response when the AI says the intention needs refinement
+class DailyIntentionRefinementResponse(BaseModel):
+    """Response when an intention needs refinement by the user"""
+    needs_refinement: bool
+    ai_feedback: str
+
+
+# MODIFIED: Original response schema
 class DailyIntentionResponse(BaseModel):
-    """Unified response for all Daily Intention endpoints"""
+    """Unified response for all successful/existing Daily Intention endpoints"""
     id: int
     user_id: int
     daily_intention_text: str
@@ -112,9 +120,14 @@ class DailyIntentionResponse(BaseModel):
     status: str # 'pending', 'in_progress', 'completed', 'failed'
     created_at: datetime
     ai_feedback: Optional[str] = None # AI coach's immediate feedback. Can be null if Claude API fails
+    needs_refinement: bool = False # New. Always False for an approved intention (doesn't need refinement)
 
     class Config:
         from_attributes = True # Allows model to be created from ORM attributes
+
+
+# NEW: Tells the creation endpoint what its possible responses are
+DailyIntentionCreateResponse = Union[DailyIntentionRefinementResponse, DailyIntentionResponse]
 
 
 # =============================================================================

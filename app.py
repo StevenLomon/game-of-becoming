@@ -73,34 +73,48 @@ anthropic_client = anthropic.Anthropic(
 )
 
 # AI COACH FUNCTIONS
+
+# Updated AI analysis function with Smart Detection to see if refinement is needed!
 def analyze_daily_intention(
         intention_text: str, target_quantity: int, focus_block_count: int, user_hrga: str
-        ) -> str:
+        ) -> tuple[str, bool]:
     """
     Claude analyzes the Daily Intention for clarity, actiontability and alignment with user's HRGA.
+    Updated: determines if refinement is needed! 
+    Returns (ai_feedback, needs_refinement)
     This is the AI Coach's "Clarity Enforcer" role.
     """
     try:
         prompt = f"""
-        You are the AI Accountability and Clarity Coach for The Game of Becoming™. Your role is to 
-        analyze daily intentions and provide encouraging, actionable feedback.
+        You are the AI Accountability and Clarity Coach for The Game of Becoming™. Your role is to analyze daily intentions, provide encouraging actionable feedback, and determine if they need refinement before commitment.
 
         User's Highest Revenue Generated Activity (HRGA): {user_hrga}
         Today's Daily Intention: {intention_text}
         Target Quantity: {target_quantity}
         Planned Focus Block Count: {focus_block_count}
 
-        Analyze this intention and provide feedback that:
-        1. Acknowledges if it's clear, measurable and actionable
-        2. Celebrates alignment with their HRGA
-        3. Encourages them about their planned approach
-        4. Keeps the tone supportive and empowering
+        Analyze this intention and provide encouraging, actionable feedback while determining if refinement is needed based on:
+        - Is it specific and measurable?
+        - Is it actionable with clear next steps?
+        - Does it align well with their HRGA?
+        - Is the target quantity realistic and meaningful?
 
-        Provide 1-2 sentences maximum. Be encouraging and action-oriented.
+        CRITICAL: Start your response with either:
+        - "NEEDS_REFINEMENT:" if the intention needs to be more specific/actionable/aligned
+        - "APPROVED:" if the intention is clear and ready for commitment
 
-        Example good responses:
-        - "Excellent! 'Send 10 outreaches' is crystal clear and directly drives new client acquisition. Your 4 focus blocks should give you perfect execution rhythm."
-        - "Love the specificity! This intention aligns perfectly with your revenue generation goals. 3 focus blocks for 5 calls shows smart time planning!"
+        Then provide your coaching feedback.
+
+        Provide 2-3 sentences maximum. Be encouraging and action-oriented.
+
+        Examples:
+        NEEDS_REFINEMENT: This intention is quite vague. What specific modules will you complete? Consider being more specific about your deliverables - perhaps "Complete modules 1-3 of Webinar Academy and draft one compelling offer" would give you clearer success criteria.
+
+        APPROVED: Excellent! 'Send 10 LinkedIn connection requests to CEOs in tech' is crystal clear and directly drives your outreach goals. Your 2 focus blocks should give you perfect execution rhythm!
+
+        NEEDS_REFINEMENT: While learning is valuable, this doesn't directly support your LinkedIn outreach HRGA. Consider balancing today's training with 1-2 focus blocks of immediate income-generating outreach activities.
+
+        APPROVED: Love how you've broken down the webinar training into measurable modules with a concrete deliverable! This intention directly supports your LinkedIn outreach HRGA by helping you create a compelling offer.
 
         Your response:
         """
@@ -113,11 +127,23 @@ def analyze_daily_intention(
                 }]
         )
 
-        return response.content[0].text.strip()
+        ai_response = response.content[0].text.strip()
+
+        # Parse the AI response
+        if ai_response.startswith("NEEDS_REFINEMENT:"):
+            feedback = ai_response[18:].strip() # Remove "NEEDS_REFINEMENT:" prefix
+            return feedback, True
+        elif ai_response.startswith("APPROVED:"):
+            feedback = ai_response[9:].strip() # Remove "APPROVED:" prefix
+            return feedback, False
+        else:
+            # Fallback: if format is unexpected, assume it's approved
+            return ai_response, False
     
     except Exception as e:
         # Fallback to static respones if Claude API fails
-        return f"Great! '{intention_text}' is clear and actionable. You've planned {focus_block_count} focus blocks. Let's make it happen!"
+        fallback_feedback = f"Great! '{intention_text}' is clear and actionable. You've planned {focus_block_count} focus blocks. Let's make it happen!"
+        return fallback_feedback, False
 
 def generate_recovery_quest(
         intention_text: str, completion_rate: float, target_quantity: int, completed_quantity: int
@@ -128,9 +154,7 @@ def generate_recovery_quest(
     """
     try:
         prompt = f"""
-        You are the AI Accountability and Clarity Coach for The Game of Becoming™. A user failed
-        to complete their Daily Intention, and you need to generate a Recovery Quest - a reflective
-        question that turns failure into valuable data and learning.
+        You are the AI Accountability and Clarity Coach for The Game of Becoming™. A user failed to complete their Daily Intention, and you need to generate a Recovery Quest - a reflective question that turns failure into valuable data and learning.
 
         Failed Intention: "{intention_text}"
         Target: {target_quantity}
@@ -185,9 +209,7 @@ def generate_coaching_response(
     """
     try:
         prompt = f"""
-        You are the AI Accountability and Clarity Coach for The Game of Becoming™. A user has 
-        reflected on their failed intention and shared their insight. Provide encouraging, 
-        wisdom-building coaching.
+        You are the AI Accountability and Clarity Coach for The Game of Becoming™. A user has reflected on their failed intention and shared their insight. Provide encouraging, wisdom-building coaching.
 
         Original Intention: "{original_intention}"
         Completion Rate: {completion_rate:.1f}%
@@ -238,8 +260,7 @@ def generate_success_feedback(
     """
     try:
         prompt = f"""
-        You are the AI Accountability and Clarity Coach for The Game of Becoming™. A user has 
-        successfully completed their daily intention! Celebrate their win and build momentum.
+        You are the AI Accountability and Clarity Coach for The Game of Becoming™. A user has successfully completed their daily intention! Celebrate their win and build momentum.
 
         User's HRGA: {user_hrga}
         Completed Intention: "{intention_text}"
