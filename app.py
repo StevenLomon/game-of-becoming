@@ -142,6 +142,7 @@ def analyze_daily_intention(
     
     except Exception as e:
         # Fallback to static respones if Claude API fails
+        print(f"Claude API call failed: {e}") 
         fallback_feedback = f"Great! '{intention_text}' is clear and actionable. You've planned {focus_block_count} focus blocks. Let's make it happen!"
         return fallback_feedback, False
 
@@ -193,6 +194,7 @@ def generate_recovery_quest(
     
     except Exception as e:
         # Fallback based on completion rate
+        print(f"Claude API call failed: {e}") 
         if completion_rate == 0:
             return "What prevented you from starting? Was it fear, overwhelm, or unclear next steps?"
         elif completion_rate < 50:
@@ -249,6 +251,7 @@ def generate_coaching_response(
     
     except Exception as e:
         # Fallback response
+        print(f"Claude API call failed: {e}") 
         return f"Thank you for that honest reflection. Recognizing '{user_reflection}' as a pattern is the first step to breaking through it. Tomorrow's intention will be even stronger because of this insight!"
 
 def generate_success_feedback(
@@ -294,6 +297,7 @@ def generate_success_feedback(
         
     except Exception as e:
         # Fallback success message
+        print(f"Claude API call failed: {e}") 
         return f"Excellent execution! You completed '{intention_text}' - this is how sacred momentum builds!"
 
 # GENERAL ENDPOINTS
@@ -482,6 +486,7 @@ def create_daily_intention(
         )
     
     except Exception as e:
+        print(f"Database error: {e}") 
         db.rollback()  # Roll back on any error
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -585,6 +590,7 @@ def update_daily_intention_progress(
         )
     
     except Exception as e:
+        print(f"Database error: {e}") 
         db.rollback()  # Roll back on any error
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -630,6 +636,7 @@ def complete_daily_intention(intention_id: int, db: Session = Depends(get_db)):
         )
     
     except Exception as e:
+        print(f"Database error: {e}") 
         db.rollback()  # Roll back on any error
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -680,6 +687,7 @@ def fail_daily_intention(intention_id: int, db: Session = Depends(get_db)):
         )
     
     except Exception as e:
+        print(f"Database error: {e}") 
         db.rollback()  # Roll back on any error
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -784,6 +792,7 @@ def create_daily_result(
         )
     
     except Exception as e:
+        print(f"Database error: {e}") 
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -871,6 +880,7 @@ def respond_to_recovery_quest(
         )
     
     except Exception as e:
+        print(f"Database error: {e}") 
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
