@@ -132,6 +132,32 @@ DailyIntentionCreateResponse = Union[DailyIntentionRefinementResponse, DailyInte
 
 
 # =============================================================================
+# FOCUS BLOCK SCHEMAS
+# =============================================================================
+
+class FocusBlockBase(BaseModel):
+    """Base schema for a Focus Block, containing shared fields."""
+    focus_block_intention: str = Field(..., min_length=1, max_length=2000)
+    duration_minutes: int = Field(..., gt=0, le=120) # Must be > 0 and <= 120 mins
+
+class FocusBlockCreate(FocusBlockBase):
+    """Schema for creating a new Focus Block."""
+    daily_intention_id: int
+
+class FocusBlockResponse(FocusBlockBase):
+    """Schema for returning a Focus Block from the API."""
+    id: int
+    daily_intention_id: int
+    status: str
+    pre_block_video_url: Optional[str] = None
+    post_block_video_url: Optional[str] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# =============================================================================
 # DAILY RESULTS SCHEMAS (Evening Reflection)
 # =============================================================================
 

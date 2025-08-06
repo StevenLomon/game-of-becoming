@@ -55,7 +55,27 @@ class DailyIntention(Base):
     # Relationships
     user = relationship("User", back_populates="daily_intentions")
     daily_results = relationship("DailyResult", back_populates="daily_intention", uselist=False) # One-to-one relationship with DailyResult
-    # focus_blocks = relationship("FocusBlock", back_populates="daily_intention") #For individual focus block tracking (V2)
+    # focus_blocks = relationship("FocusBlock", back_populates="daily_intention") #For individual focus block tracking
+
+class FocusBlock(Base):
+    __tablename__ = "focus_blocks"
+
+    id = Column(Integer, primary_key=True)
+    # Foreign Key to link back to the main goal
+    daily_intention_id = Column(Integer, ForeignKey("daily_intentions.id"), nullable=False)
+
+    # The user's goal for this specific 50-minute block
+    focus_block_intention = Column(Text, nullable=False)
+
+    # The URLs from Neeto/Loom
+    pre_block_video_url = Column(String(2048), nullable=True)
+    post_block_video_url = Column(String(2048), nullable=True)
+
+    status = Column(String(20), default='pending', nullable=False) # e.g., 'pending', 'completed'
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    # Establishes the link in SQLAlchemy
+    daily_intention = relationship("DailyIntention", back_populates="focus_blocks")
 
 class DailyResult(Base):
     __tablename__ = "daily_results"
