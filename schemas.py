@@ -156,6 +156,12 @@ class FocusBlockResponse(FocusBlockBase):
     class Config:
         from_attributes = True
 
+class FocusBlockUpdate(BaseModel):
+    """Schema for updating a Focus Block, e.g., with video URLs."""
+    pre_block_video_url: Optional[str] = None
+    post_block_video_url: Optional[str] = None
+    status: Optional[str] = None # To mark as 'completed' later
+
 
 # =============================================================================
 # DAILY RESULTS SCHEMAS (Evening Reflection)
