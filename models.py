@@ -42,7 +42,7 @@ class CharacterStats(Base):
     discipline = Column(Integer, default=0, nullable=False)
     commitment = Column(Integer, default=0, nullable=False)
 
-    user = relationship("User", back_populates="stats")
+    user = relationship("User", back_populates="character_stats")
 
 class DailyIntention(Base):
     __tablename__ = "daily_intentions"
