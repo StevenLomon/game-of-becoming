@@ -721,17 +721,20 @@ def fail_daily_intention(intention_id: int, db: Session = Depends(get_db)):
 def create_focus_block(block_data: FocusBlockCreate, db: Session = Depends(get_db)):
     """
     Create a new Focus Block when a user starts a timed execution sprint.
+    Creates it by finding the user's active intention for the day.
     This logs the user's chunked-down intention for the block.
     """
-    # First, verify the parent Daily Intention exists
-    daily_intention = db.query(DailyIntention).filter(DailyIntention.id == block_data.daily_intention_id).first()
+    # Use the existing helper function to get today's Daily Intention for the user
+    daily_intention = get_today_intention(db, user_id=block_data.user_id)
+    
+    # If the user has no intention for today, they can't create a focus block
     if not daily_intention:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Daily Intention not found. Cannot create a Focus Block without a parent intention."
+            detail="No active Daily Intention found for today. Please create one first."
         )
     
-    # Create the new Focus Block instance
+    # Create the new Focus Block instance using the ID from the found intention
     new_block = FocusBlock(
         daily_intention_id=block_data.daily_intention_id,
         focus_block_intention=block_data.focus_block_intention,

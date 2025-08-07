@@ -142,7 +142,7 @@ class FocusBlockBase(BaseModel):
 
 class FocusBlockCreate(FocusBlockBase):
     """Schema for creating a new Focus Block."""
-    daily_intention_id: int
+    user_id: int
 
 class FocusBlockResponse(FocusBlockBase):
     """Schema for returning a Focus Block from the API."""
