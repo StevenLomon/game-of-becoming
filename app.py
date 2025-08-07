@@ -118,6 +118,8 @@ def analyze_daily_intention(
 
         APPROVED: Love how you've broken down the webinar training into measurable modules with a concrete deliverable! This intention directly supports your LinkedIn outreach HRGA by helping you create a compelling offer.
 
+        NEEDS_REFINEMENT: While building a website can be important, this intention needs more specificity and doesn't directly support your LinkedIn outreach HRGA. Consider refining to something like "Complete homepage and about page copy that highlights my LinkedIn outreach services" and dedicating 1 of your 3 focus blocks to actual LinkedIn outreach to maintain revenue momentum.
+
         Your response:
         """
 
