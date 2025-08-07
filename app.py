@@ -736,7 +736,7 @@ def create_focus_block(block_data: FocusBlockCreate, db: Session = Depends(get_d
     
     # Create the new Focus Block instance using the ID from the found intention
     new_block = FocusBlock(
-        daily_intention_id=block_data.daily_intention_id,
+        daily_intention_id=daily_intention.id,
         focus_block_intention=block_data.focus_block_intention,
         duration_minutes=block_data.duration_minutes
     )
