@@ -64,7 +64,7 @@ class FocusBlock(Base):
     # Foreign Key to link back to the main goal
     daily_intention_id = Column(Integer, ForeignKey("daily_intentions.id"), nullable=False)
 
-    # The user's goal for this specific 50-minute block
+    duration_minutes = Column(Integer, default=50, nullable=False) # Defaults to 50
     focus_block_intention = Column(Text, nullable=False)
 
     # The URLs from Neeto/Loom

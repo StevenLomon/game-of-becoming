@@ -138,7 +138,7 @@ DailyIntentionCreateResponse = Union[DailyIntentionRefinementResponse, DailyInte
 class FocusBlockBase(BaseModel):
     """Base schema for a Focus Block, containing shared fields."""
     focus_block_intention: str = Field(..., min_length=1, max_length=2000)
-    duration_minutes: int = Field(..., gt=0, le=120) # Must be > 0 and <= 120 mins
+    duration_minutes: int = Field(default=50, gt=0, le=120) # Must be > 0 and <= 120 mins
 
 class FocusBlockCreate(FocusBlockBase):
     """Schema for creating a new Focus Block."""
