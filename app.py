@@ -723,6 +723,7 @@ def create_focus_block(block_data: FocusBlockCreate, db: Session = Depends(get_d
     Create a new Focus Block when a user starts a timed execution sprint.
     Creates it by finding the user's active intention for the day.
     This logs the user's chunked-down intention for the block.
+    NEW: Also ensures that the user has no other active Focus Blocks!
     """
     # Use the existing helper function to get today's Daily Intention for the user
     daily_intention = get_today_intention(db, user_id=block_data.user_id)
@@ -734,7 +735,19 @@ def create_focus_block(block_data: FocusBlockCreate, db: Session = Depends(get_d
             detail="No active Daily Intention found for today. Please create one first."
         )
     
-    # Create the new Focus Block instance using the ID from the found intention
+    # NEW: Enforce "One Active Block at a Time" rule
+    existing_active_block = db.query(FocusBlock).filter(
+        FocusBlock.daily_intention_id == daily_intention.id,
+        FocusBlock.status.in_(['pending', 'in_progress'])
+    ).first()
+
+    if existing_active_block:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, # 409 Conflict is the perfect status code for this
+            detail="You already have an active Focus Block. Please complete or update it before starting a new one."
+        )
+    
+    # Create the new Focus Block instance if the check passes using the ID from the found intention
     new_block = FocusBlock(
         daily_intention_id=daily_intention.id,
         focus_block_intention=block_data.focus_block_intention,
@@ -745,7 +758,7 @@ def create_focus_block(block_data: FocusBlockCreate, db: Session = Depends(get_d
         db.add(new_block)
         db.commit()
         db.refresh(new_block)
-        return new_block
+        return FocusBlockResponse.model_validate(new_block)
     except Exception as e:
         print(f"Database error on Focus Block creation: {e}")
         db.rollback()
@@ -783,7 +796,7 @@ def update_focus_block(block_id: int, update_data: FocusBlockUpdate, db: Session
     try:
         db.commit()
         db.refresh(block)
-        return block
+        return FocusBlockResponse.model_validate(block)
     except Exception as e:
         print(f"Database error on Focus Block update: {e}")
         db.rollback()
