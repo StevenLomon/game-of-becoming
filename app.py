@@ -815,8 +815,9 @@ def create_focus_block(block_data: FocusBlockCreate, db: Session = Depends(get_d
 @app.put("/focus-blocks/{block_id}", response_model=FocusBlockResponse)
 def update_focus_block(block_id: int, update_data: FocusBlockUpdate, db: Session = Depends(get_db)):
     """
-    Update a Focus Block, for example to add video URLs or change its status.
-    This can be used for the "Proof & Review" step after a block.
+    Update a Focus Block to add video URLs or change its status.
+    Used for the "Proof & Review" step after a block.
+    Updated: Each Focus Block now gives 10xp upon completion!
     """ 
     block = db.query(FocusBlock).filter(FocusBlock.id == block_id).first()
     if not block:
@@ -830,15 +831,25 @@ def update_focus_block(block_id: int, update_data: FocusBlockUpdate, db: Session
             detail="This Focus Block is from a previous day and can no longer be updated."
         )
 
-    # Update the fields that were provided in the request
-    if update_data.pre_block_video_url is not None:
-        block.pre_block_video_url = update_data.pre_block_video_url
-    if update_data.post_block_video_url is not None:
-        block.post_block_video_url = update_data.post_block_video_url
-    if update_data.status is not None:
-        block.status = update_data.status
-
     try:
+        # Update status if provided
+        if update_data.status is not None:
+            # NEW XP LOGIC
+            # If the block is being marked as 'completed' and wasn't already
+            if update_data.status == "completed" and block.status != "completed":
+                # Get the user ID from the parent intention
+                user_id = block.daily_intention.user_id
+                stats = get_or_create_user_stats(db, user_id=user_id)
+                stats.xp += 10 # Award 10 XP per block
+
+            block.status = update_data.status.strip()
+
+        # Update URLs if provided
+        if update_data.pre_block_video_url is not None:
+            block.pre_block_video_url = update_data.pre_block_video_url
+        if update_data.post_block_video_url is not None:
+            block.post_block_video_url = update_data.post_block_video_url
+
         db.commit()
         db.refresh(block)
         return FocusBlockResponse.model_validate(block)
