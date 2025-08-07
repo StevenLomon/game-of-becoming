@@ -66,6 +66,15 @@ def calculate_level(xp: int) -> int:
         return 1
     return math.floor((xp / 100) ** 0.5) + 1
 
+def get_or_create_user_stats(db: Session, user_id: int) -> CharacterStats:
+    """Fetches a user's stats, creating a new record if one doesn't exist"""
+    stats = db.query(CharacterStats).filter(CharacterStats.user_id == user_id).first()
+    if not stats:
+        stats = CharacterStats(user_id=user_id)
+        db.add(stats)
+        # We don't commit here; we let the calling fuction handle the commit!
+    return stats
+
 def get_today_intention(db: Session, user_id: int) -> DailyIntention | None:
     """Get today's Daily Intention for a user. Returns None if not found."""
     today = datetime.now(timezone.utc).date()
@@ -344,6 +353,7 @@ def register_user(user_data: UserCreate, db: Session = Depends(get_db)):
     3. Creates User record with business profile
     4. Creates UserAuth record with securely hashed password
     5. Returns UserResponse with user details and no password! Security first
+    6. NEW: Also now creates their initial character stats
 
     The user starts their Game of Becoming journey here!
     """
@@ -376,13 +386,14 @@ def register_user(user_data: UserCreate, db: Session = Depends(get_db)):
             password_hash=hash_password(user_data.password.strip()),
             # created_at defaults to current UTC time (from model)
         )
-
-        # Add auth record and commit both records together
         db.add(user_auth)
-        db.commit() # Commit both User and UserAuth records
 
-        # Refresh to get all the default values from the database
-        db.refresh(new_user)
+        # New: Stat logic: Creat the character stats record
+        new_stats = CharacterStats(user_id=new_user.id)
+        db.add(new_stats)
+
+        db.commit() # Commits user, auth, and stats all at once
+        db.refresh(new_user) # Refresh to get all the default values from the database
 
         # Return UserResponse without password
         return UserResponse(
