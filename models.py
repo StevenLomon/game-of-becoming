@@ -19,6 +19,7 @@ class User(Base):
     daily_intentions = relationship("DailyIntention", back_populates="user")
     ai_coaching_logs = relationship("AICoachingLog", back_populates="user")
     auth = relationship("UserAuth", back_populates="user", uselist=False) # One-to-one relationship with UserAuth
+    character_stats = relationship("CharacterStats", back_populates="user", uselist=False) # One-to-one relationship with CharacterStats
 
 class UserAuth(Base):
     __tablename__ = "user_auth"
@@ -30,6 +31,18 @@ class UserAuth(Base):
 
     # Relationships
     user = relationship("User", back_populates="auth")
+
+class CharacterStats(Base):
+    __tablename__ = "character_stats"
+
+    user_id = Column(Integer, ForeignKey("users.id"), primary_key=True)
+    xp = Column(Integer, default=0, nullable=False) # We only store the total XP, level is calculated
+    resilience = Column(Integer, default=0, nullable=False)
+    clarity = Column(Integer, default=0, nullable=False)
+    discipline = Column(Integer, default=0, nullable=False)
+    commitment = Column(Integer, default=0, nullable=False)
+
+    user = relationship("User", back_populates="stats")
 
 class DailyIntention(Base):
     __tablename__ = "daily_intentions"
