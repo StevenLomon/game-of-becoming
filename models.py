@@ -55,7 +55,7 @@ class DailyIntention(Base):
     # Relationships
     user = relationship("User", back_populates="daily_intentions")
     daily_results = relationship("DailyResult", back_populates="daily_intention", uselist=False) # One-to-one relationship with DailyResult
-    # focus_blocks = relationship("FocusBlock", back_populates="daily_intention") #For individual focus block tracking
+    focus_blocks = relationship("FocusBlock", back_populates="daily_intention") #For individual focus block tracking
 
 class FocusBlock(Base):
     __tablename__ = "focus_blocks"
