@@ -388,7 +388,7 @@ def register_user(user_data: UserCreate, db: Session = Depends(get_db)):
         )
         db.add(user_auth)
 
-        # New: Stat logic: Creat the character stats record
+        # NEW: Stat logic: Creat the character stats record
         new_stats = CharacterStats(user_id=new_user.id)
         db.add(new_stats)
 
@@ -906,7 +906,7 @@ def create_daily_result(
             ai_feedback = generate_success_feedback(intention.daily_intention_text, intention.target_quantity, user.hrga)
             recovery_quest = None
 
-            # New: Increase Discipline stat on success!
+            # NEW: Increase Discipline stat on success!
             stats = get_or_create_user_stats(db, user_id=intention.user_id)
             stats.discipline += 1
 
@@ -994,7 +994,7 @@ def respond_to_recovery_quest(
     db: Session = Depends(get_db)
 ):
     """
-    Respond to Recovery Quest - the "Fail Forward" moagic and the sacred learning opportunity!
+    Respond to Recovery Quest - the "Fail Forward" magic and the sacred learning opportunity!
     
     This is where users transforms failure into growth and wisdom:
     - User reflects on what went less than optimal
@@ -1030,6 +1030,10 @@ def respond_to_recovery_quest(
     try:
         # Save user's response to the Recovery Quest
         result.recovery_quest_response = quest_response.recovery_quest_response.strip()
+
+        # NEW: Increase Resilience stat for completing the quest
+        stats = get_or_create_user_stats(db, user_id=original_intention.user_id)
+        stats.resilience += 1
 
         # AI Coach analyzes the response and provides personalized coaching
         ai_coaching_response = generate_coaching_response(quest_response.recovery_quest_response, original_intention.daily_intention_text, completion_rate)
