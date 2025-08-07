@@ -11,11 +11,13 @@ import os, anthropic
 load_dotenv()
 
 # Import models and schemas
-from models import Base, User, UserAuth, DailyIntention, DailyResult
+from models import Base, User, UserAuth, DailyIntention, FocusBlock, DailyResult
 from schemas import (
     UserCreate, UserUpdate, UserResponse,
-    DailyIntentionCreate, DailyIntentionUpdate, DailyIntentionResponse,DailyIntentionCreateResponse, 
-    DailyIntentionRefinementResponse, DailyResultCreate, DailyResultResponse, RecoveryQuestResponse, RecoveryQuestInput
+    DailyIntentionCreate, DailyIntentionUpdate, DailyIntentionResponse,
+    DailyIntentionCreateResponse, DailyIntentionRefinementResponse, 
+    FocusBlockCreate, FocusBlockResponse, FocusBlockUpdate,
+    DailyResultCreate, DailyResultResponse, RecoveryQuestResponse, RecoveryQuestInput
 )
 
 # Database setup
@@ -711,6 +713,72 @@ def fail_daily_intention(intention_id: int, db: Session = Depends(get_db)):
             detail=f"Failed to mark Daily Intention as failed: {str(e)}"
         )
     
+# FOCUS BLOCK ENDPOINTS
+
+@app.post("/focus-blocks", response_model=FocusBlockResponse, status_code=status.HTTP_201_CREATED)
+def create_focus_block(block_data: FocusBlockCreate, db: Session = Depends(get_db)):
+    """
+    Create a new Focus Block when a user starts a timed execution sprint.
+    This logs the user's chunked-down intention for the block.
+    """
+    # First, verify the parent Daily Intention exists
+    daily_intention = db.query(DailyIntention).filter(DailyIntention.id == block_data.daily_intention_id).first()
+    if not daily_intention:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Daily Intention not found. Cannot create a Focus Block without a parent intention."
+        )
+    
+    # Create the new Focus Block instance
+    new_block = FocusBlock(
+        daily_intention_id=block_data.daily_intention_id,
+        focus_block_intention=block_data.focus_block_intention,
+        duration_minutes=block_data.duration_minutes
+    )
+
+    try:
+        db.add(new_block)
+        db.commit()
+        db.refresh(new_block)
+        return new_block
+    except Exception as e:
+        print(f"Database error on Focus Block creation: {e}")
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to create Focus Block: {str(e)}"
+        )
+    
+@app.put("/focus-blocks/{block_id}", response_model=FocusBlockResponse)
+def update_focus_block(block_id: int, update_data: FocusBlockUpdate, db: Session = Depends(get_db)):
+    """
+    Update a Focus Block, for example to add video URLs or change its status.
+    This can be used for the "Proof & Review" step after a block.
+    """ 
+    block = db.query(FocusBlock).filter(FocusBlock.id == block_id).first()
+    if not block:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Focus Block not found.")
+    
+    # Update the fields that were provided in the request
+    if update_data.pre_block_video_url is not None:
+        block.pre_block_video_url = update_data.pre_block_video_url
+    if update_data.post_block_video_url is not None:
+        block.post_block_video_url = update_data.post_block_video_url
+    if update_data.status is not None:
+        block.status = update_data.status
+
+    try:
+        db.commit()
+        db.refresh(block)
+        return block
+    except Exception as e:
+        print(f"Database error on Focus Block update: {e}")
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to update Focus Block: {str(e)}"
+        )
+
 
 # DAILY RESULTS ENDPOINTS
 
