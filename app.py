@@ -180,7 +180,7 @@ def generate_recovery_quest(
         Examples:
         - "What specific distraction pulled you away when you were in the middle of making progress?"
         - "When you felt resistance to starting, what was the inner voice telling you?"
-        - "You were so close to finishing - what would have given you that final push across the finish line?"
+        - "You were just one outreach away from your goal - what was happening in your environment or mindset when you stopped at 4 that prevented that final connection?"
 
         Generate ONE question (no additional text):
         """
@@ -237,6 +237,7 @@ def generate_coaching_response(
         Examples:
         - "That's a powerful insight about time estimation. Recognizing that you consistently underestimate task complexity is the first step to building more realistic intentions. Tomorrow, try adding a 25% buffer to your time estimates!"
         - "Honest self-awareness like this is what separates people who grow from those who stay stuck. Now that you know social media is your kryptonite during focus blocks, you can proactively eliminate that distraction tomorrow."
+        - "Great self-awareness in identifying Snapchat as your specific distraction trigger - that's the kind of precise insight that leads to meaningful change. Your proactive solution to turn off notifications shows you're taking ownership of your environment, and since you still achieved 80% of your goal, you're clearly capable of strong execution when you eliminate these small barriers. Tomorrow's outreach will be even more focused now that you've made this adjustment!"
 
 
         Your coaching response:
