@@ -101,6 +101,11 @@ def analyze_daily_intention(
     Returns (ai_feedback, needs_refinement)
     This is the AI Coach's "Clarity Enforcer" role.
     """
+    # NEW: AI Kill Switch
+    if os.getenv("DISABLE_AI_CALLS") == "True":
+        print("--- AI CALL DISABLED: Returning mock 'APPROVED' response. ---")
+        return "Mock feedback: This is a clear and actionable intention!", False
+    
     try:
         prompt = f"""
         You are the AI Accountability and Clarity Coach for The Game of Becoming™. Your role is to analyze daily intentions, provide encouraging actionable feedback, and determine if they need refinement before commitment.
@@ -172,6 +177,11 @@ def generate_recovery_quest(
     Claude generates a personalized Recovery Quest based on failure pattern.
     This is the AI Coach's "Fail Forward Guide" role.
     """
+    # NEW: AI Kill Switch
+    if os.getenv("DISABLE_AI_CALLS") == "True":
+        print("--- AI CALL DISABLED: Returning mock recovery quest. ---")
+        return "Mock Quest: What was the main obstacle you encountered today?"
+    
     try:
         prompt = f"""
         You are the AI Accountability and Clarity Coach for The Game of Becoming™. A user failed to complete their Daily Intention, and you need to generate a Recovery Quest - a reflective question that turns failure into valuable data and learning.
@@ -228,6 +238,11 @@ def generate_coaching_response(
     Claude provides personalized coaching based on user's Recovery Quest response.
     This is the AI Coach's "Wisdom Builder" role.
     """
+    # NEW: AI Kill Switch
+    if os.getenv("DISABLE_AI_CALLS") == "True":
+        print("--- AI CALL DISABLED: Returning mock coaching response. ---")
+        return "Mock Coaching: That's a great insight. How can you use it tomorrow?"
+    
     try:
         prompt = f"""
         You are the AI Accountability and Clarity Coach for The Game of Becoming™. A user has reflected on their failed intention and shared their insight. Provide encouraging, wisdom-building coaching.
@@ -281,6 +296,11 @@ def generate_success_feedback(
     Claude celebrates successful intention completion.
     This is the AI Coach's "Momentum Builder" role.
     """
+    # NEW: AI Kill Switch
+    if os.getenv("DISABLE_AI_CALLS") == "True":
+        print("--- AI CALL DISABLED: Returning mock success feedback. ---")
+        return "Mock Success: Great job on completing your intention!"
+
     try:
         prompt = f"""
         You are the AI Accountability and Clarity Coach for The Game of Becoming™. A user has successfully completed their daily intention! Celebrate their win and build momentum.
