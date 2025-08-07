@@ -5,15 +5,15 @@ from sqlalchemy.orm import sessionmaker
 from passlib.context import CryptContext
 from datetime import datetime, timezone, timedelta
 from dotenv import load_dotenv
-import os, anthropic
+import os, math, anthropic
 
 # Load environment variables
 load_dotenv()
 
 # Import models and schemas
-from models import Base, User, UserAuth, DailyIntention, FocusBlock, DailyResult
+from models import Base, User, UserAuth, CharacterStats, DailyIntention, FocusBlock, DailyResult
 from schemas import (
-    UserCreate, UserUpdate, UserResponse,
+    UserCreate, UserUpdate, UserResponse, CharacterStatsResponse,
     DailyIntentionCreate, DailyIntentionUpdate, DailyIntentionResponse,
     DailyIntentionCreateResponse, DailyIntentionRefinementResponse, 
     FocusBlockCreate, FocusBlockResponse, FocusBlockUpdate,
@@ -59,6 +59,12 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 def get_user_by_email(db: Session, email: str) -> User | None:
     """Get a user by email. Returns None if not found."""
     return db.query(User).filter(User.email == email).first()
+
+def calculate_level(xp: int) -> int:
+    """Calculates user level based on total XP."""
+    if xp < 0:
+        return 1
+    return math.floor((xp / 100) ** 0.5) + 1
 
 def get_today_intention(db: Session, user_id: int) -> DailyIntention | None:
     """Get today's Daily Intention for a user. Returns None if not found."""
@@ -410,6 +416,26 @@ def get_user(user_id: int, db: Session = Depends(get_db)):
         email=user.email,
         hrga=user.hrga,
         registered_at=user.registered_at
+    )
+
+@app.get("/users/{user_id}/stats", response_model=CharacterStatsResponse)
+def get_character_stats(user_id: int, db: Session = Depends(get_db)):
+    stats = db.query(CharacterStats).filter(CharacterStats.user_id == user_id).first()
+    if not stats:
+        raise HTTPException(status_code=404, detail="Stats not found for this user.")
+
+    # Calculate the level on the fly
+    current_level = calculate_level(stats.xp)
+
+    # Return a response that includes the calculated level
+    return CharacterStatsResponse(
+        user_id=stats.user_id,
+        level=current_level, # Use the calculated value here
+        xp=stats.xp,
+        resilience=stats.resilience,
+        clarity=stats.clarity,
+        discipline=stats.discipline,
+        commitment=stats.commitment
     )
 
 

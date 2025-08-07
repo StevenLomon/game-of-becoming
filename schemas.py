@@ -3,7 +3,7 @@ from typing import Optional, Union
 from datetime import datetime
 
 # =============================================================================
-# USER SCHEMAS
+# USER SCHEMAS (Updated for Character Stats)
 # =============================================================================
 
 class UserBase(BaseModel):
@@ -44,6 +44,18 @@ class UserResponse(BaseModel):
     email: str
     hrga: str
     registered_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class CharacterStatsResponse(BaseModel):
+    user_id: int
+    level: int # The calculated level
+    xp: int
+    resilience: int
+    clarity: int
+    discipline: int
+    commitment: int
 
     class Config:
         from_attributes = True
