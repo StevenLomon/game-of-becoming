@@ -475,6 +475,8 @@ def create_daily_intention(
     - Must be measurable with target quantity
     - User estimates focus block count needed (self-awareness building!)
     - This starts the daily execution and learning loop!
+
+    Updated: Now also increases the user's Clarity stat!
     """
 
     # Check if user exists
@@ -521,6 +523,11 @@ def create_daily_intention(
             )
 
             db.add(db_intention)
+
+            # NEW: Increase Clarity stat
+            stats = get_or_create_user_stats(db, user_id=intention_data.user_id)
+            stats.clarity += 1
+
             db.commit()
             db.refresh(db_intention)  # Refresh to get all default values from the database
 
@@ -860,6 +867,8 @@ def create_daily_result(
     - Recovery Quest generated and initiated for failed intentions
     - Transforms failures into valuable learning data
     - Builds Resilience and Clarity stats
+
+    Update: If successful, increase the user's Discipline stat!
     """
 
     # Check if Daily Intention exists
@@ -896,6 +905,11 @@ def create_daily_result(
         if succeeded:
             ai_feedback = generate_success_feedback(intention.daily_intention_text, intention.target_quantity, user.hrga)
             recovery_quest = None
+
+            # New: Increase Discipline stat on success!
+            stats = get_or_create_user_stats(db, user_id=intention.user_id)
+            stats.discipline += 1
+
         else: # Failed intention
             # Calculate what they managed to achieve
             completion_rate = (
