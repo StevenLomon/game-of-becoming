@@ -112,7 +112,7 @@ def analyze_daily_intention(
         Examples:
         NEEDS_REFINEMENT: This intention is quite vague. What specific modules will you complete? Consider being more specific about your deliverables - perhaps "Complete modules 1-3 of Webinar Academy and draft one compelling offer" would give you clearer success criteria.
 
-        APPROVED: Excellent! 'Send 10 LinkedIn connection requests to CEOs in tech' is crystal clear and directly drives your outreach goals. Your 2 focus blocks should give you perfect execution rhythm!
+        APPROVED: Your intention to send 5 LinkedIn outreaches is clear, specific, and directly aligned with your HRGA! With 4 focus blocks allocated, you have plenty of time to craft quality messages while maintaining a sustainable daily pace.
 
         NEEDS_REFINEMENT: While learning is valuable, this doesn't directly support your LinkedIn outreach HRGA. Consider balancing today's training with 1-2 focus blocks of immediate income-generating outreach activities.
 
