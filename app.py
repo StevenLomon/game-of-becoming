@@ -764,6 +764,14 @@ def update_focus_block(block_id: int, update_data: FocusBlockUpdate, db: Session
     if not block:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Focus Block not found.")
     
+    # NEW: Enforce "Sacred Finality"
+    today = datetime.now(timezone.utc).date()
+    if block.created_at.date() != today:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This Focus Block is from a previous day and can no longer be updated."
+        )
+
     # Update the fields that were provided in the request
     if update_data.pre_block_video_url is not None:
         block.pre_block_video_url = update_data.pre_block_video_url
