@@ -1,11 +1,13 @@
 from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import sessionmaker
 from passlib.context import CryptContext
 from datetime import datetime, timezone, timedelta
+from typing import Annotated
 from dotenv import load_dotenv
-from security import get_password_hash
+from security import get_password_hash, verify_password
 import os, math, anthropic
 
 # Load environment variables
@@ -14,6 +16,7 @@ load_dotenv()
 # Import models and schemas
 from models import Base, User, UserAuth, CharacterStats, DailyIntention, FocusBlock, DailyResult
 from schemas import (
+    TokenResponse, TokenData,
     UserCreate, UserUpdate, UserResponse, CharacterStatsResponse,
     DailyIntentionCreate, DailyIntentionUpdate, DailyIntentionResponse,
     DailyIntentionCreateResponse, DailyIntentionRefinementResponse, 
@@ -353,6 +356,33 @@ def health_check():
         "service": "Game of Becoming API",
         "version": "1.0.0"
     }
+
+@app.post("/login", response_model=TokenResponse)
+def login_for_access_token(
+    # This is the "magic" part. FastAPI will automatically handle getting the 
+    # 'username' and 'password' from the form body and put them into this 'form_data' object.
+    form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
+    db: Session = Depends(get_db)
+):
+    """
+    The Bouncer. Now using OAuth2PasswordRequestForm to handle form data. 
+    1. Takes email (as 'username') and password.
+    2. Finds the user in the database.
+    3. Verifies the password.
+    4. If valid, creates and returns a valid JWT token (the wristband).
+    """
+    # 1. Find the user by their email (which OAuth2 calls 'username')
+    user = get_user_by_email(db, email=form_data.username)
+
+    # 2. Verify that the user exists and that the password is correct
+    if not user or not verify_password(form_data.password, user.auth.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+    
+    # 3. Create the access token for the user
 
 
 # USER ENDPOINTS
