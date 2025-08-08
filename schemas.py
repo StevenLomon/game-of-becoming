@@ -3,6 +3,25 @@ from typing import Optional, Union
 from datetime import datetime
 
 # =============================================================================
+# SECURITY SCHEMAS
+# =============================================================================
+
+class TokenResponse(BaseModel):
+    """
+    Schema for the response when a token is successfully created.
+    This is the standard way to return a JWT.
+    """
+    access_token: str
+    token_type: str = "bearer" # "bearer" is the standard token type
+
+class TokenData(BaseModel):
+    """
+    Schema for the data we embed inside the JWT payload.
+    This is what we'll get back after decoding a token.
+    """
+    user_id: str | None = None
+
+# =============================================================================
 # USER SCHEMAS (Updated for Character Stats)
 # =============================================================================
 
