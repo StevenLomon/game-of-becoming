@@ -5,6 +5,7 @@ from sqlalchemy.orm import sessionmaker
 from passlib.context import CryptContext
 from datetime import datetime, timezone, timedelta
 from dotenv import load_dotenv
+from security import get_password_hash
 import os, math, anthropic
 
 # Load environment variables
@@ -48,14 +49,6 @@ def get_db():
         db.close() # The session is closed after use. Guaranteed clean up and no memory leaks
 
 # Utility functions
-def hash_password(password: str) -> str:
-    """Hash a password using bcrypt."""
-    return pwd_context.hash(password)
-
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify a plain password against its hashed password."""
-    return pwd_context.verify(plain_password, hashed_password)
-
 def get_user_by_email(db: Session, email: str) -> User | None:
     """Get a user by email. Returns None if not found."""
     return db.query(User).filter(User.email == email).first()
@@ -403,7 +396,7 @@ def register_user(user_data: UserCreate, db: Session = Depends(get_db)):
         # Create the UserAuth record with hashed password
         user_auth = UserAuth(
             user_id=new_user.id,
-            password_hash=hash_password(user_data.password.strip()),
+            password_hash=get_password_hash(user_data.password.strip()),
             # created_at defaults to current UTC time (from model)
         )
         db.add(user_auth)
