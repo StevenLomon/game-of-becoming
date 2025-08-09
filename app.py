@@ -496,16 +496,11 @@ def create_daily_intention(
     Updated: Now also increases the user's Clarity stat!
     """
 
-    # Check if user exists
-    user = db.query(User).filter(User.id == intention_data.user_id).first()
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
-        )
+    # The get_current_user dependency already handles user validation.
+    user = current_user 
     
     # Check if today's Daily Intention already exists
-    existing_intention = get_today_intention(db, intention_data.user_id)
+    existing_intention = get_today_intention(db, current_user.user_id)
     if existing_intention:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -529,7 +524,7 @@ def create_daily_intention(
         try:
             # Create today's intention
             db_intention = DailyIntention(
-                user_id=intention_data.user_id,
+                user_id=current_user.user_id,
                 daily_intention_text=intention_data.daily_intention_text.strip(),
                 target_quantity=intention_data.target_quantity,
                 focus_block_count=intention_data.focus_block_count,
@@ -542,7 +537,7 @@ def create_daily_intention(
             db.add(db_intention)
 
             # NEW: Increase Clarity stat
-            stats = get_or_create_user_stats(db, user_id=intention_data.user_id)
+            stats = get_or_create_user_stats(db, user_id=current_user.user_id)
             stats.clarity += 1
 
             db.commit()
@@ -550,7 +545,7 @@ def create_daily_intention(
 
             return DailyIntentionResponse(
                 id=db_intention.id,
-                user_id=current_user.user_id,
+                user_id=current_user.id,
                 daily_intention_text=db_intention.daily_intention_text,
                 target_quantity=db_intention.target_quantity,
                 completed_quantity=db_intention.completed_quantity,
