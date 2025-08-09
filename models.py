@@ -1,9 +1,7 @@
 from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, ForeignKey
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship # To define relationships between models
 from datetime import datetime, timezone
-
-Base = declarative_base()
+from database import Base
 
 class User(Base):
     __tablename__ = "users"

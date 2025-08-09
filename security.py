@@ -1,9 +1,14 @@
 import os
 from datetime import datetime, timedelta, timezone
 from typing import Optional
-
 from jose import JWTError, jwt
 from passlib.context import CryptContext
+from sqlalchemy.orm import Session
+from fastapi import Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
+
+from crud import get_user_by_email # To look up users in the database
+from schemas import TokenData
 
 # --- Password Hashing ---
 # Create a CryptContext instance; tells passlib to use bcrypt for hasing

@@ -1,15 +1,15 @@
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
-from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
-from sqlalchemy.orm import sessionmaker
 from passlib.context import CryptContext
 from datetime import datetime, timezone, timedelta
 from typing import Annotated
 from dotenv import load_dotenv
+import os, math, anthropic
+
+from database import get_db
 from security import get_password_hash, verify_password, create_access_token
 from crud import get_user_by_email, get_or_create_user_stats, get_today_intention
-import os, math, anthropic
 
 # Load environment variables
 load_dotenv()
@@ -25,11 +25,6 @@ from schemas import (
     DailyResultCreate, DailyResultResponse, RecoveryQuestResponse, RecoveryQuestInput
 )
 
-# Database setup
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./game_of_becoming.db")
-engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False} if "sqlite" in DATABASE_URL else {})
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
 # Create tables
 # Base.metadata.create_all(bind=engine) Not needed now that we have Alembic
 
@@ -43,14 +38,6 @@ app = FastAPI(
     version="1.0.0",
     docs_url="/docs" # Interactive API docs at /docs
 )
-
-# Dependency generator to get the database session
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close() # The session is closed after use. Guaranteed clean up and no memory leaks
 
 # Utility functions
 def calculate_level(xp: int) -> int:
