@@ -407,11 +407,18 @@ def get_user(current_user: Annotated[User, Depends(get_current_user)]):
     # safe UserResponse schema automatically.
     return current_user
 
-@app.get("/users/{user_id}/stats", response_model=CharacterStatsResponse)
-def get_character_stats(user_id: int, db: Session = Depends(get_db)):
-    stats = db.query(CharacterStats).filter(CharacterStats.user_id == user_id).first()
+@app.get("/users/me/stats", response_model=CharacterStatsResponse)
+def get_my_character_stats(
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Session = Depends(get_db)
+    ):
+    """Get the character stats for the currently authenticated user."""
+    # Use the fresh 'db' session to query for the stats
+    stats = current_user.character_stats
+
+    # The user should always have stats, but it's good practice to check
     if not stats:
-        raise HTTPException(status_code=404, detail="Stats not found for this user.")
+        raise HTTPException(status_code=404, detail="Character stats not found for your account.")
 
     # Calculate the level on the fly
     current_level = calculate_level(stats.xp)
