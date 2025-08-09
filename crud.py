@@ -2,6 +2,10 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session
 from models import User, CharacterStats, DailyIntention
 
+def get_user(db: Session, user_id: int) -> User | None:
+    """Get a user by their unique ID. Returns None if not found"""
+    return db.query(User).filter(User.id == user_id).first()
+
 def get_user_by_email(db: Session, email: str) -> User | None:
     """Get a user by email. Returns None if not found."""
     return db.query(User).filter(User.email == email).first()

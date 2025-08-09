@@ -7,8 +7,12 @@ from sqlalchemy.orm import Session
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 
-from crud import get_user_by_email # To look up users in the database
-from schemas import TokenData
+from crud import get_user # To look up users in the database
+from database import get_db # Import our db session generator
+from schemas import TokenData # Import our token payload schema
+
+# This object is what FastAPI uses to extract the token from the request header.
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
 # --- Password Hashing ---
 # Create a CryptContext instance; tells passlib to use bcrypt for hasing
@@ -41,3 +45,39 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     # The 'sub' (subject) claim is standard for storing the user identifier
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
+
+def get_current_user(
+        token: str = Depends(oauth2_scheme),
+        db: Session = Depends(get_db)
+):
+    """
+    The "Wristband Checker". A dependency that:
+    1. Takes a token from the request's Authorization header.
+    2. Validates and decodes it.
+    3. Fetches the user from the database.
+    4. Returns the user object if valid, or raises an error.
+    """
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"}
+    )
+
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id: str = payload.get("sub")
+        if user_id is None:
+            raise credentials_exception
+        # We validate that the payload has the data shape we expect
+        token_data = TokenData(user_id=user_id)
+    except JWTError: # Catches any error from jose: expiration, invalid signature, etc.
+        raise credentials_exception
+    
+    # We have a valid token, now get the user from the DB
+    user = get_user(db, user_id=int(token_data.user_id))
+
+    if user is None: # In the rare case where the user might have been deleted after the token was issued
+        raise credentials_exception
+    
+    # Return the full, valid, trusted user
+    return user
