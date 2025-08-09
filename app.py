@@ -500,7 +500,7 @@ def create_daily_intention(
     user = current_user 
     
     # Check if today's Daily Intention already exists
-    existing_intention = get_today_intention(db, current_user.user_id)
+    existing_intention = get_today_intention(db, current_user.id)
     if existing_intention:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -524,7 +524,7 @@ def create_daily_intention(
         try:
             # Create today's intention
             db_intention = DailyIntention(
-                user_id=current_user.user_id,
+                user_id=current_user.id,
                 daily_intention_text=intention_data.daily_intention_text.strip(),
                 target_quantity=intention_data.target_quantity,
                 focus_block_count=intention_data.focus_block_count,
@@ -537,7 +537,7 @@ def create_daily_intention(
             db.add(db_intention)
 
             # NEW: Increase Clarity stat
-            stats = get_or_create_user_stats(db, user_id=current_user.user_id)
+            stats = get_or_create_user_stats(db, user_id=current_user.id)
             stats.clarity += 1
 
             db.commit()
