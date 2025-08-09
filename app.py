@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 import os, math, anthropic
 
 from database import get_db
-from security import get_password_hash, verify_password, create_access_token
+from security import get_password_hash, verify_password, create_access_token, get_current_user
 from crud import get_user_by_email, get_or_create_user_stats, get_today_intention
 
 # Load environment variables
@@ -470,11 +470,14 @@ def get_character_stats(user_id: int, db: Session = Depends(get_db)):
 @app.post("/intentions", response_model=DailyIntentionCreateResponse, status_code=status.HTTP_201_CREATED)
 def create_daily_intention(
     intention_data: DailyIntentionCreate,
-    db: Session = Depends(get_db),
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Session = Depends(get_db)
 ):
     """
     Create today's Daily Intention - The One Thing that matters!
     Updated: handles both initial and refined submissions!
+    Updated: now only creates a daily intention for the currently authenticated user.
+    The user is identified by their JWT token.
 
     AI Coach forces clarity upfront:
     - AI Coach analyzes intention before saving
@@ -547,7 +550,7 @@ def create_daily_intention(
 
             return DailyIntentionResponse(
                 id=db_intention.id,
-                user_id=db_intention.user_id,
+                user_id=current_user.user_id,
                 daily_intention_text=db_intention.daily_intention_text,
                 target_quantity=db_intention.target_quantity,
                 completed_quantity=db_intention.completed_quantity,

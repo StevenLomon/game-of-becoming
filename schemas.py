@@ -86,7 +86,6 @@ class CharacterStatsResponse(BaseModel):
 
 class DailyIntentionCreate(BaseModel):
     """Schema for creating a new Daily Intention"""
-    user_id: int
     daily_intention_text: str
     target_quantity: int
     focus_block_count: int 
