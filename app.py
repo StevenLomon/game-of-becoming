@@ -10,7 +10,7 @@ import os, math, anthropic
 from database import get_db
 from security import create_access_token, get_current_user
 from utils import get_password_hash, verify_password
-from crud import get_user_by_email, get_or_create_user_stats, get_today_intention
+from crud import create_user, get_user_by_email, get_or_create_user_stats, get_today_intention
 
 # Load environment variables
 load_dotenv()
@@ -359,16 +359,12 @@ def login_for_access_token(
 
 # USER ENDPOINTS
 
+# Simplified using create_user in crud.py
 @app.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 def register_user(user_data: UserCreate, db: Session = Depends(get_db)):
     """
-    Register a new user. Handles the complete registration flow:
-    1. Validates incoming data (Pydantic handles this automatically)
-    2. Checks if email already exists (no duplicates allowed)
-    3. Creates User record with business profile
-    4. Creates UserAuth record with securely hashed password
-    5. Returns UserResponse with user details and no password! Security first
-    6. NEW: Also now creates their initial character stats
+    Register a new user and their associated records. 
+    Also now creates their initial character stats
 
     The user starts their Game of Becoming journey here!
     """
@@ -383,41 +379,12 @@ def register_user(user_data: UserCreate, db: Session = Depends(get_db)):
     
     try:
         # Create the User record
-        new_user = User(
-            name=user_data.name.strip(),
-            email=user_data.email.strip(),
-            hrga=user_data.hrga.strip(),
-            # default_focus_block_duration defaults to 50 minutes (from model)
-            # registered_at defaults to current UTC time (from model)
-        )
+        new_user = create_user(db=db, user_data=user_data)
+        db.commit()
+        db.refresh(new_user)
 
-        # Add and flush to get the user ID (but no commit yet!)
-        db.add(new_user)
-        db.flush() # This assigns the ID without committing the transaction
-
-        # Create the UserAuth record with hashed password
-        user_auth = UserAuth(
-            user_id=new_user.id,
-            password_hash=get_password_hash(user_data.password.strip()),
-            # created_at defaults to current UTC time (from model)
-        )
-        db.add(user_auth)
-
-        # NEW: Stat logic: Creat the character stats record
-        new_stats = CharacterStats(user_id=new_user.id)
-        db.add(new_stats)
-
-        db.commit() # Commits user, auth, and stats all at once
-        db.refresh(new_user) # Refresh to get all the default values from the database
-
-        # Return UserResponse without password
-        return UserResponse(
-            id=new_user.id,
-            name=new_user.name,
-            email=new_user.email,
-            hrga=new_user.hrga,
-            registered_at=new_user.registered_at
-        )
+        # Return the user 
+        return new_user
     
     except Exception as e:
         db.rollback()  # Roll back on any error
