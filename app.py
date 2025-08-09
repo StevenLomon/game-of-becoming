@@ -393,23 +393,19 @@ def register_user(user_data: UserCreate, db: Session = Depends(get_db)):
             detail=f"Failed to create user account: {str(e)}"
         )
 
-@app.get("/users/{user_id}", response_model=UserResponse)
-def get_user(user_id: int, db: Session = Depends(get_db)):
-    """Get user profile by ID. Userful for frontend to display user informaiton."""
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
-        )
+@app.get("/users/me", response_model=UserResponse)
+def get_user(current_user: Annotated[User, Depends(get_current_user)]):
+    """Get the profile for the currently logged-in user for the frontend to display user informaiton."""
+    # The 'get_current_user' dependency has already done all the work:
+    # 1. It got the token.
+    # 2. It validated the token.
+    # 3. It fetched the user from the database.
+    # 4. It handled the "user not found" case.
     
-    return UserResponse(
-        id=user.id,
-        name=user.name,
-        email=user.email,
-        hrga=user.hrga,
-        registered_at=user.registered_at
-    )
+    # All we have to do is return the user object it gives us.
+    # FastAPI's 'response_model' will handle converting it to the
+    # safe UserResponse schema automatically.
+    return current_user
 
 @app.get("/users/{user_id}/stats", response_model=CharacterStatsResponse)
 def get_character_stats(user_id: int, db: Session = Depends(get_db)):
