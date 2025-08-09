@@ -2,7 +2,6 @@ import os
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
@@ -13,19 +12,6 @@ from schemas import TokenData # Import our token payload schema
 
 # This object is what FastAPI uses to extract the token from the request header.
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
-
-# --- Password Hashing ---
-# Create a CryptContext instance; tells passlib to use bcrypt for hasing
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-# Function to verify a plain password against a hashed one
-def verify_password(plain_password, hashed_password):
-    return pwd_context.verify(plain_password, hashed_password)
-
-# Function to hash a plain password
-def get_password_hash(password):
-    return pwd_context.hash(password)
-
 
 # --- JWT (Token) Handling ---
 # In production, load this from an env variable

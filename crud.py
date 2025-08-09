@@ -1,6 +1,8 @@
 from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session
-from models import User, CharacterStats, DailyIntention
+from models import User, UserAuth, CharacterStats, DailyIntention
+from schemas import UserCreate
+from utils import get_password_hash
 
 def get_user(db: Session, user_id: int) -> User | None:
     """Get a user by their unique ID. Returns None if not found"""

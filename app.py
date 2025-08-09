@@ -8,7 +8,8 @@ from dotenv import load_dotenv
 import os, math, anthropic
 
 from database import get_db
-from security import get_password_hash, verify_password, create_access_token, get_current_user
+from security import create_access_token, get_current_user
+from utils import get_password_hash, verify_password
 from crud import get_user_by_email, get_or_create_user_stats, get_today_intention
 
 # Load environment variables
