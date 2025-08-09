@@ -8,6 +8,7 @@ from datetime import datetime, timezone, timedelta
 from typing import Annotated
 from dotenv import load_dotenv
 from security import get_password_hash, verify_password
+from crud import get_user_by_email, get_or_create_user_stats, get_today_intention
 import os, math, anthropic
 
 # Load environment variables
@@ -52,33 +53,11 @@ def get_db():
         db.close() # The session is closed after use. Guaranteed clean up and no memory leaks
 
 # Utility functions
-def get_user_by_email(db: Session, email: str) -> User | None:
-    """Get a user by email. Returns None if not found."""
-    return db.query(User).filter(User.email == email).first()
-
 def calculate_level(xp: int) -> int:
     """Calculates user level based on total XP."""
     if xp < 0:
         return 1
     return math.floor((xp / 100) ** 0.5) + 1
-
-def get_or_create_user_stats(db: Session, user_id: int) -> CharacterStats:
-    """Fetches a user's stats, creating a new record if one doesn't exist"""
-    stats = db.query(CharacterStats).filter(CharacterStats.user_id == user_id).first()
-    if not stats:
-        stats = CharacterStats(user_id=user_id)
-        db.add(stats)
-        # We don't commit here; we let the calling fuction handle the commit!
-    return stats
-
-def get_today_intention(db: Session, user_id: int) -> DailyIntention | None:
-    """Get today's Daily Intention for a user. Returns None if not found."""
-    today = datetime.now(timezone.utc).date()
-    return db.query(DailyIntention).filter(
-        DailyIntention.user_id == user_id,
-        DailyIntention.created_at >= datetime.combine(today, datetime.min.time()),
-        DailyIntention.created_at < datetime.combine(today + timedelta(days=1), datetime.min.time())
-    ).first()
 
 # Claude AI setup
 anthropic_client = anthropic.Anthropic(
@@ -361,7 +340,7 @@ def health_check():
 def login_for_access_token(
     # This is the "magic" part. FastAPI will automatically handle getting the 
     # 'username' and 'password' from the form body and put them into this 'form_data' object.
-    form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
+    form_data: Annotated[OAuth2PasswordRequestForm, Depends()], # Annotated can be seen as a sticky note
     db: Session = Depends(get_db)
 ):
     """
