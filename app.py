@@ -7,7 +7,7 @@ from passlib.context import CryptContext
 from datetime import datetime, timezone, timedelta
 from typing import Annotated
 from dotenv import load_dotenv
-from security import get_password_hash, verify_password
+from security import get_password_hash, verify_password, crete_access_token
 from crud import get_user_by_email, get_or_create_user_stats, get_today_intention
 import os, math, anthropic
 
@@ -345,10 +345,10 @@ def login_for_access_token(
 ):
     """
     The Bouncer. Now using OAuth2PasswordRequestForm to handle form data. 
-    1. Takes email (as 'username') and password.
-    2. Finds the user in the database.
-    3. Verifies the password.
-    4. If valid, creates and returns a valid JWT token (the wristband).
+    1. Uses the standard OAuth2PasswordRequestForm to handle form data.
+    2. Finds the user in the database via the new crud function.
+    3. Verifies the password using the security function.
+    4. If valid, creates and returns a JWT (the wristband).
     """
     # 1. Find the user by their email (which OAuth2 calls 'username')
     user = get_user_by_email(db, email=form_data.username)
@@ -356,12 +356,17 @@ def login_for_access_token(
     # 2. Verify that the user exists and that the password is correct
     if not user or not verify_password(form_data.password, user.auth.password_hash):
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
+            status_code=status.HTTP_401_UNAUTHORIZED, # We use a generic error to prevent attackers from guessing valid emails.
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"}
         )
     
-    # 3. Create the access token for the user
+    # 3. If credentials are valid, create the access token
+    # The 'sub' (subject) claim in the token is the user's ID
+    access_token = crete_access_token(data={"sub": str(user.id)})
+
+    # 4. Return the token in the standard Bearer format
+    return {"access_token": access_token, "token_type": "bearer"}
 
 
 # USER ENDPOINTS
