@@ -543,24 +543,22 @@ def create_daily_intention(
         return DailyIntentionRefinementResponse(ai_feedback=ai_feedback)
     
 
-@app.get("/intentions/today/{user_id}", response_model=DailyIntentionResponse)
-def get_today_daily_intention(user_id: int, db: Session = Depends(get_db)):
+@app.get("/intentions/today/me", response_model=DailyIntentionResponse)
+def get_my_daily_intention(
+    current_user: Annotated[User, Depends(get_current_user)], 
+    db: Session = Depends(get_db)
+    ):
     """
-    Get today's Daily Intention for a user.
+    Get today's Daily Intention for the currently logged in user.
     
     The core of the Daily Commitment Screen!
     """
 
     # Check if user exists
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
-        )
+    user = current_user
     
     # Get today's intention
-    intention = get_today_intention(db, user_id)
+    intention = get_today_intention(db, user.id)
     if not intention:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -580,7 +578,7 @@ def get_today_daily_intention(user_id: int, db: Session = Depends(get_db)):
         target_quantity=intention.target_quantity,
         completed_quantity=intention.completed_quantity,
         focus_block_count=intention.focus_block_count,
-        completion_percentage=completion_percentage,
+        completion_percentage=completion_percentage, # Use the calculated value
         status=intention.status,
         created_at=intention.created_at
     )
