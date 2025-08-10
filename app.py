@@ -583,27 +583,25 @@ def get_my_daily_intention(
         created_at=intention.created_at
     )
 
-@app.put("/intentions/{intention_id}/progress", response_model=DailyIntentionResponse)
+@app.patch("/intentions/today/progress", response_model=DailyIntentionResponse)
 def update_daily_intention_progress(
-    intention_id: int,
+    current_user: Annotated[User, Depends(get_current_user)],
     progress_data: DailyIntentionUpdate,
     db: Session = Depends(get_db)
 ):
     """
-    Update Daily Intenttion progress - the core of the Daily Execution Loop!
+    Updates Daily Intention progress for the currently logged in user - the core of the Daily Execution Loop!
     - User reports progress after each Focus Block
     - System calculates completion percentage
     - Determines if intention is completed, in progress or failed
     """
-
-    # Get the Daily Intention by id
-    intention = db.query(DailyIntention).filter(DailyIntention.id == intention_id).first()
+    # Get today's Daily Intention for the currently logged in user
+    intention = get_today_intention(db, current_user.id)
     if not intention:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Daily Intention not found"
+            detail="Daily Intention for today not found. Ready to create one?"
         )
-    
 
     try:
         # Update progress: absolute, not incremental! Simpler mental model - "Where am I vs my goal?"
@@ -631,7 +629,7 @@ def update_daily_intention_progress(
             target_quantity=intention.target_quantity,
             completed_quantity=intention.completed_quantity,
             focus_block_count=intention.focus_block_count,
-            completion_percentage=completion_percentage,
+            completion_percentage=completion_percentage, # Use the calculated value
             status=intention.status,
             created_at=intention.created_at
         )
