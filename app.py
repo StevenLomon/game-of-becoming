@@ -642,10 +642,13 @@ def update_daily_intention_progress(
             detail=f"Failed to update Daily Intention progress: {str(e)}"
         )
     
-@app.post("/intentions/{intention_id}/complete", response_model=DailyIntentionResponse)
-def complete_daily_intention(intention_id: int, db: Session = Depends(get_db)):
+@app.patch("/intentions/today/complete", response_model=DailyIntentionResponse)
+def complete_daily_intention(
+    current_user: Annotated[User, Depends(get_current_user)], 
+    db: Session = Depends(get_db)
+    ):
     """
-    Mark Daily Intention as completed
+    Mark today's Daily Intention for the currently logged in user as completed
     
     This triggers:
     - XP gain for the user
@@ -653,11 +656,12 @@ def complete_daily_intention(intention_id: int, db: Session = Depends(get_db)):
     - Streak continuation
     """
 
-    intention = db.query(DailyIntention).filter(DailyIntention.id == intention_id).first()
+    # Get today's Daily Intention for the currently logged in user
+    intention = get_today_intention(db, current_user.id)
     if not intention:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Daily Intention not found"
+            detail="Daily Intention for today not found. Ready to create one?"
         )
     
     try:
@@ -688,10 +692,13 @@ def complete_daily_intention(intention_id: int, db: Session = Depends(get_db)):
             detail=f"Failed to complete Daily Intention: {str(e)}"
         )
     
-@app.post("/intentions/{intention_id}/fail", response_model=DailyIntentionResponse)
-def fail_daily_intention(intention_id: int, db: Session = Depends(get_db)):
+@app.patch("/intentions/today/fail", response_model=DailyIntentionResponse)
+def fail_daily_intention(
+    current_user: Annotated[User, Depends(get_current_user)], 
+    db: Session = Depends(get_db)
+    ):
     """
-    Mark Daily Intention as failed
+    Mark today's Daily Intention for the currently logged in user as failed
     
     This triggers the "Fail Forward" mechanism!
     - AI feedback on failure in order to re-frame failure
@@ -699,11 +706,12 @@ def fail_daily_intention(intention_id: int, db: Session = Depends(get_db)):
     - Opportunity to gain Resilience stat
     """
 
-    intention = db.query(DailyIntention).filter(DailyIntention.id == intention_id).first()
+    # Get today's Daily Intention for the currently logged in user
+    intention = get_today_intention(db, current_user.id)
     if not intention:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Daily Intention not found"
+            detail="Daily Intention for today not found. Ready to create one?"
         )
     
     try:
@@ -726,7 +734,7 @@ def fail_daily_intention(intention_id: int, db: Session = Depends(get_db)):
             target_quantity=intention.target_quantity,
             completed_quantity=intention.completed_quantity,
             focus_block_count=intention.focus_block_count,
-            completion_percentage=completion_percentage,  # Percentage at the time of failure
+            completion_percentage=completion_percentage,  # Use the calculated percentage at the time of failure
             status=intention.status,
             created_at=intention.created_at
         )
