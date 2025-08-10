@@ -605,7 +605,7 @@ def update_daily_intention_progress(
 
     try:
         # Update progress: absolute, not incremental! Simpler mental model - "Where am I vs my goal?"
-        intention.completed_quantity = progress_data.completed_quantity
+        intention.completed_quantity = min(progress_data.completed_quantity, intention.target_quantity)
         if intention.completed_quantity >= intention.target_quantity:
             intention.status = 'completed'
         elif intention.completed_quantity > 0:
