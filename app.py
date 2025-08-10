@@ -303,6 +303,30 @@ def generate_success_feedback(
         print(f"Claude API call failed: {e}") 
         return f"Excellent execution! You completed '{intention_text}' - this is how sacred momentum builds!"
 
+# ENDPOINT DEPENDENCIES
+
+def get_current_users_daily_intention(
+    # This dependency itself depensd on our other dependencies
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Session = Depends(get_db)
+) -> DailyIntention:
+    """
+    A dependency that gets the current user's intention for today.
+
+    It automatically handles authentication and database access.
+    If an intention is found, it returns the DailyIntention object.
+    If no intention is found, it raises a 404 error, stopping the request.
+    """
+    # Get today's Daily Intention for the currently logged in user
+    intention = get_today_intention(db, current_user.id)
+    if not intention:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Daily Intention for today not found. Ready to create one?"
+        )
+    return intention
+
+
 # GENERAL ENDPOINTS
 
 @app.get("/")
@@ -585,9 +609,9 @@ def get_my_daily_intention(
 
 @app.patch("/intentions/today/progress", response_model=DailyIntentionResponse)
 def update_daily_intention_progress(
-    current_user: Annotated[User, Depends(get_current_user)],
     progress_data: DailyIntentionUpdate,
-    db: Session = Depends(get_db)
+    intention: Annotated[DailyIntention, Depends(get_current_users_daily_intention)],
+    db: Session = Depends(get_db),
 ):
     """
     Updates Daily Intention progress for the currently logged in user - the core of the Daily Execution Loop!
@@ -595,14 +619,6 @@ def update_daily_intention_progress(
     - System calculates completion percentage
     - Determines if intention is completed, in progress or failed
     """
-    # Get today's Daily Intention for the currently logged in user
-    intention = get_today_intention(db, current_user.id)
-    if not intention:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Daily Intention for today not found. Ready to create one?"
-        )
-
     # Strict Forward Progress: Users should not be able to report less progress than already recorded
     if progress_data.completed_quantity < intention.completed_quantity:
         raise HTTPException(
