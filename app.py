@@ -413,8 +413,8 @@ def get_my_character_stats(
     db: Session = Depends(get_db)
     ):
     """Get the character stats for the currently authenticated user."""
-    # Use the fresh 'db' session to query for the stats
-    stats = current_user.character_stats
+    # Use the fresh 'db' session to query for the stats, we can't rely on current_user
+    stats = db.query(CharacterStats).filter(CharacterStats.user_id==current_user.id).first()
 
     # The user should always have stats, but it's good practice to check
     if not stats:
