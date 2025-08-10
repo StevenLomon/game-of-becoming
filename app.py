@@ -603,6 +603,13 @@ def update_daily_intention_progress(
             detail="Daily Intention for today not found. Ready to create one?"
         )
 
+    # Strict Forward Progress: Users should not be able to report less progress than already recorded
+    if progress_data.completed_quantity < intention.completed_quantity:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You cannot report less progress than you have already recorded."
+        )
+
     try:
         # Update progress: absolute, not incremental! Simpler mental model - "Where am I vs my goal?"
         intention.completed_quantity = min(progress_data.completed_quantity, intention.target_quantity)
