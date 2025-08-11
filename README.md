@@ -67,5 +67,37 @@ You will need to create a database in PostgreSQL and provide its connection URL 
 
 1. Create a database, for example, named `becoming_db`.
 2. Open the `alembic.ini` file and find the `sqlalchemy.url `line. Update it with your database connection string.
+
+```console
 # Example for a user 'myuser' with password 'mypass'
 sqlalchemy.url = postgresql://myuser:mypass@localhost/becoming_db
+```
+
+3. Open `app/database.py` and update the `DATABASE_URL` variable with the same connection string.
+
+### 3. Apply Database Migrations
+With the configuration set, apply the schema to your newly created database.
+```console
+alembic upgrade head
+```
+
+### 4. Run the API Server
+```console
+uvicorn app.main:app --reload
+```
+The API will be available at `http://127.0.0.1:8000.`
+
+### 5. Explore the API
+Open your browser to `http://127.0.0.1:8000/docs` to see the interactive Swagger UI documentation, where you can test all the endpoints.
+
+## 🧪 Testing
+The project is configured with a complete integration test suite that runs against a separate test database, ensuring that tests do not interfere with development data.
+
+```console
+# To run the test suite:
+pytest -v
+```
+
+Tests are also automatically executed in a clean environment on every `git push` via the GitHub Actions CI pipeline, providing immediate feedback on code changes.
+
+**Built by Steven Lomon Lennartsson** 🌱
