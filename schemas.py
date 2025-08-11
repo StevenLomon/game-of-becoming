@@ -1,4 +1,4 @@
-from pydantic import BaseModel, field_validator, Field, EmailStr
+from pydantic import BaseModel, field_validator, Field, EmailStr, ConfigDict
 from typing import Optional, Union
 from datetime import datetime
 
@@ -64,8 +64,7 @@ class UserResponse(BaseModel):
     hrga: str
     registered_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class CharacterStatsResponse(BaseModel):
     user_id: int
@@ -76,8 +75,7 @@ class CharacterStatsResponse(BaseModel):
     discipline: int
     commitment: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # =============================================================================
@@ -153,8 +151,7 @@ class DailyIntentionResponse(BaseModel):
     ai_feedback: Optional[str] = None # AI coach's immediate feedback. Can be null if Claude API fails
     needs_refinement: bool = False # New. Always False for an approved intention (doesn't need refinement)
 
-    class Config:
-        from_attributes = True # Allows model to be created from ORM attributes
+    model_config = ConfigDict(from_attributes=True) # Allows model to be created from ORM attributes
 
 
 # NEW: Tells the creation endpoint what its possible responses are
@@ -182,8 +179,7 @@ class FocusBlockResponse(FocusBlockBase):
     post_block_video_url: Optional[str] = None
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class FocusBlockUpdate(BaseModel):
     """Schema for updating a Focus Block, e.g., with video URLs."""
@@ -218,8 +214,7 @@ class DailyResultResponse(BaseModel):
     user_confirmation_correction: Optional[bool] = None
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class RecoveryQuestInput(BaseModel):
