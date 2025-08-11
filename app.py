@@ -305,8 +305,8 @@ def generate_success_feedback(
 
 # ENDPOINT DEPENDENCIES
 
-def get_current_users_daily_intention(
-    # This dependency itself depensd on our other dependencies
+def get_current_user_daily_intention(
+    # This dependency itself depends on our other dependencies
     current_user: Annotated[User, Depends(get_current_user)],
     db: Session = Depends(get_db)
 ) -> DailyIntention:
@@ -325,6 +325,21 @@ def get_current_users_daily_intention(
             detail="Daily Intention for today not found. Ready to create one?"
         )
     return intention
+
+def get_current_user_stats(
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Session = Depends(get_db)
+) -> CharacterStats:
+    """
+    A dependency that gets the current user's character stats.
+    
+    It automatically handles authentication and database access.
+    It will always return a valid CharacterStats object, creating one
+    if it doesn't exist.
+    """
+    # The crud function guarantees a stats object will be returned,
+    # so we can just return its result directly. No check needed.
+    return get_or_create_user_stats(db, user_id=current_user.id)
 
 
 # GENERAL ENDPOINTS
@@ -466,6 +481,7 @@ def get_my_character_stats(
 def create_daily_intention(
     intention_data: DailyIntentionCreate,
     current_user: Annotated[User, Depends(get_current_user)],
+    stats: Annotated[CharacterStats, Depends(get_current_user_stats)],
     db: Session = Depends(get_db)
 ):
     """
@@ -490,16 +506,12 @@ def create_daily_intention(
 
     Updated: Now also increases the user's Clarity stat!
     """
-
-    # The get_current_user dependency already handles user validation.
-    user = current_user 
-    
-    # Check if today's Daily Intention already exists
+    # Check if today's Daily Intention for the currently logged in user already exists
     existing_intention = get_today_intention(db, current_user.id)
     if existing_intention:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Daily Intention already exists for today. Ready to update it instead?"
+            detail="Daily Intention already exists for today! Get going making progress on it!"
         )
     
     # Updated: AI Accountability and Clarity Coach analyzes the intention immediately after it is created *AND* determines if refinement is needed
@@ -507,7 +519,7 @@ def create_daily_intention(
         intention_data.daily_intention_text, 
         intention_data.target_quantity, 
         intention_data.focus_block_count, 
-        user.hrga
+        current_user.hrga
     )
 
     # NEW: Core Smart Detection logic
@@ -532,7 +544,6 @@ def create_daily_intention(
             db.add(db_intention)
 
             # NEW: Increase Clarity stat
-            stats = get_or_create_user_stats(db, user_id=current_user.id)
             stats.clarity += 1
 
             db.commit()
@@ -569,26 +580,13 @@ def create_daily_intention(
 
 @app.get("/intentions/today/me", response_model=DailyIntentionResponse)
 def get_my_daily_intention(
-    current_user: Annotated[User, Depends(get_current_user)], 
-    db: Session = Depends(get_db)
+    intention: Annotated[DailyIntention, Depends(get_current_user_daily_intention)]
     ):
     """
     Get today's Daily Intention for the currently logged in user.
     
     The core of the Daily Commitment Screen!
     """
-
-    # Check if user exists
-    user = current_user
-    
-    # Get today's intention
-    intention = get_today_intention(db, user.id)
-    if not intention:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="No Daily Intention found for today. Ready to create one?"
-        )
-    
     # Calculate completion percentage
     completion_percentage = (
         (intention.completed_quantity / intention.target_quantity) * 100
@@ -610,7 +608,7 @@ def get_my_daily_intention(
 @app.patch("/intentions/today/progress", response_model=DailyIntentionResponse)
 def update_daily_intention_progress(
     progress_data: DailyIntentionUpdate,
-    intention: Annotated[DailyIntention, Depends(get_current_users_daily_intention)],
+    intention: Annotated[DailyIntention, Depends(get_current_user_daily_intention)],
     db: Session = Depends(get_db),
 ):
     """
