@@ -1,4 +1,4 @@
-from pydantic import BaseModel, field_validator, Field
+from pydantic import BaseModel, field_validator, Field, EmailStr
 from typing import Optional, Union
 from datetime import datetime
 
@@ -28,7 +28,7 @@ class TokenData(BaseModel):
 class UserBase(BaseModel):
     """Base schema for User"""
     name: str = Field(..., min_length=1, max_length=100)
-    email: str = Field(..., pattern=r'^[\w\.\-\+\'_]+@[\w\.\-]+\.\w+$', max_length=255)
+    email: EmailStr
     hrga: str = Field(..., min_length=1, max_length=8000) # Reasonable cap
 
     @field_validator('name', 'hrga')
