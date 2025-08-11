@@ -20,7 +20,7 @@ def create_user(db: Session, user_data: UserCreate) -> User:
         user_id=new_user,
         password_hash=get_password_hash(user_data.password.strip())
     )
-    db.abb(user_auth)
+    db.add(user_auth)
 
     # Create the CharacterStats record
     new_stats = CharacterStats(user_id=new_user.id)
