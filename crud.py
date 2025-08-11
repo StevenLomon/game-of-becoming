@@ -17,7 +17,7 @@ def create_user(db: Session, user_data: UserCreate) -> User:
 
     # Create the UserAuth record
     user_auth = UserAuth(
-        user_id=new_user,
+        user_id=new_user.id,
         password_hash=get_password_hash(user_data.password.strip())
     )
     db.add(user_auth)
