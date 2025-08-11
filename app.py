@@ -283,7 +283,6 @@ def generate_success_feedback(
         - "Outstanding execution! Closing 3 deals directly fuels your client acquisition engine. This is exactly how momentum builds - one focused day at a time!"
         - "Powerful work! Those 10 outreaches are seeds that will bloom into future revenue. Your consistency is creating compound results!"
         
-        
         Your celebration:
         """
 
@@ -341,6 +340,28 @@ def get_current_user_stats(
     # so we can just return its result directly. No check needed.
     return get_or_create_user_stats(db, user_id=current_user.id)
 
+def get_owned_focus_block(
+        block_id: int, # We get this from the endpoint path parameter
+        current_user: Annotated[User, Depends(get_current_user)], 
+        db: Session = Depends(get_db)
+) -> FocusBlock:
+    """
+    A dependency that gets a specific Focus Block by its ID, but only if
+    it belongs to the currently authenticated user.
+
+    Raises a 404 if the block is not found or not owned by the user.
+    """
+    # Join FocusBlock and DailyIntention and filter by BOTH block_id and user_id
+    block = db.query(FocusBlock).join(DailyIntention).filter(
+        FocusBlock.id == block_id,
+        DailyIntention.user_id == current_user.id
+    ).first()
+
+    if not block:
+        # We use 404 for both "not found" and "not owned" to avoid leaking information.
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Focus Block not found.")
+    
+    return block
 
 # GENERAL ENDPOINTS
 
@@ -423,7 +444,7 @@ def register_user(user_data: UserCreate, db: Session = Depends(get_db)):
         db.refresh(new_user)
 
         # Return the user 
-        return new_user
+        return UserResponse.model_validate(new_user)
     
     except Exception as e:
         db.rollback()  # Roll back on any error
@@ -441,10 +462,8 @@ def get_user(current_user: Annotated[User, Depends(get_current_user)]):
     # 3. It fetched the user from the database.
     # 4. It handled the "user not found" case.
     
-    # All we have to do is return the user object it gives us.
-    # FastAPI's 'response_model' will handle converting it to the
-    # safe UserResponse schema automatically.
-    return current_user
+    # Explicitly convert the SQLAlchemy User model to the Pydantic UserResponse model.
+    return UserResponse.model_validate(current_user)
 
 @app.get("/users/me/stats", response_model=CharacterStatsResponse)
 def get_my_character_stats(
@@ -815,16 +834,19 @@ def create_focus_block(
             detail=f"Failed to create Focus Block: {str(e)}"
         )
     
-@app.put("/focus-blocks/{block_id}", response_model=FocusBlockResponse)
-def update_focus_block(block_id: int, update_data: FocusBlockUpdate, db: Session = Depends(get_db)):
+@app.patch("/focus-blocks/{block_id}", response_model=FocusBlockResponse)
+def update_focus_block(
+    update_data: FocusBlockUpdate, 
+    block: Annotated[FocusBlock, Depends(get_owned_focus_block)],
+    stats: Annotated[CharacterStats, Depends(get_current_user_stats)],
+    db: Session = Depends(get_db)
+    ):
     """
     Update a Focus Block to add video URLs or change its status.
     Used for the "Proof & Review" step after a block.
     Updated: Each Focus Block now gives 10xp upon completion!
     """ 
-    block = db.query(FocusBlock).filter(FocusBlock.id == block_id).first()
-    if not block:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Focus Block not found.")
+    # The get_owned_focus_block dependency guarantees a Focus Block that belongs to the currently logged in user
     
     # NEW: Enforce "Sacred Finality"
     today = datetime.now(timezone.utc).date()
@@ -840,9 +862,6 @@ def update_focus_block(block_id: int, update_data: FocusBlockUpdate, db: Session
             # NEW XP LOGIC
             # If the block is being marked as 'completed' and wasn't already
             if update_data.status == "completed" and block.status != "completed":
-                # Get the user ID from the parent intention
-                user_id = block.daily_intention.user_id
-                stats = get_or_create_user_stats(db, user_id=user_id)
                 stats.xp += 10 # Award 10 XP per block
 
             block.status = update_data.status.strip()
