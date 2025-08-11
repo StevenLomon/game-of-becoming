@@ -386,6 +386,26 @@ def get_owned_daily_result_by_intention_id(
     
     return result
 
+def get_owned_daily_result_by_result_id(
+    result_id: int, # Gets this from the path
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Session = Depends(get_db)
+) -> DailyResult:
+    """
+    Dependency to get a DailyResult by its own ID, ensuring it belongs
+    to the current user. This is the final ownership check.
+    """
+    # We query DailyResult, join its parent DailyIntention, and check the user_id.
+    result = db.query(DailyResult).join(DailyIntention).filter(
+        DailyResult.id == result_id,
+        DailyIntention.user_id == current_user.id
+    ).first()
+
+    if not result:
+        raise HTTPException(status_code=404, detail="Daily Result not found.")
+    
+    return result
+
 # GENERAL ENDPOINTS
 
 @app.get("/")
@@ -986,16 +1006,8 @@ def create_daily_result(
         db.commit()
         db.refresh(db_result)
 
-        return DailyResultResponse(
-            id=db_result.id,
-            daily_intention_id=db_result.daily_intention_id,
-            succeeded_failed=db_result.succeeded_failed,
-            ai_feedback=db_result.ai_feedback,
-            recovery_quest=db_result.recovery_quest,
-            recovery_quest_response=db_result.recovery_quest_response,
-            user_confirmation_correction=db_result.user_confirmation_correction,
-            created_at=db_result.created_at
-        )
+        # Return using the simple, elegant, and consistent pattern
+        return DailyResultResponse.model_validate(db_result)
     
     except Exception as e:
         print(f"Database error: {e}") 
@@ -1020,8 +1032,9 @@ def get_daily_result(
 
 @app.post("/daily-results/{result_id}/recovery-quest", response_model=RecoveryQuestResponse)
 def respond_to_recovery_quest(
-    result_id: int,
     quest_response: RecoveryQuestInput,
+    result: Annotated[DailyResult, Depends(get_owned_daily_result_by_result_id)],
+    stats: Annotated[CharacterStats, Depends(get_current_user_stats)],
     db: Session = Depends(get_db)
 ):
     """
@@ -1033,24 +1046,17 @@ def respond_to_recovery_quest(
     - Resilience stat increases
     - Learning through failure becomes part of character progression
     """
-
-    # Get the Daily Result by id
-    result = db.query(DailyResult).filter(DailyResult.id == result_id).first()
-    if not result:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Daily Result not found"
-        )
+    # The dependency has already found the user-owned DailyResult.
     
-    # Check if Recovery Quest exists
+    # Check if Recovery Quest exists; business logic check specific to this endpoint
     if not result.recovery_quest:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="No Recovery Quest available for this result"
         )
     
-    # Query for the original Daily Intention for personalized AI coacihing response
-    original_intention = db.query(DailyIntention).filter(DailyIntention.id == result.daily_intention_id).first()
+    # We can get the original Daily Intention for personalized AI coaching response via the relationship now, no need for another query!
+    original_intention = result.daily_intention
 
     # Calculate what the user managed to achieve
     completion_rate = (
@@ -1063,7 +1069,6 @@ def respond_to_recovery_quest(
         result.recovery_quest_response = quest_response.recovery_quest_response.strip()
 
         # NEW: Increase Resilience stat for completing the quest
-        stats = get_or_create_user_stats(db, user_id=original_intention.user_id)
         stats.resilience += 1
 
         # AI Coach analyzes the response and provides personalized coaching
@@ -1072,6 +1077,7 @@ def respond_to_recovery_quest(
         db.commit()
         db.refresh(result)
 
+        # Manually construct the response because it uses a calculated value.
         return RecoveryQuestResponse(
             recovery_quest_response=result.recovery_quest_response,
             ai_coaching_feedback=ai_coaching_response
