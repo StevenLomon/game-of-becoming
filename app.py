@@ -363,6 +363,29 @@ def get_owned_focus_block(
     
     return block
 
+def get_owned_daily_result_by_intention_id(
+        intention_id: int, # Gets this from the endpoint path parameter
+        current_user: Annotated[User, Depends(get_current_user)],
+        db: Session = Depends(get_db)
+) -> DailyResult:
+    """
+    A dependency that gets a specific Daily Result by its parent intention's ID,
+    but only if it belongs to the currently authenticated user.
+
+    Raises a 404 if the result is not found or not owned by the user.
+    """
+    # This query links the DailyResult to the DailyIntention to check the user_id.
+    result = db.query(DailyResult).join(DailyIntention).filter(
+        DailyResult.daily_intention_id == intention_id,
+        DailyIntention.user_id == current_user.id
+    ).first()
+
+    if not result:
+        # Use 404 for security, hiding whether the result exists or is just not owned.
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Daily Result not found.")
+    
+    return result
+
 # GENERAL ENDPOINTS
 
 @app.get("/")
@@ -889,6 +912,9 @@ def update_focus_block(
 @app.post("/daily-results", response_model=DailyResultResponse, status_code=status.HTTP_201_CREATED)
 def create_daily_result(
     result_data: DailyResultCreate,
+    current_user: Annotated[User, Depends(get_current_user)],
+    daily_intention: Annotated[DailyIntention, Depends(get_current_user_daily_intention)],
+    stats: Annotated[CharacterStats, Depends(get_current_user_stats)], 
     db: Session = Depends(get_db)
 ):
     """
@@ -903,18 +929,11 @@ def create_daily_result(
 
     Update: If successful, increase the user's Discipline stat!
     """
-
-    # Check if Daily Intention exists
-    intention = db.query(DailyIntention).filter(DailyIntention.id == result_data.daily_intention_id).first()
-    if not intention:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Daily Intention not found"
-        )
+    # The get_current_user_daily_intention dependency guarantees a Daily Intention from the currently logged in user
     
     # Check if Daily Result already exists for this intention
     existing_result = db.query(DailyResult).filter(
-        DailyResult.daily_intention_id == result_data.daily_intention_id
+        DailyResult.daily_intention_id == daily_intention.id
     ).first()
     if existing_result:
         raise HTTPException(
@@ -922,32 +941,23 @@ def create_daily_result(
             detail="Daily Result already exists for this intention. Sacred finality!"
         )
     
-    # Get the user in order to generate personalized AI feedback
-    user = db.query(User).filter(User.id == intention.user_id).first()
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
-        )
-    
     try:
         # Determine if intention succeeded or failed
-        succeeded = intention.status == 'completed'
+        succeeded = daily_intention.status == 'completed'
 
         # Generate AI feedback for evening reflection
         if succeeded:
-            ai_feedback = generate_success_feedback(intention.daily_intention_text, intention.target_quantity, user.hrga)
+            ai_feedback = generate_success_feedback(daily_intention.daily_intention_text, daily_intention.target_quantity, current_user.hrga)
             recovery_quest = None
 
             # NEW: Increase Discipline stat on success!
-            stats = get_or_create_user_stats(db, user_id=intention.user_id)
             stats.discipline += 1
 
         else: # Failed intention
             # Calculate what they managed to achieve
             completion_rate = (
-                (intention.completed_quantity / intention.target_quantity) * 100
-                if intention.target_quantity > 0 else 0.0
+                (daily_intention.completed_quantity / daily_intention.target_quantity) * 100
+                if daily_intention.target_quantity > 0 else 0.0
             )
 
             # Acknowledge completion rate
@@ -955,15 +965,15 @@ def create_daily_result(
 
             # AI-generated Recovery Quest based on failure pattern
             recovery_quest = generate_recovery_quest(
-            intention.daily_intention_text,
+            daily_intention.daily_intention_text,
             completion_rate,
-            intention.target_quantity,
-            intention.completed_quantity
+            daily_intention.target_quantity,
+            daily_intention.completed_quantity
             )
 
         # Create the Daily Result record
         db_result = DailyResult(
-            daily_intention_id=result_data.daily_intention_id,
+            daily_intention_id=daily_intention.id,
             succeeded_failed=succeeded,
             ai_feedback=ai_feedback,
             recovery_quest=recovery_quest,
@@ -996,29 +1006,17 @@ def create_daily_result(
         )
     
 @app.get("/daily-results/{intention_id}", response_model=DailyResultResponse)
-def get_daily_result(intention_id: int, db: Session = Depends(get_db)):
+def get_daily_result(
+    # The dependency does all the work: finds the result AND verifies ownership.
+    result: Annotated[DailyResult, Depends(get_owned_daily_result_by_intention_id)]
+    ):
     """
-    Get Daily Result evening reflection for a specific intention
+    Get the Daily Result for a specific, user-owned intention.
     Used for disaplying reflection insights and Recovery Quests
     """
-    
-    result = db.query(DailyResult).filter(DailyResult.daily_intention_id == intention_id).first()
-    if not result:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Daily Result not found"
-        )
-    
-    return DailyResultResponse(
-        id=result.id,
-        daily_intention_id=result.daily_intention_id,
-        succeeded_failed=result.succeeded_failed,
-        ai_feedback=result.ai_feedback,
-        recovery_quest=result.recovery_quest,
-        recovery_quest_response=result.recovery_quest_response,
-        user_confirmation_correction=result.user_confirmation_correction,
-        created_at=result.created_at
-    )
+    # The 'result' object is guaranteed to be the correct, owned DailyResult.
+    # All we have to do is convert it to the response model and return it.
+    return DailyResultResponse.model_validate(result)
 
 @app.post("/daily-results/{result_id}/recovery-quest", response_model=RecoveryQuestResponse)
 def respond_to_recovery_quest(
