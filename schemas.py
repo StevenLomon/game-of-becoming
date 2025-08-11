@@ -170,9 +170,8 @@ class FocusBlockBase(BaseModel):
     focus_block_intention: str = Field(..., min_length=1, max_length=2000)
     duration_minutes: int = Field(default=50, gt=0, le=120) # Must be > 0 and <= 120 mins
 
-class FocusBlockCreate(FocusBlockBase):
-    """Schema for creating a new Focus Block."""
-    user_id: int
+# FocusBlockCreate is an alias for FocusBlockBase. To create a block, we just need the base fields. No user_id needed!
+FocusBlockCreate = FocusBlockBase
 
 class FocusBlockResponse(FocusBlockBase):
     """Schema for returning a Focus Block from the API."""

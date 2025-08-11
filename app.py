@@ -771,22 +771,17 @@ def fail_daily_intention(
 # FOCUS BLOCK ENDPOINTS
 
 @app.post("/focus-blocks", response_model=FocusBlockResponse, status_code=status.HTTP_201_CREATED)
-def create_focus_block(block_data: FocusBlockCreate, db: Session = Depends(get_db)):
+def create_focus_block(
+    block_data: FocusBlockCreate, 
+    daily_intention: Annotated[DailyIntention, Depends(get_current_user_daily_intention)],
+    db: Session = Depends(get_db)):
     """
-    Create a new Focus Block when a user starts a timed execution sprint.
+    Create a new Focus Block when the currently logged in user starts a timed execution sprint.
     Creates it by finding the user's active intention for the day.
     This logs the user's chunked-down intention for the block.
     NEW: Also ensures that the user has no other active Focus Blocks!
     """
-    # Use the existing helper function to get today's Daily Intention for the user
-    daily_intention = get_today_intention(db, user_id=block_data.user_id)
-    
-    # If the user has no intention for today, they can't create a focus block
-    if not daily_intention:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="No active Daily Intention found for today. Please create one first."
-        )
+    # The dependency has already guaranteed the currently logged in user's Daily Intention!
     
     # NEW: Enforce "One Active Block at a Time" rule
     existing_active_block = db.query(FocusBlock).filter(
