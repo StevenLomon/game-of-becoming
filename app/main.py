@@ -16,8 +16,8 @@ from .crud import create_user, get_user_by_email, get_or_create_user_stats, get_
 load_dotenv()
 
 # Import models and schemas
-from models import Base, User, CharacterStats, DailyIntention, FocusBlock, DailyResult
-from schemas import (
+from .models import Base, User, CharacterStats, DailyIntention, FocusBlock, DailyResult
+from .schemas import (
     TokenResponse, UserCreate, UserResponse, CharacterStatsResponse,
     DailyIntentionCreate, DailyIntentionUpdate, DailyIntentionResponse,
     DailyIntentionCreateResponse, DailyIntentionRefinementResponse, 
