@@ -1,1091 +1,312 @@
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
-from passlib.context import CryptContext
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from typing import Annotated
 from dotenv import load_dotenv
-import os, math, anthropic
+import math
 
+# Import our layered modules
+from . import crud, models, schemas, security, services
 from .database import get_db
-from .security import create_access_token, get_current_user
-from .utils import verify_password
-from .crud import create_user, get_user_by_email, get_or_create_user_stats, get_today_intention
 
 # Load environment variables
 load_dotenv()
-
-# Import models and schemas
-from .models import Base, User, CharacterStats, DailyIntention, FocusBlock, DailyResult
-from .schemas import (
-    TokenResponse, UserCreate, UserResponse, CharacterStatsResponse,
-    DailyIntentionCreate, DailyIntentionUpdate, DailyIntentionResponse,
-    DailyIntentionCreateResponse, DailyIntentionRefinementResponse, 
-    FocusBlockCreate, FocusBlockResponse, FocusBlockUpdate,
-    DailyResultCreate, DailyResultResponse, RecoveryQuestResponse, RecoveryQuestInput
-)
-
-# Create tables
-# Base.metadata.create_all(bind=engine) Not needed now that we have Alembic
-
-# Password hashing setup
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # FastAPI app setup
 app = FastAPI(
     title="Game of Becoming API",
     description="Gamify your business growth with AI-driven daily intentions and feedback.",
     version="1.0.0",
-    docs_url="/docs" # Interactive API docs at /docs
+    docs_url="/docs"
 )
 
-# Utility functions
+# --- UTILITY FUNCTIONS ---
+
 def calculate_level(xp: int) -> int:
     """Calculates user level based on total XP."""
-    if xp < 0:
-        return 1
+    if xp < 0: return 1
     return math.floor((xp / 100) ** 0.5) + 1
 
-# Claude AI setup
-anthropic_client = anthropic.Anthropic(
-    api_key=os.getenv("ANTHROPIC_API_KEY")
-)
+# --- ENDPOINT DEPENDENCIES ---
 
-# AI COACH FUNCTIONS
-
-# Updated AI analysis function with Smart Detection to see if refinement is needed!
-def analyze_daily_intention(
-        intention_text: str, target_quantity: int, focus_block_count: int, user_hrga: str
-        ) -> tuple[str, bool]:
-    """
-    Claude analyzes the Daily Intention for clarity, actiontability and alignment with user's HRGA.
-    Updated: determines if refinement is needed! 
-    Returns (ai_feedback, needs_refinement)
-    This is the AI Coach's "Clarity Enforcer" role.
-    """
-    # NEW: AI Kill Switch
-    if os.getenv("DISABLE_AI_CALLS") == "True":
-        print("--- AI CALL DISABLED: Returning mock 'APPROVED' response. ---")
-        return "Mock feedback: This is a clear and actionable intention!", False
-    
-    try:
-        prompt = f"""
-        You are the AI Accountability and Clarity Coach for The Game of Becoming™. Your role is to analyze daily intentions, provide encouraging actionable feedback, and determine if they need refinement before commitment.
-
-        User's Highest Revenue Generated Activity (HRGA): {user_hrga}
-        Today's Daily Intention: {intention_text}
-        Target Quantity: {target_quantity}
-        Planned Focus Block Count: {focus_block_count}
-
-        Analyze this intention and provide encouraging, actionable feedback while determining if refinement is needed based on:
-        - Is it specific and measurable?
-        - Is it actionable with clear next steps?
-        - Does it align well with their HRGA?
-        - Is the target quantity realistic and meaningful?
-
-        CRITICAL: Start your response with either:
-        - "NEEDS_REFINEMENT:" if the intention needs to be more specific/actionable/aligned
-        - "APPROVED:" if the intention is clear and ready for commitment
-
-        Then provide your coaching feedback.
-
-        Provide 2-3 sentences maximum. Be encouraging and action-oriented.
-
-        Examples:
-        NEEDS_REFINEMENT: This intention is quite vague. What specific modules will you complete? Consider being more specific about your deliverables - perhaps "Complete modules 1-3 of Webinar Academy and draft one compelling offer" would give you clearer success criteria.
-
-        APPROVED: Your intention to send 5 LinkedIn outreaches is clear, specific, and directly aligned with your HRGA! With 4 focus blocks allocated, you have plenty of time to craft quality messages while maintaining a sustainable daily pace.
-
-        NEEDS_REFINEMENT: While learning is valuable, this doesn't directly support your LinkedIn outreach HRGA. Consider balancing today's training with 1-2 focus blocks of immediate income-generating outreach activities.
-
-        APPROVED: Love how you've broken down the webinar training into measurable modules with a concrete deliverable! This intention directly supports your LinkedIn outreach HRGA by helping you create a compelling offer.
-
-        NEEDS_REFINEMENT: While building a website can be important, this intention needs more specificity and doesn't directly support your LinkedIn outreach HRGA. Consider refining to something like "Complete homepage and about page copy that highlights my LinkedIn outreach services" and dedicating 1 of your 3 focus blocks to actual LinkedIn outreach to maintain revenue momentum.
-
-        Your response:
-        """
-
-        response = anthropic_client.messages.create(
-            model="claude-3-5-sonnet-20241022",
-            max_tokens=150,
-            messages=[{"role": "user", 
-                       "content": prompt
-                }]
-        )
-
-        ai_response = response.content[0].text.strip()
-
-        # Parse the AI response
-        if ai_response.startswith("NEEDS_REFINEMENT:"):
-            feedback = ai_response[18:].strip() # Remove "NEEDS_REFINEMENT:" prefix
-            return feedback, True
-        elif ai_response.startswith("APPROVED:"):
-            feedback = ai_response[9:].strip() # Remove "APPROVED:" prefix
-            return feedback, False
-        else:
-            # Fallback: if format is unexpected, assume it's approved
-            return ai_response, False
-    
-    except Exception as e:
-        # Fallback to static respones if Claude API fails
-        print(f"Claude API call failed: {e}") 
-        fallback_feedback = f"Great! '{intention_text}' is clear and actionable. You've planned {focus_block_count} focus blocks. Let's make it happen!"
-        return fallback_feedback, False
-
-def generate_recovery_quest(
-        intention_text: str, completion_rate: float, target_quantity: int, completed_quantity: int
-    ) -> str:
-    """
-    Claude generates a personalized Recovery Quest based on failure pattern.
-    This is the AI Coach's "Fail Forward Guide" role.
-    """
-    # NEW: AI Kill Switch
-    if os.getenv("DISABLE_AI_CALLS") == "True":
-        print("--- AI CALL DISABLED: Returning mock recovery quest. ---")
-        return "Mock Quest: What was the main obstacle you encountered today?"
-    
-    try:
-        prompt = f"""
-        You are the AI Accountability and Clarity Coach for The Game of Becoming™. A user failed to complete their Daily Intention, and you need to generate a Recovery Quest - a reflective question that turns failure into valuable data and learning.
-
-        Failed Intention: "{intention_text}"
-        Target: {target_quantity}
-        Achieved: {completed_quantity}
-        Completion Rate: {completion_rate:.1f}%
-
-        Generate ONE specific, thoughtful question that:
-        1. Acknowledges their effort (they tried!)
-        2. Focused on learning, not judgment
-        3. Helps identify the root cause of the gap
-        4. Is actionable for tomorrow's improvement
-
-        Base the question on completion level:
-        - 0% completion: Focus on barriers to starting
-        - 1-50% completion: Focus on momentum/distraction issues
-        - 51-99% completion: Focus on finishing/persistence
-
-        Examples:
-        - "What specific distraction pulled you away when you were in the middle of making progress?"
-        - "When you felt resistance to starting, what was the inner voice telling you?"
-        - "You were just one outreach away from your goal - what was happening in your environment or mindset when you stopped at 4 that prevented that final connection?"
-
-        Generate ONE question (no additional text):
-        """
-
-        response = anthropic_client.messages.create(
-            model="claude-3-5-sonnet-20241022",
-            max_tokens=100,
-            messages=[{
-                "role": "user",
-                "content": prompt
-            }]
-        )
-
-        return response.content[0].text.strip()
-    
-    except Exception as e:
-        # Fallback based on completion rate
-        print(f"Claude API call failed: {e}") 
-        if completion_rate == 0:
-            return "What prevented you from starting? Was it fear, overwhelm, or unclear next steps?"
-        elif completion_rate < 50:
-            return "You started but struggled to maintain momentum. What distracted you or broke your focus?"
-        else:
-            return "You made solid progress but didn't quite finish. What would have helped you cross the finish line?"
-        
-def generate_coaching_response(
-        user_reflection: str, original_intention: str, completion_rate: float
-    ) -> str:
-    """
-    Claude provides personalized coaching based on user's Recovery Quest response.
-    This is the AI Coach's "Wisdom Builder" role.
-    """
-    # NEW: AI Kill Switch
-    if os.getenv("DISABLE_AI_CALLS") == "True":
-        print("--- AI CALL DISABLED: Returning mock coaching response. ---")
-        return "Mock Coaching: That's a great insight. How can you use it tomorrow?"
-    
-    try:
-        prompt = f"""
-        You are the AI Accountability and Clarity Coach for The Game of Becoming™. A user has reflected on their failed intention and shared their insight. Provide encouraging, wisdom-building coaching.
-
-        Original Intention: "{original_intention}"
-        Completion Rate: {completion_rate:.1f}%
-        User's Reflection: "{user_reflection}"
-
-        Provide coaching that:
-        1. Validates their honest reflection
-        2. Identifies the pattern/insight they've uncovered
-        3. Connects this learning to future success
-        4. Builds confidence and resilience
-        5. Keeps it concise (2-3 sentences max)
-
-        Your tone should be:
-        - Encouraging but not fake-positive
-        - Wise and supportive
-        - Forward-looking
-        - Focused on growth mindset
-
-        Examples:
-        - "That's a powerful insight about time estimation. Recognizing that you consistently underestimate task complexity is the first step to building more realistic intentions. Tomorrow, try adding a 25% buffer to your time estimates!"
-        - "Honest self-awareness like this is what separates people who grow from those who stay stuck. Now that you know social media is your kryptonite during focus blocks, you can proactively eliminate that distraction tomorrow."
-        - "Great self-awareness in identifying Snapchat as your specific distraction trigger - that's the kind of precise insight that leads to meaningful change. Your proactive solution to turn off notifications shows you're taking ownership of your environment, and since you still achieved 80% of your goal, you're clearly capable of strong execution when you eliminate these small barriers. Tomorrow's outreach will be even more focused now that you've made this adjustment!"
-
-
-        Your coaching response:
-        """
-
-        response = anthropic_client.messages.create(
-            model="claude-3-5-sonnet-20241022",
-            max_tokens=200,
-            messages=[{
-                "role": "user",
-                "content": prompt
-            }]
-        )
-
-        return response.content[0].text.strip()
-    
-    except Exception as e:
-        # Fallback response
-        print(f"Claude API call failed: {e}") 
-        return f"Thank you for that honest reflection. Recognizing '{user_reflection}' as a pattern is the first step to breaking through it. Tomorrow's intention will be even stronger because of this insight!"
-
-def generate_success_feedback(
-        intention_text: str, target_quantity: int, user_hrga: str
-    ) -> str:
-    """
-    Claude celebrates successful intention completion.
-    This is the AI Coach's "Momentum Builder" role.
-    """
-    # NEW: AI Kill Switch
-    if os.getenv("DISABLE_AI_CALLS") == "True":
-        print("--- AI CALL DISABLED: Returning mock success feedback. ---")
-        return "Mock Success: Great job on completing your intention!"
-
-    try:
-        prompt = f"""
-        You are the AI Accountability and Clarity Coach for The Game of Becoming™. A user has successfully completed their daily intention! Celebrate their win and build momentum.
-
-        User's HRGA: {user_hrga}
-        Completed Intention: "{intention_text}"
-        Target: {target_quantity} (achieved!)
-
-        Provide celebration that:
-        1. Acknowledges their specific achievement
-        2. Connects it to their revenue-generating goals
-        3. Builds momentum for tomorrow
-        4. Feels genuine and energizing
-        5. Is concise (1-2 sentences)
-
-        Examples:
-        - "Outstanding execution! Closing 3 deals directly fuels your client acquisition engine. This is exactly how momentum builds - one focused day at a time!"
-        - "Powerful work! Those 10 outreaches are seeds that will bloom into future revenue. Your consistency is creating compound results!"
-        
-        Your celebration:
-        """
-
-        response = anthropic_client.messages.create(
-            model="claude-3-5-sonnet-20241022",
-            max_tokens=150,
-            messages=[{
-                "role": "user",
-                "content": prompt
-            }]
-        )
-        
-        return response.content[0].text.strip()
-        
-    except Exception as e:
-        # Fallback success message
-        print(f"Claude API call failed: {e}") 
-        return f"Excellent execution! You completed '{intention_text}' - this is how sacred momentum builds!"
-
-# ENDPOINT DEPENDENCIES
-
-def get_current_user_daily_intention(
-    # This dependency itself depends on our other dependencies
-    current_user: Annotated[User, Depends(get_current_user)],
+def get_current_user_active_intention(
+    current_user: Annotated[models.User, Depends(security.get_current_user)],
     db: Session = Depends(get_db)
-) -> DailyIntention:
-    """
-    A dependency that gets the current user's intention for today.
-
-    It automatically handles authentication and database access.
-    If an intention is found, it returns the DailyIntention object.
-    If no intention is found, it raises a 404 error, stopping the request.
-    """
-    # Get today's Daily Intention for the currently logged in user
-    intention = get_today_intention(db, current_user.id)
+) -> models.DailyIntention:
+    """Dependency to get the current user's active intention for today."""
+    intention = crud.get_user_active_intention(db, user_id=current_user.id)
     if not intention:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Daily Intention for today not found. Ready to create one?"
+            detail="Active Daily Intention for today not found."
         )
     return intention
 
-def get_current_user_stats(
-    current_user: Annotated[User, Depends(get_current_user)],
-    db: Session = Depends(get_db)
-) -> CharacterStats:
-    """
-    A dependency that gets the current user's character stats.
-    
-    It automatically handles authentication and database access.
-    It will always return a valid CharacterStats object, creating one
-    if it doesn't exist.
-    """
-    # The crud function guarantees a stats object will be returned,
-    # so we can just return its result directly. No check needed.
-    return get_or_create_user_stats(db, user_id=current_user.id)
-
 def get_owned_focus_block(
-        block_id: int, # We get this from the endpoint path parameter
-        current_user: Annotated[User, Depends(get_current_user)], 
-        db: Session = Depends(get_db)
-) -> FocusBlock:
-    """
-    A dependency that gets a specific Focus Block by its ID, but only if
-    it belongs to the currently authenticated user.
-
-    Raises a 404 if the block is not found or not owned by the user.
-    """
-    # Join FocusBlock and DailyIntention and filter by BOTH block_id and user_id
-    block = db.query(FocusBlock).join(DailyIntention).filter(
-        FocusBlock.id == block_id,
-        DailyIntention.user_id == current_user.id
+    block_id: int,
+    current_user: Annotated[models.User, Depends(security.get_current_user)],
+    db: Session = Depends(get_db)
+) -> models.FocusBlock:
+    """Dependency to get a specific Focus Block owned by the current user."""
+    block = db.query(models.FocusBlock).join(models.DailyIntention).filter(
+        models.FocusBlock.id == block_id,
+        models.DailyIntention.user_id == current_user.id
     ).first()
-
     if not block:
-        # We use 404 for both "not found" and "not owned" to avoid leaking information.
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Focus Block not found.")
-    
     return block
 
-def get_owned_daily_result_by_intention_id(
-        intention_id: int, # Gets this from the endpoint path parameter
-        current_user: Annotated[User, Depends(get_current_user)],
-        db: Session = Depends(get_db)
-) -> DailyResult:
-    """
-    A dependency that gets a specific Daily Result by its parent intention's ID,
-    but only if it belongs to the currently authenticated user.
-
-    Raises a 404 if the result is not found or not owned by the user.
-    """
-    # This query links the DailyResult to the DailyIntention to check the user_id.
-    result = db.query(DailyResult).join(DailyIntention).filter(
-        DailyResult.daily_intention_id == intention_id,
-        DailyIntention.user_id == current_user.id
-    ).first()
-
-    if not result:
-        # Use 404 for security, hiding whether the result exists or is just not owned.
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Daily Result not found.")
-    
-    return result
-
-def get_owned_daily_result_by_result_id(
-    result_id: int, # Gets this from the path
-    current_user: Annotated[User, Depends(get_current_user)],
+def get_owned_daily_result(
+    result_id: int,
+    current_user: Annotated[models.User, Depends(security.get_current_user)],
     db: Session = Depends(get_db)
-) -> DailyResult:
-    """
-    Dependency to get a DailyResult by its own ID, ensuring it belongs
-    to the current user. This is the final ownership check.
-    """
-    # We query DailyResult, join its parent DailyIntention, and check the user_id.
-    result = db.query(DailyResult).join(DailyIntention).filter(
-        DailyResult.id == result_id,
-        DailyIntention.user_id == current_user.id
+) -> models.DailyResult:
+    """Dependency to get a specific DailyResult owned by the current user."""
+    result = db.query(models.DailyResult).join(models.DailyIntention).filter(
+        models.DailyResult.id == result_id,
+        models.DailyIntention.user_id == current_user.id
     ).first()
-
     if not result:
         raise HTTPException(status_code=404, detail="Daily Result not found.")
-    
     return result
 
-# GENERAL ENDPOINTS
+# --- GENERAL ENDPOINTS ---
 
 @app.get("/")
 def read_root():
-    """Welcome root endpoint - the beginning of the transformational journey!"""
-    return {
-        "message": "Welcome to The Game of Becoming API!",
-        "description": "Ready to turn your exectution blockers into breakthrough momentum?",
-        "docs": "Visit /docs for interactive API documentation.",
-    }
+    return {"message": "Welcome to The Game of Becoming API!", "docs_url": "/docs"}
 
-@app.get("/health")
-def health_check():
-    """Health check endpoint for monitoring and deployment verification"""
-    return {
-        "status": "healthy",
-        "timestamp": datetime.now(timezone.utc),
-        "service": "Game of Becoming API",
-        "version": "1.0.0"
-    }
-
-@app.post("/login", response_model=TokenResponse)
+@app.post("/login", response_model=schemas.TokenResponse)
 def login_for_access_token(
-    # This is the "magic" part. FastAPI will automatically handle getting the 
-    # 'username' and 'password' from the form body and put them into this 'form_data' object.
-    form_data: Annotated[OAuth2PasswordRequestForm, Depends()], # Annotated can be seen as a sticky note
+    form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
     db: Session = Depends(get_db)
 ):
-    """
-    The Bouncer. Now using OAuth2PasswordRequestForm to handle form data. 
-    1. Uses the standard OAuth2PasswordRequestForm to handle form data.
-    2. Finds the user in the database via the new crud function.
-    3. Verifies the password using the security function.
-    4. If valid, creates and returns a JWT (the wristband).
-    """
-    # 1. Find the user by their email (which OAuth2 calls 'username')
-    user = get_user_by_email(db, email=form_data.username)
-
-    # 2. Verify that the user exists and that the password is correct
-    if not user or not verify_password(form_data.password, user.auth.password_hash):
+    user = crud.get_user_by_email(db, email=form_data.username)
+    if not user or not security.verify_password(form_data.password, user.auth.password_hash):
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, # We use a generic error to prevent attackers from guessing valid emails.
+            status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
-            headers={"WWW-Authenticate": "Bearer"}
+            headers={"WWW-Authenticate": "Bearer"},
         )
-    
-    # 3. If credentials are valid, create the access token
-    # The 'sub' (subject) claim in the token is the user's ID
-    access_token = create_access_token(data={"sub": str(user.id)})
-
-    # 4. Return the token in the standard Bearer format
+    access_token = security.create_access_token(data={"sub": str(user.id)})
     return {"access_token": access_token, "token_type": "bearer"}
 
+# --- USER ENDPOINTS ---
 
-# USER ENDPOINTS
-
-# Simplified using create_user in crud.py
-@app.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-def register_user(user_data: UserCreate, db: Session = Depends(get_db)):
-    """
-    Register a new user and their associated records. 
-    Also now creates their initial character stats
-
-    The user starts their Game of Becoming journey here!
-    """
-
-    # Check if user already exists
-    existing_user = get_user_by_email(db, user_data.email)
-    if existing_user:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already registered. Ready to log in instead?"
-        )
-    
+@app.post("/register", response_model=schemas.UserResponse, status_code=status.HTTP_201_CREATED)
+def register_user(user_data: schemas.UserCreate, db: Session = Depends(get_db)):
+    if crud.get_user_by_email(db, user_data.email):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered.")
     try:
-        # Create the User record
-        new_user = create_user(db=db, user_data=user_data)
+        new_user = crud.create_user(db=db, user_data=user_data)
         db.commit()
         db.refresh(new_user)
-
-        # Return the user 
-        return UserResponse.model_validate(new_user)
-    
+        return new_user
     except Exception as e:
-        db.rollback()  # Roll back on any error
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to create user account: {str(e)}"
-        )
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to create user: {e}")
 
-@app.get("/users/me", response_model=UserResponse)
-def get_user(current_user: Annotated[User, Depends(get_current_user)]):
-    """Get the profile for the currently logged-in user for the frontend to display user informaiton."""
-    # The 'get_current_user' dependency has already done all the work:
-    # 1. It got the token.
-    # 2. It validated the token.
-    # 3. It fetched the user from the database.
-    # 4. It handled the "user not found" case.
-    
-    # Explicitly convert the SQLAlchemy User model to the Pydantic UserResponse model.
-    return UserResponse.model_validate(current_user)
+@app.get("/users/me", response_model=schemas.UserResponse)
+def get_user_me(current_user: Annotated[models.User, Depends(security.get_current_user)]):
+    return current_user
 
-@app.get("/users/me/stats", response_model=CharacterStatsResponse)
-def get_my_character_stats(
-    current_user: Annotated[User, Depends(get_current_user)],
-    db: Session = Depends(get_db)
-    ):
-    """Get the character stats for the currently authenticated user."""
-    # Use the fresh 'db' session to query for the stats, we can't rely on current_user
-    stats = db.query(CharacterStats).filter(CharacterStats.user_id==current_user.id).first()
-
-    # The user should always have stats, but it's good practice to check
-    if not stats:
-        raise HTTPException(status_code=404, detail="Character stats not found for your account.")
-
-    # Calculate the level on the fly
-    current_level = calculate_level(stats.xp)
-
-    # Return a response that includes the calculated level
-    return CharacterStatsResponse(
-        user_id=stats.user_id,
-        level=current_level, # Use the calculated value here
-        xp=stats.xp,
-        resilience=stats.resilience,
-        clarity=stats.clarity,
-        discipline=stats.discipline,
-        commitment=stats.commitment
-    )
-
-
-# DAILY INTENTIONS ENDPOINTS
-
-# Updated for Smart Detection!
-@app.post("/intentions", response_model=DailyIntentionCreateResponse, status_code=status.HTTP_201_CREATED)
-def create_daily_intention(
-    intention_data: DailyIntentionCreate,
-    current_user: Annotated[User, Depends(get_current_user)],
-    stats: Annotated[CharacterStats, Depends(get_current_user_stats)],
+@app.get("/users/me/stats", response_model=schemas.CharacterStatsResponse)
+def get_my_stats(
+    current_user: Annotated[models.User, Depends(security.get_current_user)],
     db: Session = Depends(get_db)
 ):
-    """
-    Create today's Daily Intention - The One Thing that matters!
-    Updated: handles both initial and refined submissions!
-    Updated: now only creates a daily intention for the currently authenticated user.
-    The user is identified by their JWT token.
-
-    AI Coach forces clarity upfront:
-    - AI Coach analyzes intention before saving
-    - Value intentions will trigger refinement process
-    - Only clear, actionable intentions are saved
-    - This prevents clutter, confusion and failure before it starts!
-    - NEW: A refined submission is treated as a "Sacred Commitment" and is always saved, turning execution into a learning opportunity even if the goal isn't "perfect"
-
-    Core App Mechanics:
-    - One intention per day (enforces clarity and focus)
-    - NEW: ONE chance to refine intention!
-    - Must be measurable with target quantity
-    - User estimates focus block count needed (self-awareness building!)
-    - This starts the daily execution and learning loop!
-
-    Updated: Now also increases the user's Clarity stat!
-    """
-    # Check if today's Daily Intention for the currently logged in user already exists
-    existing_intention = get_today_intention(db, current_user.id)
-    if existing_intention:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Daily Intention already exists for today! Get going making progress on it!"
-        )
+    stats = crud.get_character_stats(db, user_id=current_user.id)
+    if not stats:
+        raise HTTPException(status_code=404, detail="Character stats not found.")
     
-    # Updated: AI Accountability and Clarity Coach analyzes the intention immediately after it is created *AND* determines if refinement is needed
-    ai_feedback, needs_refinement = analyze_daily_intention(
-        intention_data.daily_intention_text, 
-        intention_data.target_quantity, 
-        intention_data.focus_block_count, 
-        current_user.hrga
-    )
+    response = schemas.CharacterStatsResponse.model_validate(stats)
+    response.level = calculate_level(stats.xp)
+    return response
 
-    # NEW: Core Smart Detection logic
-    # MODIFIED: The core logic now checks for the 'is_refined' flag
-    # The intentino is saved only if it's a refined intention OR if the initial intention was approved
-    if intention_data.is_refined or not needs_refinement:
-        # --- SACRED COMMITMENT PATH ---
-        # This code now only runs if the intention is APPROVED
+# --- DAILY INTENTION ENDPOINTS ---
+
+@app.post("/intentions", response_model=schemas.DailyIntentionCreateResponse, status_code=status.HTTP_201_CREATED)
+def create_daily_intention(
+    intention_data: schemas.DailyIntentionCreate,
+    current_user: Annotated[models.User, Depends(security.get_current_user)],
+    db: Session = Depends(get_db)
+):
+    if crud.get_user_active_intention(db, current_user.id):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Active daily intention already exists for today.")
+
+    analysis_result = services.create_and_process_intention(db, current_user, intention_data)
+    
+    if intention_data.is_refined or not analysis_result.get("needs_refinement"):
         try:
-            # Create today's intention
-            db_intention = DailyIntention(
+            db_intention = models.DailyIntention(
                 user_id=current_user.id,
                 daily_intention_text=intention_data.daily_intention_text.strip(),
                 target_quantity=intention_data.target_quantity,
                 focus_block_count=intention_data.focus_block_count,
-                ai_feedback=ai_feedback,  # AI feedback on intention clarity
-                # completed_quantity defaults to 0 (from model)
-                # status defaults to 'pending' (from model)
-                # created_at defaults to current UTC time (from model)
+                ai_feedback=analysis_result.get("ai_feedback"),
             )
-
             db.add(db_intention)
-
-            # NEW: Increase Clarity stat
-            stats.clarity += 1
+            
+            clarity_gain = analysis_result.get("clarity_stat_gain", 0)
+            if clarity_gain > 0:
+                crud.update_character_stats(db, current_user.id, clarity=clarity_gain)
 
             db.commit()
-            db.refresh(db_intention)  # Refresh to get all default values from the database
+            db.refresh(db_intention)
+            
+            return schemas.DailyIntentionResponse.model_validate(db_intention)
 
-            return DailyIntentionResponse(
-                id=db_intention.id,
-                user_id=current_user.id,
-                daily_intention_text=db_intention.daily_intention_text,
-                target_quantity=db_intention.target_quantity,
-                completed_quantity=db_intention.completed_quantity,
-                focus_block_count=db_intention.focus_block_count,
-                completion_percentage=0.0,  # Initial percentage is 0%
-                status=db_intention.status,
-                created_at=db_intention.created_at,
-                ai_feedback=db_intention.ai_feedback, # AI Coach's immediate feedback
-                needs_refinement=False # Excplicitly set to False
-            )
-        
         except Exception as e:
-            print(f"Database error: {e}") 
-            db.rollback()  # Roll back on any error
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to create Daily Intention: {str(e)}"
-            )
-    
+            db.rollback()
+            raise HTTPException(status_code=500, detail=f"Failed to create intention: {e}")
     else:
-    # --- INITIAL REFINEMENT NEEDED PATH ---
-        # This path is only taken on the first submission if it needs refinement
-        # Do NOT save to the database. Return feedback for the user to refine
-        return DailyIntentionRefinementResponse(ai_feedback=ai_feedback)
-    
+        return schemas.DailyIntentionRefinementResponse(ai_feedback=analysis_result.get("ai_feedback"))
 
-@app.get("/intentions/today/me", response_model=DailyIntentionResponse)
-def get_my_daily_intention(
-    intention: Annotated[DailyIntention, Depends(get_current_user_daily_intention)]
-    ):
-    """
-    Get today's Daily Intention for the currently logged in user.
-    
-    The core of the Daily Commitment Screen!
-    """
-    # Calculate completion percentage
-    completion_percentage = (
-        (intention.completed_quantity / intention.target_quantity) * 100
-        if intention.target_quantity > 0 else 0.0
-    )
+@app.get("/intentions/today/active", response_model=schemas.DailyIntentionResponse)
+def get_my_active_intention(
+    intention: Annotated[models.DailyIntention, Depends(get_current_user_active_intention)]
+):
+    return intention
 
-    return DailyIntentionResponse(
-        id=intention.id,
-        user_id=intention.user_id,
-        daily_intention_text=intention.daily_intention_text,
-        target_quantity=intention.target_quantity,
-        completed_quantity=intention.completed_quantity,
-        focus_block_count=intention.focus_block_count,
-        completion_percentage=completion_percentage, # Use the calculated value
-        status=intention.status,
-        created_at=intention.created_at
-    )
-
-@app.patch("/intentions/today/progress", response_model=DailyIntentionResponse)
-def update_daily_intention_progress(
-    progress_data: DailyIntentionUpdate,
-    intention: Annotated[DailyIntention, Depends(get_current_user_daily_intention)],
+@app.patch("/intentions/today/progress", response_model=schemas.DailyIntentionResponse)
+def update_intention_progress(
+    progress_data: schemas.DailyIntentionUpdate,
+    intention: Annotated[models.DailyIntention, Depends(get_current_user_active_intention)],
     db: Session = Depends(get_db),
 ):
-    """
-    Updates Daily Intention progress for the currently logged in user - the core of the Daily Execution Loop!
-    - User reports progress after each Focus Block
-    - System calculates completion percentage
-    - Determines if intention is completed, in progress or failed
-    """
-    # Strict Forward Progress: Users should not be able to report less progress than already recorded
     if progress_data.completed_quantity < intention.completed_quantity:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="You cannot report less progress than you have already recorded."
-        )
+        raise HTTPException(status_code=400, detail="Cannot report less progress than already recorded.")
 
     try:
-        # Update progress: absolute, not incremental! Simpler mental model - "Where am I vs my goal?"
         intention.completed_quantity = min(progress_data.completed_quantity, intention.target_quantity)
-        if intention.completed_quantity >= intention.target_quantity:
-            intention.status = 'completed'
-        elif intention.completed_quantity > 0:
-            intention.status = 'in_progress'
-        else:
-            intention.status = 'pending'
+        if intention.completed_quantity > 0 and intention.status == 'active':
+             intention.status = 'in_progress'
 
         db.commit()
         db.refresh(intention)
-
-        # Calculate completion percentage
-        completion_percentage = (
-            (intention.completed_quantity / intention.target_quantity) * 100
-            if intention.target_quantity > 0 else 0.0
-        )
-
-        return DailyIntentionResponse(
-            id=intention.id,
-            user_id=intention.user_id,
-            daily_intention_text=intention.daily_intention_text,
-            target_quantity=intention.target_quantity,
-            completed_quantity=intention.completed_quantity,
-            focus_block_count=intention.focus_block_count,
-            completion_percentage=completion_percentage, # Use the calculated value
-            status=intention.status,
-            created_at=intention.created_at
-        )
-    
+        return intention
     except Exception as e:
-        print(f"Database error: {e}") 
-        db.rollback()  # Roll back on any error
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to update Daily Intention progress: {str(e)}"
-        )
-    
-@app.patch("/intentions/today/complete", response_model=DailyIntentionResponse)
-def complete_daily_intention(
-    current_user: Annotated[User, Depends(get_current_user)], 
-    db: Session = Depends(get_db)
-    ):
-    """
-    Mark today's Daily Intention for the currently logged in user as completed
-    
-    This triggers:
-    - XP gain for the user
-    - Discipline stat increase
-    - Streak continuation
-    """
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to update progress: {e}")
 
-    # Get today's Daily Intention for the currently logged in user
-    intention = get_today_intention(db, current_user.id)
-    if not intention:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Daily Intention for today not found. Ready to create one?"
-        )
-    
-    try:
-        # Mark as completed
-        intention.status = 'completed'
-        intention.completed_quantity = intention.target_quantity  # Ensure full completion
+# --- FOCUS BLOCK ENDPOINTS ---
 
-        db.commit()
-        db.refresh(intention)
-
-        return DailyIntentionResponse(
-            id=intention.id,
-            user_id=intention.user_id,
-            daily_intention_text=intention.daily_intention_text,
-            target_quantity=intention.target_quantity,
-            completed_quantity=intention.completed_quantity,
-            focus_block_count=intention.focus_block_count,
-            completion_percentage=100.0,  # Fully completed
-            status=intention.status,
-            created_at=intention.created_at
-        )
-    
-    except Exception as e:
-        print(f"Database error: {e}") 
-        db.rollback()  # Roll back on any error
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to complete Daily Intention: {str(e)}"
-        )
-    
-@app.patch("/intentions/today/fail", response_model=DailyIntentionResponse)
-def fail_daily_intention(
-    current_user: Annotated[User, Depends(get_current_user)], 
-    db: Session = Depends(get_db)
-    ):
-    """
-    Mark today's Daily Intention for the currently logged in user as failed
-    
-    This triggers the "Fail Forward" mechanism!
-    - AI feedback on failure in order to re-frame failure
-    - AI generates and initiates Recovery Quest
-    - Opportunity to gain Resilience stat
-    """
-
-    # Get today's Daily Intention for the currently logged in user
-    intention = get_today_intention(db, current_user.id)
-    if not intention:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Daily Intention for today not found. Ready to create one?"
-        )
-    
-    try:
-        # Mark as failed
-        intention.status = 'failed'
-        
-        db.commit()
-        db.refresh(intention)
-
-        # Calculate the final completion percentage
-        completion_percentage = (
-            (intention.completed_quantity / intention.target_quantity) * 100
-            if intention.target_quantity > 0 else 0.0
-        )
-
-        return DailyIntentionResponse(
-            id=intention.id,
-            user_id=intention.user_id,
-            daily_intention_text=intention.daily_intention_text,
-            target_quantity=intention.target_quantity,
-            completed_quantity=intention.completed_quantity,
-            focus_block_count=intention.focus_block_count,
-            completion_percentage=completion_percentage,  # Use the calculated percentage at the time of failure
-            status=intention.status,
-            created_at=intention.created_at
-        )
-    
-    except Exception as e:
-        print(f"Database error: {e}") 
-        db.rollback()  # Roll back on any error
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to mark Daily Intention as failed: {str(e)}"
-        )
-    
-# FOCUS BLOCK ENDPOINTS
-
-@app.post("/focus-blocks", response_model=FocusBlockResponse, status_code=status.HTTP_201_CREATED)
+@app.post("/focus-blocks", response_model=schemas.FocusBlockResponse, status_code=status.HTTP_201_CREATED)
 def create_focus_block(
-    block_data: FocusBlockCreate, 
-    daily_intention: Annotated[DailyIntention, Depends(get_current_user_daily_intention)],
-    db: Session = Depends(get_db)):
-    """
-    Create a new Focus Block when the currently logged in user starts a timed execution sprint.
-    Creates it by finding the user's active intention for the day.
-    This logs the user's chunked-down intention for the block.
-    NEW: Also ensures that the user has no other active Focus Blocks!
-    """
-    # The dependency has already guaranteed the currently logged in user's Daily Intention!
-    
-    # NEW: Enforce "One Active Block at a Time" rule
-    existing_active_block = db.query(FocusBlock).filter(
-        FocusBlock.daily_intention_id == daily_intention.id,
-        FocusBlock.status.in_(['pending', 'in_progress'])
+    block_data: schemas.FocusBlockCreate,
+    daily_intention: Annotated[models.DailyIntention, Depends(get_current_user_active_intention)],
+    db: Session = Depends(get_db)
+):
+    existing_active_block = db.query(models.FocusBlock).filter(
+        models.FocusBlock.daily_intention_id == daily_intention.id,
+        models.FocusBlock.status == 'in_progress'
     ).first()
-
     if existing_active_block:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT, # 409 Conflict is the perfect status code for this
-            detail="You already have an active Focus Block. Please complete or update it before starting a new one."
-        )
-    
-    # Create the new Focus Block instance if the check passes using the ID from the found intention
-    new_block = FocusBlock(
+        raise HTTPException(status_code=409, detail="An active Focus Block already exists.")
+
+    new_block = models.FocusBlock(
         daily_intention_id=daily_intention.id,
         focus_block_intention=block_data.focus_block_intention,
         duration_minutes=block_data.duration_minutes
     )
-
     try:
         db.add(new_block)
         db.commit()
         db.refresh(new_block)
-        return FocusBlockResponse.model_validate(new_block)
+        return new_block
     except Exception as e:
-        print(f"Database error on Focus Block creation: {e}")
         db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to create Focus Block: {str(e)}"
-        )
-    
-@app.patch("/focus-blocks/{block_id}", response_model=FocusBlockResponse)
+        raise HTTPException(status_code=500, detail=f"Failed to create Focus Block: {e}")
+
+@app.patch("/focus-blocks/{block_id}", response_model=schemas.FocusBlockResponse)
 def update_focus_block(
-    update_data: FocusBlockUpdate, 
-    block: Annotated[FocusBlock, Depends(get_owned_focus_block)],
-    stats: Annotated[CharacterStats, Depends(get_current_user_stats)],
+    update_data: schemas.FocusBlockUpdate,
+    block: Annotated[models.FocusBlock, Depends(get_owned_focus_block)],
+    current_user: Annotated[models.User, Depends(security.get_current_user)],
     db: Session = Depends(get_db)
-    ):
-    """
-    Update a Focus Block to add video URLs or change its status.
-    Used for the "Proof & Review" step after a block.
-    Updated: Each Focus Block now gives 10xp upon completion!
-    """ 
-    # The get_owned_focus_block dependency guarantees a Focus Block that belongs to the currently logged in user
+):
+    if block.created_at.date() != datetime.now(timezone.utc).date():
+        raise HTTPException(status_code=403, detail="Focus Block from a previous day cannot be updated.")
     
-    # NEW: Enforce "Sacred Finality"
-    today = datetime.now(timezone.utc).date()
-    if block.created_at.date() != today:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="This Focus Block is from a previous day and can no longer be updated."
-        )
-
     try:
-        # Update status if provided
-        if update_data.status is not None:
-            # NEW XP LOGIC
-            # If the block is being marked as 'completed' and wasn't already
-            if update_data.status == "completed" and block.status != "completed":
-                stats.xp += 10 # Award 10 XP per block
+        if update_data.status and update_data.status == "completed" and block.status != "completed":
+            services.complete_focus_block(db, current_user, block)
+            block.status = "completed"
 
-            block.status = update_data.status.strip()
-
-        # Update URLs if provided
         if update_data.pre_block_video_url is not None:
             block.pre_block_video_url = update_data.pre_block_video_url
         if update_data.post_block_video_url is not None:
             block.post_block_video_url = update_data.post_block_video_url
-
+        
         db.commit()
         db.refresh(block)
-        return FocusBlockResponse.model_validate(block)
+        return block
     except Exception as e:
-        print(f"Database error on Focus Block update: {e}")
         db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to update Focus Block: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to update Focus Block: {e}")
 
+# --- DAILY RESULTS ENDPOINTS ---
 
-# DAILY RESULTS ENDPOINTS
-
-@app.post("/daily-results", response_model=DailyResultResponse, status_code=status.HTTP_201_CREATED)
+@app.post("/daily-results", response_model=schemas.DailyResultResponse, status_code=status.HTTP_201_CREATED)
 def create_daily_result(
-    result_data: DailyResultCreate,
-    current_user: Annotated[User, Depends(get_current_user)],
-    daily_intention: Annotated[DailyIntention, Depends(get_current_user_daily_intention)],
-    stats: Annotated[CharacterStats, Depends(get_current_user_stats)], 
+    current_user: Annotated[models.User, Depends(security.get_current_user)],
+    daily_intention: Annotated[models.DailyIntention, Depends(get_current_user_active_intention)],
     db: Session = Depends(get_db)
 ):
-    """
-    Create Daily Result evening reflection - The Learning and Growth phase
-    
-    Evening Ritual core mechanics:
-    - Deep reflection on the day's execution
-    - AI Accountability and Clarity Coach provides personalized feedback
-    - Recovery Quest generated and initiated for failed intentions
-    - Transforms failures into valuable learning data
-    - Builds Resilience and Clarity stats
+    if db.query(models.DailyResult).filter(models.DailyResult.daily_intention_id == daily_intention.id).first():
+        raise HTTPException(status_code=400, detail="Daily Result already exists for this intention.")
 
-    Update: If successful, increase the user's Discipline stat!
-    """
-    # The get_current_user_daily_intention dependency guarantees a Daily Intention from the currently logged in user
+    # Determine outcome and update intention status
+    if daily_intention.completed_quantity >= daily_intention.target_quantity:
+        services.mark_intention_complete(db, current_user, daily_intention)
+    else:
+        services.mark_intention_failed(db, current_user, daily_intention)
     
-    # Check if Daily Result already exists for this intention
-    existing_result = db.query(DailyResult).filter(
-        DailyResult.daily_intention_id == daily_intention.id
-    ).first()
-    if existing_result:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Daily Result already exists for this intention. Sacred finality!"
-        )
-    
+    # Call service for reflection AI
+    reflection_result = services.create_daily_reflection(db, current_user, daily_intention)
+
     try:
-        # Determine if intention succeeded or failed
-        succeeded = daily_intention.status == 'completed'
-
-        # Generate AI feedback for evening reflection
-        if succeeded:
-            ai_feedback = generate_success_feedback(daily_intention.daily_intention_text, daily_intention.target_quantity, current_user.hrga)
-            recovery_quest = None
-
-            # NEW: Increase Discipline stat on success!
-            stats.discipline += 1
-
-        else: # Failed intention
-            # Calculate what they managed to achieve
-            completion_rate = (
-                (daily_intention.completed_quantity / daily_intention.target_quantity) * 100
-                if daily_intention.target_quantity > 0 else 0.0
-            )
-
-            # Acknowledge completion rate
-            ai_feedback = f"You achieved {completion_rate:.1f}% of your intention. Let's turn this into learning..."
-
-            # AI-generated Recovery Quest based on failure pattern
-            recovery_quest = generate_recovery_quest(
-            daily_intention.daily_intention_text,
-            completion_rate,
-            daily_intention.target_quantity,
-            daily_intention.completed_quantity
-            )
-
-        # Create the Daily Result record
-        db_result = DailyResult(
+        db_result = models.DailyResult(
             daily_intention_id=daily_intention.id,
-            succeeded_failed=succeeded,
-            ai_feedback=ai_feedback,
-            recovery_quest=recovery_quest,
-            # user_confirmation_correction defaults to None
-            # recovery_quest_response defaults to None  
-            # created_at defaults to current UTC time
+            succeeded=reflection_result.get("succeeded"),
+            ai_feedback=reflection_result.get("ai_feedback"),
+            recovery_quest=reflection_result.get("recovery_quest")
         )
-
         db.add(db_result)
         db.commit()
         db.refresh(db_result)
-
-        # Return using the simple, elegant, and consistent pattern
-        return DailyResultResponse.model_validate(db_result)
-    
+        return db_result
     except Exception as e:
-        print(f"Database error: {e}") 
         db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to create Daily Result: {str(e)}"
-        )
-    
-@app.get("/daily-results/{intention_id}", response_model=DailyResultResponse)
-def get_daily_result(
-    # The dependency does all the work: finds the result AND verifies ownership.
-    result: Annotated[DailyResult, Depends(get_owned_daily_result_by_intention_id)]
-    ):
-    """
-    Get the Daily Result for a specific, user-owned intention.
-    Used for disaplying reflection insights and Recovery Quests
-    """
-    # The 'result' object is guaranteed to be the correct, owned DailyResult.
-    # All we have to do is convert it to the response model and return it.
-    return DailyResultResponse.model_validate(result)
+        raise HTTPException(status_code=500, detail=f"Failed to create Daily Result: {e}")
 
-@app.post("/daily-results/{result_id}/recovery-quest", response_model=RecoveryQuestResponse)
+@app.post("/daily-results/{result_id}/recovery-quest", response_model=schemas.RecoveryQuestResponse)
 def respond_to_recovery_quest(
-    quest_response: RecoveryQuestInput,
-    result: Annotated[DailyResult, Depends(get_owned_daily_result_by_result_id)],
-    stats: Annotated[CharacterStats, Depends(get_current_user_stats)],
+    result_id: int,
+    quest_response: schemas.RecoveryQuestInput,
+    current_user: Annotated[models.User, Depends(security.get_current_user)],
     db: Session = Depends(get_db)
 ):
-    """
-    Respond to Recovery Quest - the "Fail Forward" magic and the sacred learning opportunity!
-    
-    This is where users transforms failure into growth and wisdom:
-    - User reflects on what went less than optimal
-    - AI Accountability and Clarity Coach provides personalized guidance
-    - Resilience stat increases
-    - Learning through failure becomes part of character progression
-    """
-    # The dependency has already found the user-owned DailyResult.
-    
-    # Check if Recovery Quest exists; business logic check specific to this endpoint
+    result = get_owned_daily_result(result_id, current_user, db) # Use dependency as a function
     if not result.recovery_quest:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No Recovery Quest available for this result"
-        )
-    
-    # We can get the original Daily Intention for personalized AI coaching response via the relationship now, no need for another query!
-    original_intention = result.daily_intention
+        raise HTTPException(status_code=400, detail="No Recovery Quest available for this result.")
 
-    # Calculate what the user managed to achieve
-    completion_rate = (
-        (original_intention.completed_quantity / original_intention.target_quantity) * 100
-        if original_intention.target_quantity > 0 else 0.0
-    )
+    coaching_result = services.process_recovery_quest_response(db, current_user, result, quest_response.recovery_quest_response)
     
     try:
-        # Save user's response to the Recovery Quest
         result.recovery_quest_response = quest_response.recovery_quest_response.strip()
-
-        # NEW: Increase Resilience stat for completing the quest
-        stats.resilience += 1
-
-        # AI Coach analyzes the response and provides personalized coaching
-        ai_coaching_response = generate_coaching_response(quest_response.recovery_quest_response, original_intention.daily_intention_text, completion_rate)
-
+        
+        resilience_gain = coaching_result.get("resilience_stat_gain", 0)
+        if resilience_gain > 0:
+            crud.update_character_stats(db, current_user.id, resilience=resilience_gain)
+        
         db.commit()
-        db.refresh(result)
 
-        # Manually construct the response because it uses a calculated value.
-        return RecoveryQuestResponse(
+        return schemas.RecoveryQuestResponse(
             recovery_quest_response=result.recovery_quest_response,
-            ai_coaching_feedback=ai_coaching_response
+            ai_coaching_feedback=coaching_result.get("ai_coaching_feedback")
         )
-    
     except Exception as e:
-        print(f"Database error: {e}") 
         db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to respond to Recovery Quest: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to respond to Recovery Quest: {e}")
