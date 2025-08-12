@@ -2,6 +2,6 @@
 # exit on error
 set -o errexit
 
-pip install -r requirements.txt
-
+# Render will have already installed requirements,
+# so we only need to run the migrations.
 alembic upgrade head
