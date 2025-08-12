@@ -1,7 +1,8 @@
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Request, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from datetime import datetime, timezone
 from typing import Annotated
@@ -26,6 +27,9 @@ app = FastAPI(
 # This serves files from the 'static' directory at the '/static' URL path
 # We'll use a FileResponse to serve index.html from the root path
 app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# Configure Jinja2 Templates
+templates = Jinja2Templates(directory="app/templates")
 
 # --- UTILITY FUNCTIONS ---
 
@@ -79,10 +83,13 @@ def get_owned_daily_result(
 
 # --- GENERAL ENDPOINTS ---
 
-# Have our root endpoint serve the static html file
-@app.get("/", response_class=FileResponse)
-def read_root():
-    return "static/index.html"
+# Have our root endpoint serve the static Jinja-templated dashboard
+@app.get("/", response_class=HTMLResponse)
+async def read_root(request: Request):
+    """
+    Serves the main dashboard page.
+    """
+    return templates.TemplateResponse("dashboard.html", {"request": request})
 
 @app.post("/login", response_model=schemas.TokenResponse)
 def login_for_access_token(
