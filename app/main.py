@@ -89,7 +89,7 @@ async def read_root(request: Request):
     """
     Serves the main dashboard page.
     """
-    return templates.TemplateResponse("dashboard.html", {"request": request})
+    return templates.TemplateResponse(request=request, name="dashboard.html", context={})
 
 @app.post("/login", response_model=schemas.TokenResponse)
 def login_for_access_token(
