@@ -6,6 +6,7 @@ from sqlalchemy.orm import sessionmaker
 # Correctly import our FastAPI app and database components
 from app.main import app
 from app.database import Base, get_db
+from app import models # To load all models and make them known to SQLAlchemy’s Base before we ask it to create the tables
 
 # --- Test Database Configuration ---
 # Use an in-memory SQLite database for testing
