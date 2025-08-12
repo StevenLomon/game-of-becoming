@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request, Depends, HTTPException, status
+from fastapi import FastAPI, Request, Depends, HTTPException, status, Form
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -142,22 +142,29 @@ def get_my_stats(
 
 @app.post("/daily-intentions")
 async def handle_create_daily_intention(
-    # This is the magic: FastAPI sees this and automatically parses the
-    # incoming form data, validates it against your DailyIntentionCreate schema,
-    # and gives you a nice object to work with.
-    intention_data: schemas.DailyIntentionCreate = Depends(),
+    # --- THIS IS THE FIX ---
+    # We now explicitly declare that each piece of data comes from the form.
+    # The variable names MUST match the 'name' attributes in your HTML <input> tags.
+    daily_intention_text: str = Form(...),
+    target_quantity: int = Form(...),
+    focus_block_count: int = Form(...),
+    # We can ignore 'default_focus_block_duration' as we don't save it yet.
     db: Session = Depends(get_db)
 ):
     """
     Receives form data from the dashboard to create a new daily intention.
     """
-    # === TEMPORARY HACK UNTIL WE HAVE LOGIN ===
-    # We'll assign all intentions to a hardcoded user ID.
-    # Let's make sure User 1 exists, and if not, create a dummy one.
+    # Now that we have the individual fields, we create the Pydantic schema object manually.
+    intention_data = schemas.DailyIntentionCreate(
+        daily_intention_text=daily_intention_text,
+        target_quantity=target_quantity,
+        focus_block_count=focus_block_count
+    )
+
+    # === TEMPORARY HACK UNTIL WE HAVE LOGIN (this part stays the same) ===
     user_id = 1
     db_user = db.query(models.User).filter(models.User.id == user_id).first()
     if not db_user:
-        # If running for the first time, this creates our default user
         dummy_user_data = schemas.UserCreate(
             name="Default User", 
             email="default@example.com", 
@@ -165,12 +172,10 @@ async def handle_create_daily_intention(
         )
         crud.create_user(db=db, user=dummy_user_data)
         
-    # Now, create the intention and link it to our user
+    # Now, create the intention and link it to our user (this part stays the same)
     crud.create_daily_intention(db=db, intention=intention_data, user_id=user_id)
     
-    # After successfully creating the intention, redirect the user back to the dashboard.
-    # This is the standard "POST-Redirect-GET" pattern.
-    # status.HTTP_303_SEE_OTHER tells the browser it should make a GET request to the new URL.
+    # Redirect back to the dashboard (this part stays the same)
     return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
 
 """
