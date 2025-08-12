@@ -1,5 +1,7 @@
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from datetime import datetime, timezone
 from typing import Annotated
@@ -20,6 +22,10 @@ app = FastAPI(
     version="1.0.0",
     docs_url="/docs"
 )
+
+# This serves files from the 'static' directory at the '/static' URL path
+# We'll use a FileResponse to serve index.html from the root path
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # --- UTILITY FUNCTIONS ---
 
@@ -73,9 +79,10 @@ def get_owned_daily_result(
 
 # --- GENERAL ENDPOINTS ---
 
-@app.get("/")
+# Have our root endpoint serve the static html file
+@app.get("/", response_class=FileResponse)
 def read_root():
-    return {"message": "Welcome to The Game of Becoming API!", "docs_url": "/docs"}
+    return "static/index.html"
 
 @app.post("/login", response_model=schemas.TokenResponse)
 def login_for_access_token(
