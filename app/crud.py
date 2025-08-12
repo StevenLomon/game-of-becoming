@@ -30,6 +30,22 @@ def get_user(db: Session, user_id: int) -> models.User | None:
 def get_user_by_email(db: Session, email: str) -> models.User | None:
     return db.query(models.User).filter(models.User.email == email).first()
 
+def create_daily_intention(db: Session, intention: schemas.DailyIntentionCreate, user_id: int):
+    """
+    Creates a new Daily Intention in the database and links it to a user.
+    """
+    # Create the SQLAlchemy model instance from the Pydantic schema data
+    # The `**intention.model_dump()` is a neat trick to unpack the dictionary
+    db_intention = models.DailyIntention(
+        **intention.model_dump(), 
+        user_id=user_id
+    )
+    
+    db.add(db_intention)
+    db.commit()
+    db.refresh(db_intention)
+    return db_intention
+
 def get_user_active_intention(db: Session, user_id: int) -> models.DailyIntention | None:
     """Gets the active Daily Intention for a user for the current day."""
     today = datetime.now(timezone.utc).date()

@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Request, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from datetime import datetime, timezone
@@ -140,6 +140,40 @@ def get_my_stats(
 
 # --- DAILY INTENTION ENDPOINTS ---
 
+@app.post("/daily-intentions")
+async def handle_create_daily_intention(
+    # This is the magic: FastAPI sees this and automatically parses the
+    # incoming form data, validates it against your DailyIntentionCreate schema,
+    # and gives you a nice object to work with.
+    intention_data: schemas.DailyIntentionCreate = Depends(),
+    db: Session = Depends(get_db)
+):
+    """
+    Receives form data from the dashboard to create a new daily intention.
+    """
+    # === TEMPORARY HACK UNTIL WE HAVE LOGIN ===
+    # We'll assign all intentions to a hardcoded user ID.
+    # Let's make sure User 1 exists, and if not, create a dummy one.
+    user_id = 1
+    db_user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not db_user:
+        # If running for the first time, this creates our default user
+        dummy_user_data = schemas.UserCreate(
+            name="Default User", 
+            email="default@example.com", 
+            password="a_very_secure_password"
+        )
+        crud.create_user(db=db, user=dummy_user_data)
+        
+    # Now, create the intention and link it to our user
+    crud.create_daily_intention(db=db, intention=intention_data, user_id=user_id)
+    
+    # After successfully creating the intention, redirect the user back to the dashboard.
+    # This is the standard "POST-Redirect-GET" pattern.
+    # status.HTTP_303_SEE_OTHER tells the browser it should make a GET request to the new URL.
+    return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
+
+"""
 @app.post("/intentions", response_model=schemas.DailyIntentionCreateResponse, status_code=status.HTTP_201_CREATED)
 def create_daily_intention(
     intention_data: schemas.DailyIntentionCreate,
@@ -176,7 +210,8 @@ def create_daily_intention(
             raise HTTPException(status_code=500, detail=f"Failed to create intention: {e}")
     else:
         return schemas.DailyIntentionRefinementResponse(ai_feedback=analysis_result.get("ai_feedback"))
-
+"""
+        
 @app.get("/intentions/today/active", response_model=schemas.DailyIntentionResponse)
 def get_my_active_intention(
     intention: Annotated[models.DailyIntention, Depends(get_current_user_active_intention)]
