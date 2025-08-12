@@ -19,6 +19,9 @@ def test_register_user_success(client: TestClient):
         }
     )
 
+    # Useful debugging line
+    print("DEBUG:", response.json()) 
+
     # Assert that the request was successful
     assert response.status_code == 201
     
