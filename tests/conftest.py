@@ -4,9 +4,9 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app import app
-from database import Base, get_db
-from models import User # Import our models
+from app.main import app
+from app.database import Base, get_db
+from app.models import User # Import our models
 
 # --- Test Database Setup ---
 # Use an in-memory SQLite database for testing
