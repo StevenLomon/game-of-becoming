@@ -170,7 +170,7 @@ async def handle_create_daily_intention(
             email="default@example.com", 
             password="a_very_secure_password"
         )
-        crud.create_user(db=db, user=dummy_user_data)
+        crud.create_user(db=db, user_data=dummy_user_data)
         
     # Now, create the intention and link it to our user (this part stays the same)
     crud.create_daily_intention(db=db, intention=intention_data, user_id=user_id)
