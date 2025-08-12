@@ -35,9 +35,10 @@ def create_daily_intention(db: Session, intention: schemas.DailyIntentionCreate,
     Creates a new Daily Intention in the database and links it to a user.
     """
     # Create the SQLAlchemy model instance from the Pydantic schema data
-    # The `**intention.model_dump()` is a neat trick to unpack the dictionary
     db_intention = models.DailyIntention(
-        **intention.model_dump(), 
+        daily_intention_text=intention.daily_intention_text,
+        target_quantity=intention.target_quantity,
+        focus_block_count=intention.focus_block_count,
         user_id=user_id
     )
     
