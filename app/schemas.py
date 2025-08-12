@@ -61,7 +61,7 @@ class UserResponse(BaseModel):
     id: int
     name: str
     email: str
-    hrga: str
+    hrga: Optional[str]
     registered_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
