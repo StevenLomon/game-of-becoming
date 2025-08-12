@@ -29,9 +29,9 @@ class UserBase(BaseModel):
     """Base schema for User"""
     name: str = Field(..., min_length=1, max_length=100)
     email: EmailStr
-    hrga: str = Field(..., min_length=1, max_length=8000) # Reasonable cap
+    hrga: Optional[str] = Field(None, min_length=1, max_length=8000) # Reasonable cap. Can be None at registration, not after onboarding!
 
-    @field_validator('name', 'hrga')
+    @field_validator('name') # Validator doesn't validate hrga anymore
     def validate_text_fields(cls, v):
         v = v.strip()
         if not v:

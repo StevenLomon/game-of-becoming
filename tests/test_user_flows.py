@@ -2,35 +2,29 @@
 
 from fastapi.testclient import TestClient
 
-# The `client` fixture is automatically injected by pytest from conftest.py
-# The fixes in conftest.py (using a test database) will resolve the 500 errors.
-
 def test_register_user_success(client: TestClient):
     """
     Test successful user registration.
+    HRGA should be None upon initial creation.
     """
     response = client.post(
         "/register",
         json={
             "name": "Test User",
             "email": "test@example.com",
-            # hrga is no longer part of the registration schema
+            # hrga is no longer sent during registration
             "password": "a_strong_password"
         }
     )
 
-    # Useful debugging line
-    print("DEBUG:", response.json()) 
-
     # Assert that the request was successful
     assert response.status_code == 201
     
-    # Assert the response body contains the correct data
     data = response.json()
     assert data["email"] == "test@example.com"
     assert data["name"] == "Test User"
     assert "id" in data
-    # hrga should be None by default after registration
+    # Assert that HRGA is correctly None after registration
     assert data["hrga"] is None
 
 def test_register_user_duplicate_email(client: TestClient):

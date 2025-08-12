@@ -1,5 +1,6 @@
 from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, ForeignKey
 from sqlalchemy.orm import relationship # To define relationships between models
+from typing import List, Optional
 from datetime import datetime, timezone
 
 from .database import Base
@@ -10,7 +11,7 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(100), nullable=False)
     email = Column(String(255), unique=True, nullable=False, index=True)
-    hrga = Column(Text, nullable=False) # Highest Revenue Generated Activity. Unlimited text field - let users be as comprehensive as they wish
+    hrga = Column(Text, nullable=True) # Highest Revenue Generated Activity. Unlimited text field - let users be as comprehensive as they wish. Can be null only at registration, not after onboarding!
     default_focus_block_duration = Column(Integer, default=50, nullable=False) # In minutes
     registered_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
 
