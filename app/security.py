@@ -6,9 +6,9 @@ from sqlalchemy.orm import Session
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 
-from crud import get_user # To look up users in the database
-from database import get_db # Import our db session generator
-from schemas import TokenData # Import our token payload schema
+from .crud import get_user # To look up users in the database
+from .database import get_db # Import our db session generator
+from .schemas import TokenData # Import our token payload schema
 
 # This object is what FastAPI uses to extract the token from the request header.
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")

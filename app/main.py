@@ -7,19 +7,18 @@ from typing import Annotated
 from dotenv import load_dotenv
 import os, math, anthropic
 
-from database import get_db
-from security import create_access_token, get_current_user
-from utils import get_password_hash, verify_password
-from crud import create_user, get_user_by_email, get_or_create_user_stats, get_today_intention
+from .database import get_db
+from .security import create_access_token, get_current_user
+from .utils import verify_password
+from .crud import create_user, get_user_by_email, get_or_create_user_stats, get_today_intention
 
 # Load environment variables
 load_dotenv()
 
 # Import models and schemas
-from models import Base, User, UserAuth, CharacterStats, DailyIntention, FocusBlock, DailyResult
+from models import Base, User, CharacterStats, DailyIntention, FocusBlock, DailyResult
 from schemas import (
-    TokenResponse, TokenData,
-    UserCreate, UserUpdate, UserResponse, CharacterStatsResponse,
+    TokenResponse, UserCreate, UserResponse, CharacterStatsResponse,
     DailyIntentionCreate, DailyIntentionUpdate, DailyIntentionResponse,
     DailyIntentionCreateResponse, DailyIntentionRefinementResponse, 
     FocusBlockCreate, FocusBlockResponse, FocusBlockUpdate,

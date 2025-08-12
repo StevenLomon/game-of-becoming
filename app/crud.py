@@ -1,8 +1,9 @@
 from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session
-from models import User, UserAuth, CharacterStats, DailyIntention
-from schemas import UserCreate
-from utils import get_password_hash
+
+from .models import User, UserAuth, CharacterStats, DailyIntention
+from .schemas import UserCreate
+from .utils import get_password_hash
 
 def create_user(db: Session, user_data: UserCreate) -> User:
     """Creates a new user and all associated records in a single transaction"""
