@@ -1,4 +1,3 @@
-# app/llm_providers/anthropic_provider.py
 import anthropic
 from typing import Dict, Any
 from pydantic import BaseModel

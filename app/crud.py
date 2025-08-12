@@ -1,57 +1,75 @@
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 
-from .models import User, UserAuth, CharacterStats, DailyIntention
-from .schemas import UserCreate
-from .utils import get_password_hash
+# Import modules
+from . import models, schemas, utils 
 
-def create_user(db: Session, user_data: UserCreate) -> User:
+def create_user(db: Session, user_data: schemas.UserCreate) -> models.User:
     """Creates a new user and all associated records in a single transaction"""
-    # Create the User record
-    new_user = User(
+    new_user = models.User(
         name=user_data.name.strip(),
-        email=user_data.email.strip(),
-        hrga=user_data.hrga.strip()
+        email=user_data.email.strip()
     )
     db.add(new_user)
-    db.flush() # Assigns ID without committing
+    db.flush() 
 
-    # Create the UserAuth record
-    user_auth = UserAuth(
+    user_auth = models.UserAuth(
         user_id=new_user.id,
-        password_hash=get_password_hash(user_data.password.strip())
+        password_hash=utils.get_password_hash(user_data.password.strip())
     )
     db.add(user_auth)
 
-    # Create the CharacterStats record
-    new_stats = CharacterStats(user_id=new_user.id)
+    new_stats = models.CharacterStats(user_id=new_user.id)
     db.add(new_stats)
-
-    # We don't commit here! The endpoint will handle the commit/rollback
+    
     return new_user
 
-def get_user(db: Session, user_id: int) -> User | None:
-    """Get a user by their unique ID. Returns None if not found"""
-    return db.query(User).filter(User.id == user_id).first()
+def get_user(db: Session, user_id: int) -> models.User | None:
+    return db.query(models.User).filter(models.User.id == user_id).first()
 
-def get_user_by_email(db: Session, email: str) -> User | None:
-    """Get a user by email. Returns None if not found."""
-    return db.query(User).filter(User.email == email).first()
+def get_user_by_email(db: Session, email: str) -> models.User | None:
+    return db.query(models.User).filter(models.User.email == email).first()
 
-def get_or_create_user_stats(db: Session, user_id: int) -> CharacterStats:
-    """Fetches a user's stats, creating a new record if one doesn't exist"""
-    stats = db.query(CharacterStats).filter(CharacterStats.user_id == user_id).first()
+def get_user_active_intention(db: Session, user_id: int) -> models.DailyIntention | None:
+    """Gets the active Daily Intention for a user for the current day."""
+    today = datetime.now(timezone.utc).date()
+    start_of_day = datetime.combine(today, datetime.min.time(), tzinfo=timezone.utc)
+    end_of_day = datetime.combine(today, datetime.max.time(), tzinfo=timezone.utc)
+
+    return db.query(models.DailyIntention).filter(
+        models.DailyIntention.user_id == user_id,
+        models.DailyIntention.created_at >= start_of_day,
+        models.DailyIntention.created_at <= end_of_day,
+        models.DailyIntention.status == 'active'
+    ).first()
+
+def get_or_create_user_stats(db: Session, user_id: int) -> models.CharacterStats:
+    stats = db.query(models.CharacterStats).filter(models.CharacterStats.user_id == user_id).first()
     if not stats:
-        stats = CharacterStats(user_id=user_id)
+        stats = models.CharacterStats(user_id=user_id)
         db.add(stats)
-        # We don't commit here; we let the calling fuction handle the commit!
     return stats
 
-def get_today_intention(db: Session, user_id: int) -> DailyIntention | None:
-    """Get today's Daily Intention for a user. Returns None if not found."""
-    today = datetime.now(timezone.utc).date()
-    return db.query(DailyIntention).filter(
-        DailyIntention.user_id == user_id,
-        DailyIntention.created_at >= datetime.combine(today, datetime.min.time()),
-        DailyIntention.created_at < datetime.combine(today + timedelta(days=1), datetime.min.time())
-    ).first()
+def get_character_stats(db: Session, user_id: int) -> models.CharacterStats | None:
+    return db.query(models.CharacterStats).filter(models.CharacterStats.user_id == user_id).first()
+
+def update_character_stats(
+    db: Session, user_id: int, xp: int = 0, clarity: int = 0, discipline: int = 0, resilience: int = 0
+) -> models.CharacterStats:
+    stats = get_or_create_user_stats(db, user_id=user_id)
+    stats.xp += xp
+    stats.clarity += clarity
+    stats.discipline += discipline
+    stats.resilience += resilience
+    db.add(stats)
+    return stats
+
+def update_intention_progress(db: Session, intention: models.DailyIntention, progress: int) -> models.DailyIntention:
+    intention.current_quantity = progress
+    db.commit()
+    db.refresh(intention)
+    return intention
+
+def update_intention_status(db: Session, intention: models.DailyIntention, status: str) -> models.DailyIntention:
+    intention.status = status
+    return intention
