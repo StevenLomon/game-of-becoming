@@ -497,30 +497,48 @@ def fail_daily_intention(
 
 @app.post("/focus-blocks", response_model=schemas.FocusBlockResponse, status_code=status.HTTP_201_CREATED)
 def create_focus_block(
-    block_data: schemas.FocusBlockCreate,
+    block_data: schemas.FocusBlockCreate, 
     daily_intention: Annotated[models.DailyIntention, Depends(get_current_user_daily_intention)],
-    db: Session = Depends(database.get_db)
-):
+    db: Session = Depends(database.get_db)):
+    """
+    Create a new Focus Block when the currently logged in user starts a timed execution sprint.
+    Creates it by finding the user's active intention for the day.
+    This logs the user's chunked-down intention for the block.
+    NEW: Also ensures that the user has no other active Focus Blocks!
+    """
+    # The dependency has already guaranteed the currently logged in user's Daily Intention!
+    
+    # NEW: Enforce "One Active Block at a Time" rule
     existing_active_block = db.query(models.FocusBlock).filter(
         models.FocusBlock.daily_intention_id == daily_intention.id,
-        models.FocusBlock.status == 'in_progress'
+        models.FocusBlock.status.in_(['pending', 'in_progress'])
     ).first()
-    if existing_active_block:
-        raise HTTPException(status_code=409, detail="An active Focus Block already exists.")
 
+    if existing_active_block:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, # 409 Conflict is the perfect status code for this
+            detail="You already have an active Focus Block. Please complete or update it before starting a new one."
+        )
+    
+    # Create the new Focus Block instance if the check passes using the ID from the found intention
     new_block = models.FocusBlock(
         daily_intention_id=daily_intention.id,
         focus_block_intention=block_data.focus_block_intention,
         duration_minutes=block_data.duration_minutes
     )
+
     try:
         db.add(new_block)
         db.commit()
         db.refresh(new_block)
         return new_block
     except Exception as e:
+        print(f"Database error on Focus Block creation: {e}")
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"Failed to create Focus Block: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to create Focus Block: {str(e)}"
+        )
 
 @app.patch("/focus-blocks/{block_id}", response_model=schemas.FocusBlockResponse)
 def update_focus_block(
