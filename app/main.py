@@ -278,7 +278,7 @@ def create_daily_intention(
             detail="Daily Intention already exists for today! Get going making progress on it!"
         )
     
-    # 2. Delegate to the service layer (with mock AI prompts and logic for this showcase)
+    # 2. Delegate AI prompts and logic to the service layer
     analysis_result = services.create_and_process_intention(db, current_user, intention_data)
 
     # 3. Handle the result using our precise business logic
