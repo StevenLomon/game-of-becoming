@@ -664,30 +664,54 @@ def get_daily_result(
 
 @app.post("/daily-results/{result_id}/recovery-quest", response_model=schemas.RecoveryQuestResponse)
 def respond_to_recovery_quest(
-    result_id: int,
     quest_response: schemas.RecoveryQuestInput,
-    current_user: Annotated[models.User, Depends(security.get_current_user)],
+    result: Annotated[models.DailyResult, Depends(get_owned_daily_result_by_result_id)],
+    stats: Annotated[models.CharacterStats, Depends(get_current_user_stats)],
     db: Session = Depends(database.get_db)
 ):
-    result = get_owned_daily_result(result_id, current_user, db) # Use dependency as a function
-    if not result.recovery_quest:
-        raise HTTPException(status_code=400, detail="No Recovery Quest available for this result.")
-
-    coaching_result = services.process_recovery_quest_response(db, current_user, result, quest_response.recovery_quest_response)
+    """Submits user's reflection on a failed day and receives AI coaching via the service layer."""
+    # The dependency already guarantees user-owned DailyResult.
     
+    # Check if Recovery Quest exists; business logic check specific to this endpoint
+    if not result.recovery_quest:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No Recovery Quest available for this result."
+        )
+    
+    # Check if a response has already been submitted
+    if result.recovery_quest_response:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="A response for this Recovery Quest has already been submitted."
+        )
+        
     try:
-        result.recovery_quest_response = quest_response.recovery_quest_response.strip()
-        
-        resilience_gain = coaching_result.get("resilience_stat_gain", 0)
-        if resilience_gain > 0:
-            crud.update_character_stats(db, current_user.id, resilience=resilience_gain)
-        
-        db.commit()
+        # Call the service to get the simulated AI coaching and stat gains
+        coaching_data = services.process_recovery_quest_response(
+            db=db,
+            user=stats.user,
+            result=result,
+            response_text=quest_response.recovery_quest_response
+        )
 
+        # Apply the user's input and the service's results to the models
+        result.recovery_quest_response = quest_response.recovery_quest_response.strip()
+        stats.resilience += coaching_data.get("resilience_stat_gain", 0)
+
+        db.commit()
+        db.refresh(result)
+        db.refresh(stats)
+
+        # Return the data, using the coaching feedback from the service
         return schemas.RecoveryQuestResponse(
             recovery_quest_response=result.recovery_quest_response,
-            ai_coaching_feedback=coaching_result.get("ai_coaching_feedback")
+            ai_coaching_feedback=coaching_data["ai_coaching_feedback"]
         )
+    
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"Failed to respond to Recovery Quest: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to respond to Recovery Quest: {str(e)}"
+        )
