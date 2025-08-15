@@ -650,6 +650,18 @@ def create_daily_result(
             detail=f"Failed to create Daily Result: {str(e)}"
         )
 
+@app.get("/daily-results/{intention_id}", response_model=schemas.DailyResultResponse)
+def get_daily_result(
+    # The dependency does all the work: finds the result AND verifies ownership.
+    result: Annotated[models.DailyResult, Depends(get_owned_daily_result_by_intention_id)]
+    ):
+    """
+    Get the Daily Result for a specific, user-owned intention.
+    Used for disaplying reflection insights and Recovery Quests
+    """
+    # The 'result' object is guaranteed to be the correct, owned DailyResult.
+    return result
+
 @app.post("/daily-results/{result_id}/recovery-quest", response_model=schemas.RecoveryQuestResponse)
 def respond_to_recovery_quest(
     result_id: int,
