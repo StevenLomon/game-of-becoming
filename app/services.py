@@ -1,4 +1,4 @@
-from typing import Dict, Any
+from typing import Any
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field
 import os
@@ -27,7 +27,7 @@ class RecoveryQuestCoachingResponse(BaseModel):
 
 # --- Service Functions (Business Logic Layer) ---
 
-def create_and_process_intention(db: Session, user: models.User, intention_data: schemas.DailyIntentionCreate) -> Dict[str, Any]:
+def create_and_process_intention(db: Session, user: models.User, intention_data: schemas.DailyIntentionCreate) -> dict[str, Any]:
     """
     Analyzes a daily intention using the AI Coach's "Clarity Enforcer" role.
     This replaces analyze_daily_intention from main.py.
@@ -88,6 +88,17 @@ def create_and_process_intention(db: Session, user: models.User, intention_data:
         "ai_feedback": analysis.get("feedback"),
         "clarity_stat_gain": analysis.get("clarity_stat_gain"),
     }
+
+def complete_focus_block(
+        db: Session, 
+        user: models.User, 
+        block: models.FocusBlock # Future-proofing: kept for future, more complex XP rules
+) -> dict[str, Any]:
+    """Awards XP for a completed Focus Block. Returns data for the endpoint to commit."""
+    # In the future, the logic here could inspect the 'block' object's properties
+    # (e.g., duration, intention text) to award variable XP.
+    xp_to_award = 10 # Business rule: 10 XP per block
+    return {"xp_awarded": xp_to_award}
 
 def create_daily_reflection(db: Session, user: models.User, daily_intention: models.DailyIntention) -> Dict[str, Any]:
     """
@@ -210,9 +221,3 @@ def mark_intention_failed(db: Session, user: models.User, intention: models.Dail
     """Marks an intention as failed. Does NOT commit."""
     crud.update_intention_status(db, intention, "failed")
     return {"status": "failed", "discipline_awarded": 0}
-
-def complete_focus_block(db: Session, user: models.User, block: models.FocusBlock) -> Dict[str, Any]:
-    """Awards XP for a completed focus block. Does NOT commit."""
-    xp_to_award = 10 # Business rule: 10 XP per block
-    crud.update_character_stats(db, user.id, xp=xp_to_award)
-    return {"xp_awarded": xp_to_award}
