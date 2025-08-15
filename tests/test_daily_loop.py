@@ -1,5 +1,34 @@
 #Full, self-contained showcase of the daily loop endpoints.
 
+# --- Reusable Mock Service Functions ---
+# These functions mimic the behavior of our real service layer for predictable testing.
+
+def mock_intention_approved(db, user, intention_data):
+    """A mock for services.create_and_process_intention that always approves."""
+    return {
+        "needs_refinement": False,
+        "ai_feedback": "Mock feedback: This is a clear and actionable intention!",
+        "clarity_stat_gain": 1
+    }
+
+def mock_reflection_failed(db, user, daily_intention):
+    """A mock for services.create_daily_reflection for a failed intention."""
+    return {
+        "succeeded": False,
+        "ai_feedback": "Mock Fail: Let's reflect on what happened.",
+        "recovery_quest": "What was the main obstacle you faced today?",
+        "discipline_stat_gain": 0
+    }
+
+def mock_recovery_quest_coaching(db, user, result, response_text):
+    """A mock for services.process_recovery_quest_response."""
+    return {
+        "ai_coaching_feedback": "Mock Coaching: That's a valuable insight. You've earned resilience!",
+        "resilience_stat_gain": 1
+    }
+
+# --- Existing Tests (Now with Mocking) ---
+
 def test_creat_daily_intention_unauthenticated_fails(client):
     """Verify that an unatuhenticated user receives a 401 error when trying to create a Daily Intention"""
     payload = {
@@ -14,8 +43,11 @@ def test_creat_daily_intention_unauthenticated_fails(client):
     assert response.json()["detail"] == "Not authenticated"
 
 
-def test_create_daily_intention_flow(client, user_token):
+def test_create_daily_intention_flow(client, user_token, monkeypatch):
     """Authenticated user creates a Daily Intention."""
+    # Replace the real service function with our mock for this test
+    monkeypatch.setattr("app.services.create_and_process_intention", mock_intention_approved)
+
     headers = {"Authorization": f"Bearer {user_token}"}
     payload = {
         "daily_intention_text": "Send 5 cold emails",
@@ -28,8 +60,13 @@ def test_create_daily_intention_flow(client, user_token):
     assert resp.status_code == 201, resp.text
 
 
-def test_daily_results_cannot_get_duplicated(client, user_token):
+def test_daily_results_cannot_get_duplicated(client, user_token, monkeypatch):
     """Endpoint refuses double DailyResult for today."""
+    # We need to mock both service calls that will happen in this test
+    monkeypatch.setattr("app.services.create_and_process_intention", mock_intention_approved)
+    monkeypatch.setattr("app.services.create_daily_reflection", mock_reflection_failed)
+
+
     headers = {"Authorization": f"Bearer {user_token}"}
 
     # 1. Create todays Daily Intention (prerequisite)
@@ -54,8 +91,11 @@ def test_daily_results_cannot_get_duplicated(client, user_token):
     assert "already exists" in r2.json()["detail"]
 
 
-def test_completed_focus_block_awards_xp(client, user_token):
+def test_completed_focus_block_awards_xp(client, user_token, monkeypatch):
     """Completing a Focus Block awards +10 XP. (service mock value)"""
+    monkeypatch.setattr("app.services.create_and_process_intention", mock_intention_approved)
+
+
     headers = {"Authorization": f"Bearer {user_token}"}
 
     # 1. Daily Intention for today
@@ -93,7 +133,7 @@ def test_completed_focus_block_awards_xp(client, user_token):
     end = client.get("/users/me/stats", headers=headers).json()
     assert end["xp"] == start_xp + 10
 
-def test_full_fail_forward_recovery_quest_loop(client, user_token):
+def test_full_fail_forward_recovery_quest_loop(client, user_token, monkeypatch):
     """
     Tests the entire "Fail Forward" loop:
     1. Create an intention and fail to complete it.
@@ -101,6 +141,12 @@ def test_full_fail_forward_recovery_quest_loop(client, user_token):
     3. Respond to the recovery quest.
     4. Verify that the user's 'resilience' stat has increased.
     """
+    # This test requires mocking all three AI-driven service functions
+    monkeypatch.setattr("app.services.create_and_process_intention", mock_intention_approved)
+    monkeypatch.setattr("app.services.create_daily_reflection", mock_reflection_failed)
+    monkeypatch.setattr("app.services.process_recovery_quest_response", mock_recovery_quest_coaching)
+
+
     headers = {"Authorization": f"Bearer {user_token}"}
 
     # 1. Create a Daily Intention
