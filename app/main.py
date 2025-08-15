@@ -598,40 +598,57 @@ def update_focus_block(
             detail=f"Failed to update Focus Block: {str(e)}"
         )
 
+
 # --- DAILY RESULTS ENDPOINTS ---
 
 @app.post("/daily-results", response_model=schemas.DailyResultResponse, status_code=status.HTTP_201_CREATED)
 def create_daily_result(
-    current_user: Annotated[models.User, Depends(security.get_current_user)],
     daily_intention: Annotated[models.DailyIntention, Depends(get_current_user_daily_intention)],
+    stats: Annotated[models.CharacterStats, Depends(get_current_user_stats)], 
     db: Session = Depends(database.get_db)
 ):
-    if db.query(models.DailyResult).filter(models.DailyResult.daily_intention_id == daily_intention.id).first():
-        raise HTTPException(status_code=400, detail="Daily Result already exists for this intention.")
-
-    # Determine outcome and update intention status
-    if daily_intention.completed_quantity >= daily_intention.target_quantity:
-        services.mark_intention_complete(db, current_user, daily_intention)
-    else:
-        services.mark_intention_failed(db, current_user, daily_intention)
+    """Creates the evening Daily Result and triggers reflection via the service layer."""
+    # The get_current_user_daily_intention dependency guarantees a Daily Intention from the currently logged in user
     
-    # Call service for reflection AI
-    reflection_result = services.create_daily_reflection(db, current_user, daily_intention)
-
+    # Check if Daily Result already exists for this intention
+    existing_result = db.query(models.DailyResult).filter(
+        models.DailyResult.daily_intention_id == daily_intention.id
+    ).first()
+    if existing_result:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Daily Result already exists for this intention. Sacred finality!"
+        )
+    
+    # 1. Call the service to get the logic result
+    reflection_data = services.create_daily_reflection(db=db, user=stats.user, daily_intention=daily_intention)
+    
     try:
+        # 2. Use the data from the service to build the DB object
         db_result = models.DailyResult(
             daily_intention_id=daily_intention.id,
-            succeeded=reflection_result.get("succeeded"),
-            ai_feedback=reflection_result.get("ai_feedback"),
-            recovery_quest=reflection_result.get("recovery_quest")
+            succeeded_failed=reflection_data["succeeded"],
+            ai_feedback=reflection_data["ai_feedback"],
+            recovery_quest=reflection_data["recovery_quest"]
         )
         db.add(db_result)
+
+        # 3. Update stats based on service output
+        stats.discipline += reflection_data["discipline_stat_gain"]
+
         db.commit()
         db.refresh(db_result)
+        db.refresh(stats)
+
         return db_result
+    
     except Exception as e:
+        print(f"Database error: {e}") 
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"Failed to create Daily Result: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to create Daily Result: {str(e)}"
+        )
 
 @app.post("/daily-results/{result_id}/recovery-quest", response_model=schemas.RecoveryQuestResponse)
 def respond_to_recovery_quest(
