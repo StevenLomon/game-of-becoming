@@ -344,25 +344,62 @@ def get_my_daily_intention(
     )
 
 @app.patch("/intentions/today/progress", response_model=schemas.DailyIntentionResponse)
-def update_intention_progress(
+def update_daily_intention_progress(
     progress_data: schemas.DailyIntentionUpdate,
     intention: Annotated[models.DailyIntention, Depends(get_current_user_daily_intention)],
     db: Session = Depends(database.get_db),
 ):
+    """
+    Updates Daily Intention progress for the currently logged in user - the core of the Daily Execution Loop!
+    - User reports progress after each Focus Block
+    - System calculates completion percentage
+    - Determines if intention is completed, in progress or failed
+    """
+    # Strict Forward Progress: Users should not be able to report less progress than already recorded
     if progress_data.completed_quantity < intention.completed_quantity:
-        raise HTTPException(status_code=400, detail="Cannot report less progress than already recorded.")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You cannot report less progress than you have already recorded."
+        )
 
     try:
+        # Update progress: absolute, not incremental! Simpler mental model - "Where am I vs my goal?"
         intention.completed_quantity = min(progress_data.completed_quantity, intention.target_quantity)
-        if intention.completed_quantity > 0 and intention.status == 'active':
-             intention.status = 'in_progress'
+        if intention.completed_quantity >= intention.target_quantity:
+            intention.status = 'completed'
+        elif intention.completed_quantity > 0:
+            intention.status = 'in_progress'
+        else:
+            intention.status = 'pending'
 
         db.commit()
         db.refresh(intention)
-        return intention
+
+        # Calculate completion percentage
+        completion_percentage = (
+            (intention.completed_quantity / intention.target_quantity) * 100
+            if intention.target_quantity > 0 else 0.0
+        )
+
+        return schemas.DailyIntentionResponse(
+            id=intention.id,
+            user_id=intention.user_id,
+            daily_intention_text=intention.daily_intention_text,
+            target_quantity=intention.target_quantity,
+            completed_quantity=intention.completed_quantity,
+            focus_block_count=intention.focus_block_count,
+            completion_percentage=completion_percentage, # Use the calculated value
+            status=intention.status,
+            created_at=intention.created_at
+        )
+    
     except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=500, detail=f"Failed to update progress: {e}")
+        print(f"Database error: {e}") 
+        db.rollback()  # Roll back on any error
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to update Daily Intention progress: {str(e)}"
+        )
 
 # --- FOCUS BLOCK ENDPOINTS ---
 
