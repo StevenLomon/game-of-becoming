@@ -315,11 +315,33 @@ def create_daily_intention(
         # This is a manual construction because the object doesn't exist in the DB.
         return schemas.DailyIntentionRefinementResponse(ai_feedback=analysis_result.get("ai_feedback"))
         
-@app.get("/intentions/today/active", response_model=schemas.DailyIntentionResponse)
-def get_my_active_intention(
+@app.get("/intentions/today/me", response_model=schemas.DailyIntentionResponse)
+def get_my_daily_intention(
     intention: Annotated[models.DailyIntention, Depends(get_current_user_daily_intention)]
-):
-    return intention
+    ):
+    """
+    Get today's Daily Intention for the currently logged in user.
+    The core of the Daily Commitment Screen!
+    """
+    # 1. Calculate the value that doesn't exist in the database model.
+    completion_percentage = (
+        (intention.completed_quantity / intention.target_quantity) * 100
+        if intention.target_quantity > 0 else 0.0
+    )
+
+    # 2. Because we have a calculated value, we MUST manually construct the Pydantic response model. 
+    return schemas.DailyIntentionResponse(
+        id=intention.id,
+        user_id=intention.user_id,
+        daily_intention_text=intention.daily_intention_text,
+        target_quantity=intention.target_quantity,
+        completed_quantity=intention.completed_quantity,
+        focus_block_count=intention.focus_block_count,
+        completion_percentage=completion_percentage, # Use the calculated value
+        status=intention.status,
+        created_at=intention.created_at,
+        ai_feedback=intention.ai_feedback
+    )
 
 @app.patch("/intentions/today/progress", response_model=schemas.DailyIntentionResponse)
 def update_intention_progress(
