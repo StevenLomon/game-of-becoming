@@ -401,6 +401,98 @@ def update_daily_intention_progress(
             detail=f"Failed to update Daily Intention progress: {str(e)}"
         )
 
+@app.patch("/intentions/today/complete", response_model=schemas.DailyIntentionResponse)
+def complete_daily_intention(
+    daily_intention: Annotated[models.DailyIntention, Depends(get_current_user_daily_intention)],
+    db: Session = Depends(database.get_db)
+    ):
+    """
+    Mark today's Daily Intention for the currently logged in user as completed
+    
+    This triggers:
+    - XP gain for the user
+    - Discipline stat increase
+    - Streak continuation
+    """
+    # The dependency guarantees Daily Intention that belongs to the currently logged in user
+    
+    try:
+        # Mark as completed
+        daily_intention.status = 'completed'
+        daily_intention.completed_quantity = daily_intention.target_quantity  # Ensure full completion
+
+        db.commit()
+        db.refresh(daily_intention)
+
+        return schemas.DailyIntentionResponse(
+            id=daily_intention.id,
+            user_id=daily_intention.user_id,
+            daily_intention_text=daily_intention.daily_intention_text,
+            target_quantity=daily_intention.target_quantity,
+            completed_quantity=daily_intention.completed_quantity,
+            focus_block_count=daily_intention.focus_block_count,
+            completion_percentage=100.0,  # Fully completed
+            status=daily_intention.status,
+            created_at=daily_intention.created_at
+        )
+    
+    except Exception as e:
+        print(f"Database error: {e}") 
+        db.rollback()  # Roll back on any error
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to complete Daily Intention: {str(e)}"
+        )
+    
+@app.patch("/intentions/today/fail", response_model=schemas.DailyIntentionResponse)
+def fail_daily_intention(
+    daily_intention: Annotated[models.DailyIntention, Depends(get_current_user_daily_intention)],
+    db: Session = Depends(database.get_db)
+    ):
+    """
+    Mark today's Daily Intention for the currently logged in user as failed
+    
+    This triggers the "Fail Forward" mechanism!
+    - AI feedback on failure in order to re-frame failure
+    - AI generates and initiates Recovery Quest
+    - Opportunity to gain Resilience stat
+    """
+    # The dependency once again guarantees Daily Intention that belongs to the currently logged in user
+    
+    try:
+        # Mark as failed
+        daily_intention.status = 'failed'
+        
+        db.commit()
+        db.refresh(daily_intention)
+
+        # Calculate the final completion percentage
+        completion_percentage = (
+            (daily_intention.completed_quantity / daily_intention.target_quantity) * 100
+            if daily_intention.target_quantity > 0 else 0.0
+        )
+
+        return schemas.DailyIntentionResponse(
+            id=daily_intention.id,
+            user_id=daily_intention.user_id,
+            daily_intention_text=daily_intention.daily_intention_text,
+            target_quantity=daily_intention.target_quantity,
+            completed_quantity=daily_intention.completed_quantity,
+            focus_block_count=daily_intention.focus_block_count,
+            completion_percentage=completion_percentage,  # Use the calculated percentage at the time of failure
+            status=daily_intention.status,
+            created_at=daily_intention.created_at
+        )
+    
+    except Exception as e:
+        print(f"Database error: {e}") 
+        db.rollback()  # Roll back on any error
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to mark Daily Intention as failed: {str(e)}"
+        )
+
+
 # --- FOCUS BLOCK ENDPOINTS ---
 
 @app.post("/focus-blocks", response_model=schemas.FocusBlockResponse, status_code=status.HTTP_201_CREATED)
