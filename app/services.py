@@ -26,6 +26,9 @@ class RecoveryQuestCoachingResponse(BaseModel):
 
 
 # --- Service Functions (Business Logic Layer) ---
+# All functions include a db object in their signature for future-proofing: the rules
+# are simple in this MVP version but they won't always be simple. For V2 and future versions
+# we want to use db to fetch the user's history to give better feedback!
 
 def create_and_process_intention(db: Session, user: models.User, intention_data: schemas.DailyIntentionCreate) -> dict[str, Any]:
     """
@@ -100,7 +103,7 @@ def complete_focus_block(
     xp_to_award = 10 # Business rule: 10 XP per block
     return {"xp_awarded": xp_to_award}
 
-def create_daily_reflection(db: Session, user: models.User, daily_intention: models.DailyIntention) -> Dict[str, Any]:
+def create_daily_reflection(db: Session, user: models.User, daily_intention: models.DailyIntention) -> dict[str, Any]:
     """
     Generates the end-of-day reflection, celebrating success or creating a recovery quest for failure.
     This combines generate_success_feedback and generate_recovery_quest from main.py.
@@ -165,7 +168,7 @@ def create_daily_reflection(db: Session, user: models.User, daily_intention: mod
     reflection["succeeded"] = succeeded
     return reflection
 
-def process_recovery_quest_response(db: Session, user: models.User, result: models.DailyResult, response_text: str) -> Dict[str, Any]:
+def process_recovery_quest_response(db: Session, user: models.User, result: models.DailyResult, response_text: str) -> dict[str, Any]:
     """
     Provides personalized coaching based on a user's reflection on failure.
     This replaces generate_coaching_response from main.py.
@@ -209,15 +212,3 @@ def process_recovery_quest_response(db: Session, user: models.User, result: mode
         return {"ai_coaching_feedback": "Thank you for sharing. This is how we grow.", "resilience_stat_gain": 1}
         
     return coaching
-
-def mark_intention_complete(db: Session, user: models.User, intention: models.DailyIntention) -> Dict[str, Any]:
-    """Marks an intention as complete and updates stats. Does NOT commit."""
-    crud.update_intention_status(db, intention, "completed")
-    intention.completed_quantity = intention.target_quantity # Ensure it's marked as 100%
-    crud.update_character_stats(db, user.id, discipline=1) # Business rule: 1 discipline for completion
-    return {"status": "completed", "discipline_awarded": 1}
-
-def mark_intention_failed(db: Session, user: models.User, intention: models.DailyIntention) -> Dict[str, Any]:
-    """Marks an intention as failed. Does NOT commit."""
-    crud.update_intention_status(db, intention, "failed")
-    return {"status": "failed", "discipline_awarded": 0}
