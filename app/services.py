@@ -4,15 +4,16 @@ from pydantic import BaseModel, Field
 import os
 
 # Import modules
-from . import crud, models, schemas
+import app.models as models
+import app.schemas as schemas
 from .llm_providers.factory import get_llm_provider
 
-# --- Pydantic Models for Structured AI Responses ---
+# --- Our Secret Sauce: Pydantic Models for Structured AI Responses ensuring reliable AI output ---
 
 class IntentionAnalysisResponse(BaseModel):
     is_strong_intention: bool = Field(description="True if the intention is clear, specific, and ready for commitment. False if it needs refinement.")
     feedback: str = Field(description="Encouraging, actionable coaching feedback for the user (2-3 sentences max).")
-    clarity_stat_gain: int = Field(description="Clarity stat points to award (typically 1 if the intention is approved).")
+    clarity_stat_gain: int = Field(description="Set to 1 if is_strong_intention is true, otherwise 0.")
 
 class DailyReflectionResponse(BaseModel):
     ai_feedback: str = Field(description="AI coach's feedback on the user's day. If successful, a celebratory message. If failed, an acknowledgement of the completion rate.")
@@ -21,7 +22,7 @@ class DailyReflectionResponse(BaseModel):
 
 class RecoveryQuestCoachingResponse(BaseModel):
     ai_coaching_feedback: str = Field(description="Encouraging, wisdom-building coaching based on the user's reflection (2-3 sentences max).")
-    resilience_stat_gain: int = Field(description="Resilience stat points to award for completing the reflection (typically 1).")
+    resilience_stat_gain: int = Field(description="Set to 1 for completing the reflection.")
 
 
 # --- Service Functions (Business Logic Layer) ---
