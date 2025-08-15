@@ -220,7 +220,7 @@ def register_user(user_data: schemas.UserCreate, db: Session = Depends(database.
         db.refresh(new_user)
 
         # Return the user 
-        return schemas.UserResponse.model_validate(new_user)
+        return new_user
     
     except Exception as e:
         db.rollback()  # Roll back on any error
@@ -238,8 +238,7 @@ def get_user(current_user: Annotated[models.User, Depends(security.get_current_u
     # 3. It fetched the user from the database.
     # 4. It handled the "user not found" case.
     
-    # Explicitly convert the SQLAlchemy User model to the Pydantic UserResponse model.
-    return schemas.UserResponse.model_validate(current_user)
+    return current_user
 
 @app.get("/users/me/stats", response_model=schemas.CharacterStatsResponse)
 def get_my_character_stats(
@@ -253,19 +252,10 @@ def get_my_character_stats(
     if not stats:
         raise HTTPException(status_code=404, detail="Character stats not found for your account.")
 
-    # Calculate the level on the fly
-    current_level = calculate_level(stats.xp)
-
     # Return a response that includes the calculated level
-    return schemas.CharacterStatsResponse(
-        user_id=stats.user_id,
-        level=current_level, # Use the calculated value here
-        xp=stats.xp,
-        resilience=stats.resilience,
-        clarity=stats.clarity,
-        discipline=stats.discipline,
-        commitment=stats.commitment
-    )
+    response = schemas.CharacterStatsResponse.model_validate(stats)
+    response.level = calculate_level(stats.xp) # Manually add the calculated level value
+    return response
 
 # --- DAILY INTENTION ENDPOINTS ---
 
@@ -298,7 +288,7 @@ def create_daily_intention(
             db.commit()
             db.refresh(db_intention)
             
-            return schemas.DailyIntentionResponse.model_validate(db_intention)
+            return db_intention
 
         except Exception as e:
             db.rollback()
