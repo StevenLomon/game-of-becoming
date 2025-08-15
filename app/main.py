@@ -542,30 +542,61 @@ def create_focus_block(
 
 @app.patch("/focus-blocks/{block_id}", response_model=schemas.FocusBlockResponse)
 def update_focus_block(
-    update_data: schemas.FocusBlockUpdate,
+    update_data: schemas.FocusBlockUpdate, 
     block: Annotated[models.FocusBlock, Depends(get_owned_focus_block)],
-    current_user: Annotated[models.User, Depends(security.get_current_user)],
+    stats: Annotated[models.CharacterStats, Depends(get_current_user_stats)],
     db: Session = Depends(database.get_db)
-):
-    if block.created_at.date() != datetime.now(timezone.utc).date():
-        raise HTTPException(status_code=403, detail="Focus Block from a previous day cannot be updated.")
+    ):
+    """
+    Updates a Focus Block's status or video URLs.
+    Awards XP upon completion by delegating to the service layer.
+    """
+    # The get_owned_focus_block dependency guarantees a Focus Block that belongs to the currently logged in user
     
-    try:
-        if update_data.status and update_data.status == "completed" and block.status != "completed":
-            services.complete_focus_block(db, current_user, block)
-            block.status = "completed"
+    # This check ensures the block is from today, preserving the game's integrity.
+    today = datetime.now(timezone.utc).date()
+    if block.created_at.date() != today:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This Focus Block is from a previous day and can no longer be updated."
+        )
 
+    try:
+        # Flag to track if we need to commit stats changes
+        xp_awarded = 0
+
+        # Check if the block is being marked as completed for the first time
+        if update_data.status == "completed" and block.status != "completed":
+            # Delegate completion logic and xp gain to the service layer
+            completion_result = services.complete_focus_block(db=db, user=stats.user, block=block)
+            # Get the result from the service
+            xp_awarded = completion_result.get("xp_awarded", 0)
+
+        # Update the block's data from the request payload
+        if update_data.status is not None:
+            block.status = update_data.status.strip()
         if update_data.pre_block_video_url is not None:
             block.pre_block_video_url = update_data.pre_block_video_url
         if update_data.post_block_video_url is not None:
             block.post_block_video_url = update_data.post_block_video_url
         
+        # Apply stat changes from the service call
+        if xp_awarded > 0:
+            stats.xp += xp_awarded
+
         db.commit()
         db.refresh(block)
+        if xp_awarded > 0:
+            db.refresh(stats)
+            
         return block
+
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"Failed to update Focus Block: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to update Focus Block: {str(e)}"
+        )
 
 # --- DAILY RESULTS ENDPOINTS ---
 
