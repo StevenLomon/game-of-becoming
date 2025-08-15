@@ -259,41 +259,60 @@ def get_my_character_stats(
 
 # --- DAILY INTENTION ENDPOINTS ---
 
+# Updated for Smart Detection!
 @app.post("/intentions", response_model=schemas.DailyIntentionCreateResponse, status_code=status.HTTP_201_CREATED)
 def create_daily_intention(
     intention_data: schemas.DailyIntentionCreate,
     current_user: Annotated[models.User, Depends(security.get_current_user)],
+    stats: Annotated[models.CharacterStats, Depends(get_current_user_stats)],
     db: Session = Depends(database.get_db)
 ):
-    if crud.get_user_active_intention(db, current_user.id):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Active daily intention already exists for today.")
-
-    analysis_result = services.create_and_process_intention(db, current_user, intention_data)
+    """
+    Create today's Daily Intention, now driven by the service layer.
+    Handles initial submissions and refined submissions after AI feedback.
+    """
+    # 1. Check if today's Daily Intention for the currently logged in user already exists
+    if crud.get_today_intention(db, current_user.id):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Daily Intention already exists for today! Get going making progress on it!"
+        )
     
+    # 2. Delegate to the service layer (with mock AI prompts and logic for this showcase)
+    analysis_result = services.create_and_process_intention(db, current_user, intention_data)
+
+    # 3. Handle the result using our precise business logic
     if intention_data.is_refined or not analysis_result.get("needs_refinement"):
+        # Path 1: The intention is approved. Save it to the database
         try:
             db_intention = models.DailyIntention(
                 user_id=current_user.id,
                 daily_intention_text=intention_data.daily_intention_text.strip(),
                 target_quantity=intention_data.target_quantity,
                 focus_block_count=intention_data.focus_block_count,
-                ai_feedback=analysis_result.get("ai_feedback"),
+                ai_feedback=analysis_result.get("ai_feedback")
             )
             db.add(db_intention)
-            
+
+            # Update stats using our dependency
             clarity_gain = analysis_result.get("clarity_stat_gain", 0)
             if clarity_gain > 0:
-                crud.update_character_stats(db, current_user.id, clarity=clarity_gain)
+                stats.clarity += clarity_gain
 
             db.commit()
             db.refresh(db_intention)
-            
-            return db_intention
+            if clarity_gain > 0:
+                db.refresh(stats)
 
+            return db_intention
+        
         except Exception as e:
             db.rollback()
             raise HTTPException(status_code=500, detail=f"Failed to create intention: {e}")
+    
     else:
+        # Path 2: The intention needs refinement. Return the AI feedback
+        # This is a manual construction because the object doesn't exist in the DB.
         return schemas.DailyIntentionRefinementResponse(ai_feedback=analysis_result.get("ai_feedback"))
         
 @app.get("/intentions/today/active", response_model=schemas.DailyIntentionResponse)
