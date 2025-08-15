@@ -294,7 +294,7 @@ def create_daily_intention(
             )
             db.add(db_intention)
 
-            # Update stats using our dependency
+            # Update Clarity stat using our dependency
             clarity_gain = analysis_result.get("clarity_stat_gain", 0)
             if clarity_gain > 0:
                 stats.clarity += clarity_gain
