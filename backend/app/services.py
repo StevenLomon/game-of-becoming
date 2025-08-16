@@ -4,8 +4,8 @@ from pydantic import BaseModel, Field
 import os
 
 # Import modules
-import app.models as models
-import app.schemas as schemas
+from . import models
+from . import schemas
 from .llm_providers.factory import get_llm_provider
 
 # --- Our Secret Sauce: Pydantic Models for Structured AI Responses ensuring reliable AI output ---

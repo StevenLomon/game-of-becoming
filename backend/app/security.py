@@ -6,9 +6,9 @@ from typing import Optional
 from jose import JWTError, jwt
 import os
 
-import app.crud as crud # To look up users in the database
-import app.database as database # Import our db session generator
-import app.schemas as schemas # Import our token payload schema
+from . import crud # To look up users in the database
+from . import database # Import our db session generator
+from . import schemas # Import our token payload schema
 
 # This object is what FastAPI uses to extract the token from the request header.
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")

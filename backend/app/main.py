@@ -9,13 +9,13 @@ from dotenv import load_dotenv
 import math 
 
 # ---- Internal package imports (namespaced) ----
-import app.crud as crud
-import app.database as database
-import app.security as security
-import app.services as services
-import app.utils as utils
-import app.models as models
-import app.schemas as schemas
+from . import crud
+from . import database
+from . import security
+from . import services
+from . import utils
+from . import models
+from . import schemas
 
 # Load environment variables
 load_dotenv()

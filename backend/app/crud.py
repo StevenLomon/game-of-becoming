@@ -1,9 +1,9 @@
 from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session, joinedload
 
-import app.models as models
-import app.schemas as schemas
-import app.utils as utils
+from . import models
+from . import schemas
+from . import utils
 
 def create_user(db: Session, user_data: schemas.UserCreate) -> models.User:
     """
