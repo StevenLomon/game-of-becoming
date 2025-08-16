@@ -1,55 +1,51 @@
-# Python bytecode
-__pycache__/
-*.py[cod]
-*$py.class
-
-# Distribution / packaging
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-
-# Virtual environments
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
-
-# Database files (for development)
-*.db
-*.sqlite3
-game_of_becoming.db
-
-# IDE files
+# General / IDE / OS files
 .vscode/
 .idea/
 *.swp
 *.swo
-
-# Environment variables
-.env
-.env.local
-
-# OS files
 .DS_Store
 Thumbs.db
 
-# Logs
+# Logs & Reports
 *.log
-
-# Coverage reports
 htmlcov/
 .coverage
+
+# --- Backend ---
+# Python virtual environment
+backend/env/
+backend/venv/
+backend/ENV/
+
+# Python bytecode and distribution files
+backend/__pycache__/
+backend/*.py[cod]
+backend/*$py.class
+backend/build/
+backend/dist/
+backend/*.egg-info/
+
+# Local database files
+backend/*.db
+backend/*.sqlite3
+
+# Local secrets (never commit this!)
+backend/.env
+
+
+# --- Frontend ---
+# Node.js dependencies
+frontend/node_modules/
+
+# Production build output
+frontend/build/
+
+# Local secrets (never commit this!)
+frontend/.env
+frontend/.env.local
+frontend/.env.*.local
+
+# Log files
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*

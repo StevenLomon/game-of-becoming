@@ -1,21 +1,32 @@
 # A human-readable name for our workflow
-name: Run Tests
+name: Run Backend Tests
 
 # --- Trigger Conditions ---
 # This workflow will run automatically on:
 # 1. Pushes to the 'main' branch
 # 2. Pull Requests that target the 'main' branch
+# Update: now only runs for any file in the backend/ dir on the main branch
 on:
   push:
     branches: [ "main" ]
+    paths:
+      - 'backend/**'
   pull_request:
     branches: [ "main" ]
+    paths:
+      - 'backend/**'
 
 # --- Jobs ---
 jobs:
-  # We have a single job named 'build-and-test'
-  build-and-test:
+  # We have a single job named 'build-and-test-backens'
+  build-and-test-backend:
     runs-on: ubuntu-latest
+
+    # Set the working directory for all sebsequent steps in this job
+    # Prevents us from adding the 'backend/' prefix to all steps
+    defaults:
+      run:
+        working-directory: ./backend
 
     steps:
     # Step 1: Get a copy of our repository's code
@@ -32,11 +43,11 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -r requirements.txt
+        pip install -r backend/requirements.txt
 
     # Step 4: Run our tests using pytest!
     # If any test fails, pytest will exit with a non-zero status code,
     # which will cause this step (and the entire job) to fail.
     - name: Run tests with pytest
       run: |
-        pytest
+        pytest backend/
