@@ -15,10 +15,10 @@ htmlcov/
 .env
 
 # --- Backend ---
-# Python virtual environment
-backend/env/
-backend/venv/
-backend/ENV/
+# Python virtual environment (now at the root)
+env/
+venv/
+ENV/
 
 # Python bytecode and distribution files
 backend/__pycache__/
