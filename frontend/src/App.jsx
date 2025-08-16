@@ -1,33 +1,35 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
+import { useState, useEffect } from 'react'
 import './App.css'
 
 function App() {
-  const [count, setCount] = useState(0)
+  // 'useState' is a React Hook to manage a piece of state
+  const [message, setMessage] = useState('Loading message from backend...')
+
+  // 'useEffect' is a React Hook to run code after the component renders
+  useEffect(() => {
+    // This function will be called once the component first mounts
+    const fetchMessage = async () => {
+      try {
+        // We call our backend via our proxy. The path is relative, and we use /api
+        const response = await fetch('/api/');
+        const data = await response.json();
+        setMessage(data.message); // Update the state with the message from the API
+      } catch (error) {
+        setMessage('Failed to fetch message from backend.');
+        console.error("Error fetching data:", error)
+      }
+    };
+
+    fetchMessage(); 
+  }, []); // The empty array [] means this effect only runs once
 
   return (
     <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
+      <h1>The Game of Becoming</h1>
       <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
+        <h2>Backend Connection Status:</h2>
+        <p>{message}</p>
       </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
     </>
   )
 }
