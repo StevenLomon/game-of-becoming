@@ -11,6 +11,9 @@ Thumbs.db
 htmlcov/
 .coverage
 
+# Secrets
+.env
+
 # --- Backend ---
 # Python virtual environment
 backend/env/
