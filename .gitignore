@@ -40,8 +40,8 @@ backend/.env
 # Node.js dependencies
 frontend/node_modules/
 
-# Production build output
-frontend/build/
+# Production build output (Vite's standard output folder is named 'dist', not 'build')
+frontend/dist/
 
 # Local secrets (never commit this!)
 frontend/.env
