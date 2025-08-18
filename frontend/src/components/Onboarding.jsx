@@ -10,8 +10,6 @@ function Onboarding({ token, onBoardingComplete }) {
         setError(null);
 
         try {
-            // NOTE: We need a new backend endpoint for this!
-            // We will create PUT /users/me in the next step
             const response = await fetch('api/users/me', {
                 method: 'PUT',
                 headers: {
