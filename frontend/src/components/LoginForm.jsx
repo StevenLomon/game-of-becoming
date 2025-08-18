@@ -1,11 +1,12 @@
 import { useState } from 'react';
 
-function loginForm() {
+// Now receives a prop: onLoginSuccess
+function loginForm({ onLoginSuccess }) {
     // 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState(null);
-    const [token, setToken] = useState(null);
+    // The local 'token' state is now removed
 
     // This function will be called when the form is submitted
     const handleSubmit = async (event) => {
@@ -15,9 +16,7 @@ function loginForm() {
         try {
             const response = await fetch('/api/login', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded'
-                },
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 // We need to format the data as form data for the backend
                 body: new URLSearchParams({
                     username: email,
@@ -28,28 +27,18 @@ function loginForm() {
             const data = await response.json();
 
             if (!response.ok) {
-                // Handle errors from teh API (e.g., 401 Unauthorized)
+                // Handle errors from the API (e.g., 401 Unauthorized)
                 throw new Error(data.detail || 'Failed to log in.');
             }
 
-            // If login is successful, store the token
-            setToken(data.access_token);
+            // Instead of setting local state, we call the function from the parent (App.jsx) and pass the token up to it
+            onLoginSuccess(data.access_token);
         } catch (err) {
             setError(err.message);
         }
     };
 
-    // If we have a token, show a success message
-    if (token) {
-        return (
-            <div className="text-center">
-                <h2 className="text-2xl font-bold text-green-400">Login Successful!</h2>
-                <p className="text-gray-400 mt-2">Your token has been received</p>
-            </div>
-        );
-    }
-
-    // Otherwise, show the login form
+    // The success message is removed, as the parent will handle showing the dashboard.
     return (
         <form onSubmit={handleSubmit} className="space-y-6 w-full max-w-sm">
             <h2 className="text-3xl font-bold text-center text-white">Game of Becoming Log In</h2>
