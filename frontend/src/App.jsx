@@ -24,13 +24,27 @@ function App() {
   }, []); // The empty array [] means this effect only runs once
 
   return (
-    <>
-      <h1>The Game of Becoming</h1>
-      <div className="card">
-        <h2>Backend Connection Status:</h2>
-        <p>{message}</p>
+    // Use Tailwind classes to style the main container
+    <div className="bg-gray-900 min-h-screen flex flex-col items-center justify-center text-white font-sans">
+      
+      {/* Main content card */}
+      <div className="bg-gray-800 p-8 rounded-lg shadow-lg text-center">
+        
+        <h1 className="text-4xl font-bold text-teal-400 mb-4">
+          The Game of Becoming
+        </h1>
+        
+        <div className="bg-gray-700 p-4 rounded-md">
+          <h2 className="text-lg font-semibold text-gray-300 mb-2">
+            Backend Connection Status:
+          </h2>
+          <p className="text-teal-300 font-mono">
+            {message}
+          </p>
+        </div>
+
       </div>
-    </>
+    </div>
   )
 }
 
