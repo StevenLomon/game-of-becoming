@@ -28,7 +28,18 @@ function RegistrationForm({ onRegisterSuccess }) {
             const data = await response.json();
 
             if (!response.ok) {
-                throw new Error(data.detail || 'Failed to register.');
+                let errorMessage = 'An unknown error occurred.';
+                if (data.detail) {
+                    // Check if detail is an array (Pydantic error) or a string
+                    if (Array.isArray(data.detail)) {
+                        // It's a Pydantic error, so we pull the 'msg' from the first error object.
+                        errorMessage = data.detail[0].msg;
+                    } else {
+                        // It's our custom HTTPExcetion, so details is just a string
+                        errorMessage = data.detail;
+                    }
+                }
+                throw new Error(errorMessage);
             }
 
             // If registration is successful, call the function passed in from the parent

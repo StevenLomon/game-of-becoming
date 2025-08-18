@@ -45,7 +45,7 @@ function App() {
             <p className="text-sm text-gray-400">
               Already have an account?{' '}
               <button onClick={() => setView('login')} className="font-medium text-teal-400 hover:text-teal-300">
-                The Game of Becoming Log In
+                Log In
               </button>
             </p>
           )}
