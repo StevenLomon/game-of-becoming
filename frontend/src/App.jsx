@@ -8,7 +8,7 @@ function AuthScreen({ onLoginSuccess }) {
   const [view, setView] = useState('login');
   const [registrationSuccess, setRegistrationSuccess] = useState(false);
 
-  // This function will be passed down to the RegistrationForm
+  // This function will be passed down from AuthScreen to the RegistrationForm
   const handleRegisterSuccess = () => {
     setRegistrationSuccess(true);
     setView('login'); // Switch back to the login view
