@@ -56,7 +56,7 @@ function Dashboard({ token, onLogout }) {
       {user.hrga ? (
         <MainApp user={user} token={token} />
       ) : (
-        <Onboarding token={token} onOnboardingComplete={handleOnboardingComplete} />
+        <Onboarding token={token} onboardingComplete={handleOnboardingComplete} />
       )}
       <button
         onClick={onLogout}
