@@ -1,7 +1,7 @@
 import { useState } from 'react';
 
 // This component will need the user's token to make an authenticated API call
-function Onboarding({ token, onboardingComplete }) {
+function Onboarding({ token, onOnboardingComplete }) {
     const [hrga, setHRGA] = useState('');
     const [error, setError] = useState(null);
 
@@ -37,7 +37,7 @@ function Onboarding({ token, onboardingComplete }) {
             }
 
             // Tell the parent component that onboarding is done
-            onboardingComplete(data); // Pass the updated user data up
+            onOnboardingComplete(data); // Pass the updated user data up
 
         } catch (err) {
             setError(err.message);
