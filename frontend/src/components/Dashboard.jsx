@@ -1,14 +1,71 @@
 import { useState, useEffect } from 'react';
 import Onboarding from './Onboarding';
+import CreateDailyIntentionForm from './CreateDailyIntentionForm';
+
+function DisplayIntention({ intention }) {
+  // A new component to display the existing intention
+  return (
+    <div>
+      <h2 className="text-lg font-semibold text-gray-400">Today's Quest:</h2>
+      <div className="mt-2 bg-gray-700 p-4 rounded-lg">
+        <p className="text-xl text-white">{intention.daily_intention_text}</p>
+        <p className="text-md text-gray-300 mt-2">
+          Progress: {intention.completed_quantity} / {intention.target_quantity}
+        </p>
+      </div>
+    </div>
+  )
+}
 
 function MainApp({ user, token }) {
-    // This will be the main application view for an onboarded user
-    return (
+  // State to hold today's intention
+  const [intention, setIntention] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Fetch today's intention when the component mounts
+  useEffect(() => {
+    const fetchIntention = async () => {
+      try {
+        const response = await fetch('/api/intentions/today/me', {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+        if (response.status === 404) {
+          // 404 is not an error, it just means no intention exists for today
+          setIntention(null);
+        } else if (response.ok) {
+          const intentionData = await response.json();
+          setIntention(intentionData);
+        } else {
+          throw new Error('Failed to fetch daily intention.');
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchIntention();
+  }, [token]);
+
+  // --- Render Logic ---
+  if (isLoading) {
+    return <div className="text-gray-400">Loading your quest...</div>;
+  }
+  
+  return (
     <div>
-      <h1 className="text-3xl font-bold text-teal-400">Main Application</h1>
-      <p className="text-gray-400 mt-2">Welcome, {user.name}!</p>
-      <p className="text-gray-400">Your HRGA is set: "{user.hrga}"</p>
-      {/* We will build the Daily Intention form here next */}
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-white">Welcome, {user.name}</h1>
+        <p className="text-gray-400">Your HRGA: "{user.hrga}"</p>
+      </div>
+
+      {intention ? (
+        // If an intention exists, display it
+        <DisplayIntention intention={intention} />
+      ) : (
+        // If no intention exists, show the creation form
+        <CreateDailyIntentionForm token={token} onDailyIntentionCreated={setIntention} />
+      )}
     </div>
   );
 }
