@@ -228,6 +228,32 @@ def register_user(user_data: schemas.UserCreate, db: Session = Depends(database.
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to create user account: {str(e)}"
         )
+    
+@app.put("/users/me", response_model=schemas.UserResponse)
+def update_user_me(
+    user_data: schemas.UserUpdate,
+    current_user: Annotated[models.User, Depends(security.get_current_user)],
+    db: Session = Depends(database.get_db)
+):
+    """
+    Updates the profile for the currently authenticated user.
+    Used for the onboarding flow to set the user's HRGA.
+    """
+    try:
+        # Update the user model with the new data
+        current_user.hrga = user_data.hrga
+        
+        db.commit()
+        db.refresh(current_user)
+        
+        return current_user
+        
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to update user profile: {str(e)}"
+        )
 
 @app.get("/users/me", response_model=schemas.UserResponse)
 def get_user(current_user: Annotated[models.User, Depends(security.get_current_user)]):
