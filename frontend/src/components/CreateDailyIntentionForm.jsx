@@ -29,7 +29,7 @@ function CreateIntentionForm({ token, onDailyIntentionCreated }) {
       const data = await response.json();
 
       if (!response.ok) {
-        let errorMessage = 'Failed to create intention.';
+        let errorMessage = 'Failed to create Daily Intention.';
         if (data.detail) {
           errorMessage = Array.isArray(data.detail) ? data.detail[0].msg : data.detail;
         }
