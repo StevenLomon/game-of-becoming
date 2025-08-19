@@ -112,7 +112,7 @@ function MainApp({ user, token }) {
 
         </div>
       ) : (
-        <CreateDailyIntentionForm token={token} onIntentionCreated={fetchAllData} />
+        <CreateDailyIntentionForm token={token} onDailyIntentionCreated={fetchAllData} />
       )}
     </div>
   );
