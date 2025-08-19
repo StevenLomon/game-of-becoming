@@ -256,7 +256,7 @@ def update_user_me(
         )
 
 @app.get("/users/me", response_model=schemas.UserResponse)
-def get_user(current_user: Annotated[models.User, Depends(security.get_current_user)]):
+def get_user_me(current_user: Annotated[models.User, Depends(security.get_current_user)]):
     """Get the profile for the currently logged-in user for the frontend to display user informaiton."""
     # The 'get_current_user' dependency has already done all the work:
     # 1. It got the token.
@@ -355,6 +355,7 @@ def get_my_daily_intention(
     """
     Get today's Daily Intention for the currently logged in user.
     The core of the Daily Commitment Screen!
+    UPDATE: Now includes all associated Focus Blocks
     """
     # 1. Calculate the value that doesn't exist in the database model.
     completion_percentage = (
@@ -363,6 +364,8 @@ def get_my_daily_intention(
     )
 
     # 2. Because we have a calculated value, we MUST manually construct the Pydantic response model. 
+    # Now includes focus_blocks list. The 'intention.focus_blocks' attribute is already populated thanks
+    # to our eager loading in crud.py. No extra database query is needed here
     return schemas.DailyIntentionResponse(
         id=intention.id,
         user_id=intention.user_id,
@@ -373,7 +376,8 @@ def get_my_daily_intention(
         completion_percentage=completion_percentage, # Use the calculated value
         status=intention.status,
         created_at=intention.created_at,
-        ai_feedback=intention.ai_feedback
+        ai_feedback=intention.ai_feedback,
+        focus_blocks=intention.focus_blocks
     )
 
 @app.patch("/intentions/today/progress", response_model=schemas.DailyIntentionResponse)
@@ -572,18 +576,6 @@ def create_focus_block(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to create Focus Block: {str(e)}"
         )
-
-@app.get("/intentions/today/me/focus-blocks", response_model=list[schemas.FocusBlockResponse])
-def get_my_today_focus_blocks(
-    daily_intention: Annotated[models.DailyIntention, Depends(get_current_user_daily_intention)]
-):
-    """
-    Gets all Focus Blocks associated with the current user's
-    Daily Intention for today.
-    """
-    # The dependency gives us the intention, and the relationship on the model
-    # gives us easy access to all of its associated focus blocks.
-    return daily_intention.focus_blocks
 
 @app.patch("/focus-blocks/{block_id}", response_model=schemas.FocusBlockResponse)
 def update_focus_block(
