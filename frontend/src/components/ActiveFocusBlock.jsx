@@ -24,7 +24,7 @@ function ActiveFocusBlock({ block, token, onBlockCompleted }) {
 
     return (
         <div className="mt-6 p-4 bg-gray-700 rounded-lg border border-teal-500">
-        <h3 className="text-lg font-bold text-teal-400">Active Sprint:</h3>
+        <h3 className="text-lg font-bold text-teal-400">Active Focus Sprint:</h3>
         <p className="text-white mt-2 text-xl">"{block.focus_block_intention}"</p>
         <p className="text-gray-400 mt-1">Duration: {block.duration_minutes} minutes</p>
         <button
