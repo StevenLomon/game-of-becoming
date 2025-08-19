@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import LoginForm from './components/LoginForm'
 import RegistrationForm from './components/RegistrationForm';
 import Dashboard from './components/Dashboard';
@@ -38,8 +38,17 @@ function AuthScreen({ onLoginSuccess }) {
 }
 
 function App() {
-  // The 'token' is now managed here, at the top level!
-  const [token, setToken] = useState(null);
+  // 1. We initialize the token state by trying to read from localStorage first
+  const [token, setToken] = useState(localStorage.getItem('authToken'));
+
+  // 2. We use useEffect to save the token to localStorage whenever it changes
+  useEffect(() => {
+    if (token) {
+      localStorage.setItem('authToken', token);
+    } else {
+      localStorage.removeItem('authToken');
+    }
+  }, [token]); // This effect runs whenever the 'token' state changes
 
   const handleLogout = () => {
     setToken(null); // Logging out is as simple as clearing the token
@@ -51,7 +60,8 @@ function App() {
         // If we have a token, show the Dashboard
         <Dashboard token={token} onLogout={handleLogout} />
       ) : (
-        // If we don't have a token, show the AuthScreen
+        // If we don't have a token, show the AuthScreen. setToken is passed directly. 
+        // When called, it updates the state, which triggers the useEffect
         <AuthScreen onLoginSuccess={setToken} />
       )}
     </div>
