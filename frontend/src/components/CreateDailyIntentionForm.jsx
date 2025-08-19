@@ -46,11 +46,11 @@ function CreateIntentionForm({ token, onDailyIntentionCreated }) {
 
   return (
     <div>
-      <h2 className="text-2xl font-bold text-teal-400 mb-4">What is your quest for today?</h2>
+      <h2 className="text-2xl font-bold text-teal-400 mb-4">What will you set as your Daily Intention?</h2>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label htmlFor="intention-text" className="block text-sm font-medium text-gray-300">
-            Describe your single, measurable outcome for the day.
+            Describe your single, measurable outcome for the day that is in alignment with your HRGA.
           </label>
           <textarea
             id="intention-text"
@@ -63,7 +63,7 @@ function CreateIntentionForm({ token, onDailyIntentionCreated }) {
         </div>
         <div className="flex space-x-4">
           <div className="flex-1">
-            <label htmlFor="target-quantity" className="block text-sm font-medium text-gray-300">Target</label>
+            <label htmlFor="target-quantity" className="block text-sm font-medium text-gray-300">Target Quantity</label>
             <input
               id="target-quantity"
               type="number"
@@ -93,7 +93,7 @@ function CreateIntentionForm({ token, onDailyIntentionCreated }) {
             type="submit"
             className="w-full flex justify-center py-2 px-4 border rounded-md font-medium text-white bg-teal-600 hover:bg-teal-700"
           >
-            Commit to Today's Quest
+            Commit to Today's Daily Intention
           </button>
         </div>
       </form>
