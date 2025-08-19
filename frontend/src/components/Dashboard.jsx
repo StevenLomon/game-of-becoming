@@ -21,38 +21,27 @@ function DisplayIntention({ intention }) {
 
 function MainApp({ user, token }) {
   // State to hold the user's Daily Intention for the day and Focus Blocks
-  const [intention, setIntention] = useState(null);
-  const [focusBlocks, setFocusBlocks] = useState([]);
+  const [intention, setIntention] = useState(null); // Now also includes Focus Blocks
   const [isLoading, setIsLoading] = useState(true);
 
   // A new function to fetch *all* data; Daily Intentions and Focus Blocks
   const fetchAllData = async () => {
     setIsLoading(true); // Set loading state
     try {
-      // Fetch Daily Intention
-      const intentionRes = await fetch('/api/intentions/today/me', {
+      // Fetch Daily Intention AND Focus Blocks now in one endpoint!
+      const response = await fetch('/api/intentions/today/me', {
         headers: { 'Authorization': `Bearer ${token}` },
       });
-      if (intentionRes.status == 404) {
+      if (response.status == 404) {
         setIntention(null);
-        setFocusBlocks([]); // No Daily Intention means no Focus Block
-      } else if (intentionRes.ok) {
-        const intentionData = intentionRes.json();
+      } else if (response.ok) {
+        const intentionData = await response.json();
         setIntention(intentionData);
-
-        // If Daily Intention exists, fetch its Focus Blocks
-        const blocksRes = await fetch('/api/intentions/today/me/focus-blocks', {
-          headers: { 'Authorization': `Bearer: ${token}`},
-        });
-        if (blocksRes.ok) {
-          const blocksData = blocksRes.json();
-          setFocusBlocks(blocksData);
-        }
       } else {
-        throw new Error('Failed to fetch data.')
+        throw new Error('Failed to fetch Daily Intention data.')
       }
     } catch (error) {
-      console.error('Failed to fetch data:', error);
+      console.error('Failed to fetch Daily Intention data:', error);
     } finally {
       setIsLoading(false);
     }
@@ -64,7 +53,7 @@ function MainApp({ user, token }) {
   }, [token]);
 
   // Find the currently active Focus Blocks (if any)
-  const activeBlock = focusBlocks.find(b => b.status === 'pending' || b.staus === 'in progress');
+  const activeBlock = intention ? intention.focus_blocks.find(b => b.status === 'pending' || b.status === 'in progress') : null;
 
 
   // --- Render Logic ---
