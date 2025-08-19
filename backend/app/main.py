@@ -573,6 +573,18 @@ def create_focus_block(
             detail=f"Failed to create Focus Block: {str(e)}"
         )
 
+@app.get("/intentions/today/me/focus-blocks", response_model=list[schemas.FocusBlockResponse])
+def get_my_today_focus_blocks(
+    daily_intention: Annotated[models.DailyIntention, Depends(get_current_user_daily_intention)]
+):
+    """
+    Gets all Focus Blocks associated with the current user's
+    Daily Intention for today.
+    """
+    # The dependency gives us the intention, and the relationship on the model
+    # gives us easy access to all of its associated focus blocks.
+    return daily_intention.focus_blocks
+
 @app.patch("/focus-blocks/{block_id}", response_model=schemas.FocusBlockResponse)
 def update_focus_block(
     update_data: schemas.FocusBlockUpdate, 
