@@ -22,30 +22,40 @@ function MainApp({ user, token }) {
   const [intention, setIntention] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Fetch today's intention when the component mounts
-  useEffect(() => {
-    const fetchIntention = async () => {
-      try {
-        const response = await fetch('/api/intentions/today/me', {
-          headers: { 'Authorization': `Bearer ${token}` },
-        });
-        if (response.status === 404) {
-          // 404 is not an error, it just means no intention exists for today
-          setIntention(null);
-        } else if (response.ok) {
-          const intentionData = await response.json();
-          setIntention(intentionData);
-        } else {
-          throw new Error('Failed to fetch daily intention.');
-        }
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setIsLoading(false);
+  // Pulling the fetching logic into its own function
+  const fetchIntention = async () => {
+    setIsLoading(true); // Set loading state
+    try {
+      const response = await fetch('/api/intentions/today/me', {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      if (response.status === 404) {
+        // 404 is not an error, it just means no intention exists for today
+        setIntention(null);
+      } else if (response.ok) {
+        const intentionData = await response.json();
+        setIntention(intentionData);
+      } else {
+        throw new Error('Failed to fetch daily intention.');
       }
-    };
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Fetch today's intention when the component mounts. The useEffect hooks now just calls our fetch function
+  useEffect(() => {
     fetchIntention();
   }, [token]);
+
+  // The new function we'll pass to the form
+  const handleIntentionCreated = () => {
+    // After a new Daily Intention is created, we simply re-run the fetch logic to get the latest,
+    // definitive data from the server
+    fetchIntention();
+  }
 
   // --- Render Logic ---
   if (isLoading) {
@@ -63,8 +73,8 @@ function MainApp({ user, token }) {
         // If an intention exists, display it
         <DisplayIntention intention={intention} />
       ) : (
-        // If no intention exists, show the creation form
-        <CreateDailyIntentionForm token={token} onDailyIntentionCreated={setIntention} />
+        // If no intention exists, show the creation form. Pass the IntentionCreated handler as a prop
+        <CreateDailyIntentionForm token={token} onDailyIntentionCreated={handleIntentionCreated} />
       )}
     </div>
   );
