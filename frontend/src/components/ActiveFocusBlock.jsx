@@ -7,7 +7,7 @@ function ActiveFocusBlock({ block, token, onBlockCompleted }) {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`,
                 },
-                body: JSON.stringify({ status: 'complete' }),
+                body: JSON.stringify({ status: 'completed' }),
             });
             if (!response.ok) {
                 let errorMessage = 'Failed to complete Focus Block.';

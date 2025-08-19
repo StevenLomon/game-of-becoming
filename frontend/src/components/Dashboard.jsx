@@ -6,6 +6,11 @@ import ActiveFocusBlock from './ActiveFocusBlock';
 import UpdateProgressForm from './UpdateProgressForm';
 
 function DisplayIntention({ intention }) {
+  // Derive the count of completed Focus Blocks from the intention's props
+  const completedBlocksCount = intention.focus_blocks.filter(
+    (block) => block.status === 'completed'
+  ).length;
+
   // A new component to display the existing intention
   return (
     <div>
@@ -14,6 +19,9 @@ function DisplayIntention({ intention }) {
         <p className="text-xl text-white">{intention.daily_intention_text}</p>
         <p className="text-md text-gray-300 mt-2">
           Progress: {intention.completed_quantity} / {intention.target_quantity}
+        </p>
+        <p className="text-md text-gray-300">
+          Focus Blocks: {completedBlocksCount} / {intention.focus_block_count}
         </p>
       </div>
     </div>
