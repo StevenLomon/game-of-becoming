@@ -3,6 +3,7 @@ import Onboarding from './Onboarding';
 import CreateDailyIntentionForm from './CreateDailyIntentionForm';
 import CreateFocusBlockForm from './CreateFocusBlockForm';
 import ActiveFocusBlock from './ActiveFocusBlock';
+import UpdateProgressForm from './UpdateProgressForm';
 
 function DisplayIntention({ intention }) {
   // A new component to display the existing intention
@@ -23,6 +24,8 @@ function MainApp({ user, token }) {
   // State to hold the user's Daily Intention for the day and Focus Blocks
   const [intention, setIntention] = useState(null); // Now also includes Focus Blocks
   const [isLoading, setIsLoading] = useState(true);
+  // New state to manage the UI view after a block is completed
+  const [view, setView] = useState('focus'); // 'focus' or 'progress'
 
   // A new function to fetch *all* data; Daily Intentions and Focus Blocks
   const fetchAllData = async () => {
@@ -52,6 +55,17 @@ function MainApp({ user, token }) {
     fetchAllData();
   }, [token]);
 
+  // After a Focus Block is created, switch the view to the Daily Intention progress update form
+  const handleFocusBlockCompleted = () => {
+    setView('progress');
+  }
+
+  // After progress is updated, re-fetch all data and switch back to the 'focus' view
+  const handleProgressUpdated = () => {
+    fetchAllData();
+    setView('focus');
+  }
+
   // Find the currently active Focus Blocks (if any)
   const activeBlock = intention ? intention.focus_blocks.find(b => b.status === 'pending' || b.status === 'in progress') : null;
 
@@ -71,12 +85,23 @@ function MainApp({ user, token }) {
       {intention ? (
         <div>
           <DisplayIntention intention={intention} />
-          {/* Conditional rendering for the focus block section */}
-          {activeBlock ? (
-            <ActiveFocusBlock block={activeBlock} token={token} onBlockCompleted={fetchAllData} />
-          ) : (
-            <CreateFocusBlockForm token={token} onBlockCreated={fetchAllData} />
+          
+          {view === 'focus' && (
+            activeBlock ? (
+              <ActiveFocusBlock block={activeBlock} token={token} onBlockCompleted={handleFocusBlockCompleted} />
+            ) : (
+              <CreateFocusBlockForm token={token} onBlockCreated={fetchAllData} />
+            )
           )}
+
+          {view === 'progress' && (
+            <UpdateProgressForm 
+              token={token} 
+              onProgressUpdated={handleProgressUpdated}
+              currentProgress={intention.completed_quantity}
+            />
+          )}
+
         </div>
       ) : (
         <CreateDailyIntentionForm token={token} onIntentionCreated={fetchAllData} />
