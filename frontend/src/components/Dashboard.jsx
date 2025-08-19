@@ -108,6 +108,15 @@ function Dashboard({ token, onLogout }) {
                 const response = await fetch('api/users/me', {
                     headers: { 'Authorization': `Bearer ${token}` },
                 });
+
+                // Spefic 401 Unauthorized logic
+                if (response.status === 401) {
+                  // The token is invalid or expired. Call the onLogout function passed down
+                  // from the App component
+                  onLogout();
+                  return;
+                }
+
                 if (!response.ok) {
                     throw new Error('Failed to fetch user profile.');
                 }
