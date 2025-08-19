@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import Onboarding from './Onboarding';
 import CreateDailyIntentionForm from './CreateDailyIntentionForm';
+import CreateFocusBlockForm from './CreateFocusBlockForm';
+import ActiveFocusBlock from './ActiveFocusBlock';
 
 function DisplayIntention({ intention }) {
   // A new component to display the existing intention
@@ -18,44 +20,52 @@ function DisplayIntention({ intention }) {
 }
 
 function MainApp({ user, token }) {
-  // State to hold today's intention
+  // State to hold the user's Daily Intention for the day and Focus Blocks
   const [intention, setIntention] = useState(null);
+  const [focusBlocks, setFocusBlocks] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Pulling the fetching logic into its own function
-  const fetchIntention = async () => {
+  // A new function to fetch *all* data; Daily Intentions and Focus Blocks
+  const fetchAllData = async () => {
     setIsLoading(true); // Set loading state
     try {
-      const response = await fetch('/api/intentions/today/me', {
+      // Fetch Daily Intention
+      const intentionRes = await fetch('/api/intentions/today/me', {
         headers: { 'Authorization': `Bearer ${token}` },
       });
-      if (response.status === 404) {
-        // 404 is not an error, it just means no intention exists for today
+      if (intentionRes.status == 404) {
         setIntention(null);
-      } else if (response.ok) {
-        const intentionData = await response.json();
+        setFocusBlocks([]); // No Daily Intention means no Focus Block
+      } else if (intentionRes.ok) {
+        const intentionData = intentionRes.json();
         setIntention(intentionData);
+
+        // If Daily Intention exists, fetch its Focus Blocks
+        const blocksRes = await fetch('/api/intentions/today/me/focus-blocks', {
+          headers: { 'Authorization': `Bearer: ${token}`},
+        });
+        if (blocksRes.ok) {
+          const blocksData = blocksRes.json();
+          setFocusBlocks(blocksData);
+        }
       } else {
-        throw new Error('Failed to fetch daily intention.');
+        throw new Error('Failed to fetch data.')
       }
-    } catch (err) {
-      console.error(err);
+    } catch (error) {
+      console.error('Failed to fetch data:', error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Fetch today's intention when the component mounts. The useEffect hooks now just calls our fetch function
+  // Fetch all data when the component is mounted
   useEffect(() => {
-    fetchIntention();
+    fetchAllData();
   }, [token]);
 
-  // The new function we'll pass to the form
-  const handleIntentionCreated = () => {
-    // After a new Daily Intention is created, we simply re-run the fetch logic to get the latest,
-    // definitive data from the server
-    fetchIntention();
-  }
+  // Find the currently active Focus Blocks (if any)
+  const activeBlock = focusBlocks.find(b => b.status === 'pending' || b.staus === 'in progress');
+
 
   // --- Render Logic ---
   if (isLoading) {
@@ -70,11 +80,17 @@ function MainApp({ user, token }) {
       </div>
 
       {intention ? (
-        // If an intention exists, display it
-        <DisplayIntention intention={intention} />
+        <div>
+          <DisplayIntention intention={intention} />
+          {/* Conditional rendering for the focus block section */}
+          {activeBlock ? (
+            <ActiveFocusBlock block={activeBlock} token={token} onBlockCompleted={fetchAllData} />
+          ) : (
+            <CreateFocusBlockForm token={token} onBlockCreated={fetchAllData} />
+          )}
+        </div>
       ) : (
-        // If no intention exists, show the creation form. Pass the IntentionCreated handler as a prop
-        <CreateDailyIntentionForm token={token} onDailyIntentionCreated={handleIntentionCreated} />
+        <CreateDailyIntentionForm token={token} onIntentionCreated={fetchAllData} />
       )}
     </div>
   );
