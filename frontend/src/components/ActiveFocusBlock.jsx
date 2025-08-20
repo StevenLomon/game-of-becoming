@@ -32,7 +32,7 @@ function ActiveFocusBlock({ block, token, onBlockCompleted }) {
 
         // Set an interval to "tick" every 1000 milliseconds (1 second).
         const timerId = setInterval(() => {
-            setTimeLeft((prevTime) => prevTime - 1); // Decrement time by 1
+            setTimeLeft((prevTime) => Math.max(0, prevTime - 1)); // Decrement time by 1. Now wrapped in Math.max() to ensure it never dips below 0
         }, 1000);
 
         // THE "CANCEL" BUTTON: This is the cleanup funciton.
