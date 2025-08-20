@@ -14,7 +14,7 @@ function UpdateProgressForm({ token, onProgressUpdated, currentProgress }) {
                 method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer: ${token}`,
+                    'Authorization': `Bearer ${token}`,
                 },
                 body: JSON.stringify({
                     completed_quantity: parseInt(quantity, 10),
