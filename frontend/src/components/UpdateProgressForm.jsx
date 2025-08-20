@@ -6,7 +6,7 @@ function UpdateProgressForm({ token, onProgressUpdated, currentProgress }) {
     const [error, setError] = useState(null);
 
     const handleSubmit = async (event) => {
-        event.preventDeafult();
+        event.preventDefault();
         setError(null);
 
         try {
@@ -17,7 +17,7 @@ function UpdateProgressForm({ token, onProgressUpdated, currentProgress }) {
                     'Authorization': `Bearer: ${token}`,
                 },
                 body: JSON.stringify({
-                    completed_quantity: parsetInt(quantity, 10),
+                    completed_quantity: parseInt(quantity, 10),
                 }),
             });
 
