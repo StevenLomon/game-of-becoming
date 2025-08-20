@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 function ActiveFocusBlock({ block, token, onBlockCompleted }) {
     // --- START OF TIMER LOGIC ---
@@ -46,7 +46,9 @@ function ActiveFocusBlock({ block, token, onBlockCompleted }) {
     const minutes = Math.floor(timeLeft / 60);
     const seconds = timeLeft % 60;
 
-    const handleComplete = async () => {
+    // With our second effect in action now; we need to use useCallback to satisfy the dependency array of our new "watchdog" effect.
+    // This tells React that `handleComplete` itself won't change unless its own dependencies change
+    const handleComplete = useCallback(async () => {
         try {
             const response = await fetch(`/api/focus-blocks/${block.id}`, {
                 method: 'PATCH',
@@ -67,7 +69,15 @@ function ActiveFocusBlock({ block, token, onBlockCompleted }) {
         } catch(error) {
             console.error("Failed to complete Focus Block:", error);
         }
-    };
+    }, [block.id, token, onBlockCompleted]);
+
+    // A second effect that looks for the timer to hit zero and auto-complete the Focus Block (Single Responsibility Principle in action!)
+    useEffect(() => {
+        // If the timer hits 0, call the handleComplete function
+        if (timeLeft === 0) {
+            handleComplete();
+        }
+    }, [timeLeft, handleComplete]); // We depend on timeLeft, and also handleComplete in case it changes
 
     return (
         <div className="mt-6 p-4 bg-gray-700 rounded-lg border border-teal-500">
