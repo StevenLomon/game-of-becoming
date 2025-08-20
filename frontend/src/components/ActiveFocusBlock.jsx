@@ -6,7 +6,7 @@ function ActiveFocusBlock({ block, token, onBlockCompleted }) {
     // A helper functino to calculate time left based on the server's timestamp
     const calculateRemainingTime = () => {
         // Get the start time from the database record (and convert it to milliseconds)
-        const startTimeMs = new Date(block.created_at).getTime();
+        const startTimeMs = new Date(block.created_at + 'Z').getTime();
         // Calculate the total duration in milliseconds
         const durationMs = block.duration_minutes * 60 * 1000;
         // Determine the exta time the timer should end
