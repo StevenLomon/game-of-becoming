@@ -63,6 +63,45 @@ function MainApp({ user, token }) {
     fetchAllData();
   }, [token]);
 
+  // Our new "watchdog effect" to handle Daily Intention auto-completion flow
+  useEffect(() => {
+    // Check if the intention exists and its status is 'completed'
+    // We also add a check to see if a Daily Result has already been created for it
+    const hasDailyResult = intention?.daily_results?.length > 0;
+
+    if (intention?.status === 'completed' && !hasDailyResult) {
+      console.log("Daily Intention completed! Creating Daily Result...");
+
+      const createDailyResult = async () => {
+        try {
+          const response = await fetch('/api/daily-results', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
+            },
+            // The backend knows which Daily Intention to use based on the user's token
+            });
+
+            if (!response.ok) {
+              throw new Error('Failed to create Daily Result');
+            }
+
+            const resultData = await response.json();
+            console.log("Successfully created Daily Result:", resultData);
+
+            // On success, we should re-fetch all data to get the new result included in our state
+            fetchAllData();
+
+        } catch (error) {
+          console.error("Error creating Daily Result:", error);
+        }
+      };
+
+        createDailyResult();
+    }
+  }, [intention, token]); // This effect depends on the Daily Intention object and the token
+
   // After a Focus Block is created, switch the view to the Daily Intention progress update form
   const handleFocusBlockCompleted = () => {
     setView('progress');
