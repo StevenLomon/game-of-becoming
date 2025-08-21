@@ -34,6 +34,8 @@ function MainApp({ user, token }) {
   const [isLoading, setIsLoading] = useState(true);
   // New state to manage the UI view after a block is completed
   const [view, setView] = useState('focus'); // 'focus' or 'progress'
+  // New state to manage race conditions; our "lock" state
+  const [isCreatingResult, setIsCreatingResult] = useState(false);
 
   // A new function to fetch *all* data; Daily Intentions and Focus Blocks
   const fetchAllData = async () => {
@@ -67,12 +69,15 @@ function MainApp({ user, token }) {
   useEffect(() => {
     // Check if the intention exists and its status is 'completed'
     // We also add a check to see if a Daily Result has already been created for it
-    const hasDailyResult = intention?.daily_results?.length > 0;
+    const hasDailyResult = intention?.daily_results?.id;
 
-    if (intention?.status === 'completed' && !hasDailyResult) {
+    // Updated condition to handle race conditions; only run if status is completed, 
+    // there's no result yet, AND we aren't already in the middle of creating one
+    if (intention?.status === 'completed' && !hasDailyResult && !isCreatingResult) {
       console.log("Daily Intention completed! Creating Daily Result...");
 
       const createDailyResult = async () => {
+        setIsCreatingResult(true); // LOCK!
         try {
           const response = await fetch('/api/daily-results', {
             method: 'POST',
@@ -95,12 +100,14 @@ function MainApp({ user, token }) {
 
         } catch (error) {
           console.error("Error creating Daily Result:", error);
+        } finally {
+          setIsCreatingResult(false); // UNLOCK!
         }
       };
 
         createDailyResult();
     }
-  }, [intention, token]); // This effect depends on the Daily Intention object and the token
+  }, [intention, token, isCreatingResult]); // This effect depends on the Daily Intention object, the token and our new "lock"
 
   // After a Focus Block is created, switch the view to the Daily Intention progress update form
   const handleFocusBlockCompleted = () => {
