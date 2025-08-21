@@ -69,7 +69,7 @@ function MainApp({ user, token }) {
   useEffect(() => {
     // Check if the intention exists and its status is 'completed'
     // We also add a check to see if a Daily Result has already been created for it
-    const hasDailyResult = intention?.daily_results?.id;
+    const hasDailyResult = !!intention?.daily_result;
 
     // Updated condition to handle race conditions; only run if status is completed, 
     // there's no result yet, AND we aren't already in the middle of creating one
