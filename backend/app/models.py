@@ -81,7 +81,7 @@ class DailyIntention(Base):
 
     # Relationships
     user: Mapped["User"] = relationship(back_populates="daily_intentions")
-    daily_results: Mapped["DailyResult"] = relationship(back_populates="daily_intention") # One-to-one relationship with DailyResult
+    daily_result: Mapped["DailyResult"] = relationship(back_populates="daily_intention") # One-to-one relationship with DailyResult
     focus_blocks: Mapped[List["FocusBlock"]] = relationship(back_populates="daily_intention") #For individual focus block tracking
 
 class FocusBlock(Base):
@@ -119,7 +119,7 @@ class DailyResult(Base):
     recovery_quest_response: Mapped[Optional[str]] = mapped_column(Text) # Users's response/proof. Null if no Recovery Quest was given
     recovery_quest_completed: Mapped[bool] = mapped_column(default=False) # V2 feature
 
-    daily_intention: Mapped["DailyIntention"] = relationship(back_populates="daily_results")
+    daily_intention: Mapped["DailyIntention"] = relationship(back_populates="daily_result")
 
 class AICoachingLog(Base):
     __tablename__ = "ai_coaching_logs"
