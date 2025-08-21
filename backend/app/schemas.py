@@ -173,28 +173,6 @@ class FocusBlockUpdate(BaseModel):
     post_block_video_url: Optional[str] = None
     status: Optional[str] = None # To mark as 'completed' later
 
-# MODIFIED: Now includes Focus Blocks for a more RESTful approach
-class DailyIntentionResponse(BaseModel):
-    """Unified response for all successful/existing Daily Intention endpoints"""
-    id: int
-    user_id: int
-    daily_intention_text: str
-    target_quantity: int
-    completed_quantity: int
-    focus_block_count: int
-    completion_percentage: float
-    status: str # 'pending', 'in_progress', 'completed', 'failed'
-    created_at: datetime
-    ai_feedback: Optional[str] = None # AI coach's immediate feedback. Can be null if Claude API fails
-    needs_refinement: bool = False # New. Always False for an approved intention (doesn't need refinement)
-    focus_blocks: list[FocusBlockResponse] = [] # It tells Pydantic to expect a list of objects that match the FocusBlockResponse schema.
-
-    model_config = ConfigDict(from_attributes=True) # Allows model to be created from ORM attributes
-
-
-# NEW: Tells the creation endpoint what its possible responses are
-DailyIntentionCreateResponse = Union[DailyIntentionRefinementResponse, DailyIntentionResponse]
-
 
 # =============================================================================
 # DAILY RESULTS SCHEMAS (Evening Reflection)
@@ -242,3 +220,29 @@ class RecoveryQuestResponse(BaseModel):
     """Schema for the complete Recovery Quest response (includes AI feedback)"""
     recovery_quest_response: str
     ai_coaching_feedback: str  # AI generates this
+
+
+# DailyIntentionResponse is down here since it contain both Focus Blocks and potentially a Daily Result
+# MODIFIED: Now includes Focus Blocks for a more RESTful approach
+# MODIFIED: Now *also* includes an optional DailyResult
+class DailyIntentionResponse(BaseModel):
+    """Unified response for all successful/existing Daily Intention endpoints"""
+    id: int
+    user_id: int
+    daily_intention_text: str
+    target_quantity: int
+    completed_quantity: int
+    focus_block_count: int
+    completion_percentage: float
+    status: str # 'pending', 'in_progress', 'completed', 'failed'
+    created_at: datetime
+    ai_feedback: Optional[str] = None # AI coach's immediate feedback. Can be null if Claude API fails
+    needs_refinement: bool = False # New. Always False for an approved intention (doesn't need refinement)
+    
+    focus_blocks: list[FocusBlockResponse] = [] # It tells Pydantic to expect a list of objects that match the FocusBlockResponse schema
+    daily_results: Optional[DailyResultResponse] = None
+
+    model_config = ConfigDict(from_attributes=True) # Allows model to be created from ORM attributes
+
+# Tells the creation endpoint what its possible responses are
+DailyIntentionCreateResponse = Union[DailyIntentionRefinementResponse, DailyIntentionResponse]
