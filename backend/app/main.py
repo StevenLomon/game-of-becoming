@@ -378,7 +378,8 @@ def get_my_daily_intention(
         status=intention.status,
         created_at=intention.created_at,
         ai_feedback=intention.ai_feedback,
-        focus_blocks=intention.focus_blocks
+        focus_blocks=intention.focus_blocks,
+        daily_result=intention.daily_result
     )
 
 @app.patch("/intentions/today/progress", response_model=schemas.DailyIntentionResponse)
