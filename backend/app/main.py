@@ -356,6 +356,7 @@ def get_my_daily_intention(
     Get today's Daily Intention for the currently logged in user.
     The core of the Daily Commitment Screen!
     UPDATE: Now includes all associated Focus Blocks
+    UPDATE: Now also potentially includes a Daily Result
     """
     # 1. Calculate the value that doesn't exist in the database model.
     completion_percentage = (

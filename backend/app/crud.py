@@ -61,11 +61,12 @@ def get_or_create_user_stats(db: Session, user_id: int) -> models.CharacterStats
 def get_today_intention(db: Session, user_id: int) -> models.DailyIntention | None:
     """
     Get today's Daily Intention for a user, and eagerly load its
-    associated focus blocks to prevent lazy-load errors.
+    associated Focus Blocks AND potential Daily Result to prevent lazy-load errors.
     """
     today = datetime.now(timezone.utc).date()
     return db.query(models.DailyIntention).options(
-        joinedload(models.DailyIntention.focus_blocks)
+        joinedload(models.DailyIntention.focus_blocks),
+        joinedload(models.DailyIntention.daily_result)
         ).filter(
         models.DailyIntention.user_id == user_id,
         models.DailyIntention.created_at >= datetime.combine(today, datetime.min.time()),
