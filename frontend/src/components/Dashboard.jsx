@@ -38,6 +38,7 @@ function MainApp({ user, token, stats, setStats }) { // stats now included as a 
   const [view, setView] = useState('focus'); // 'focus' or 'progress'
   // New state to manage race conditions; our "lock" state
   const [isCreatingResult, setIsCreatingResult] = useState(false);
+  const [error, setError] = useState(null);
 
   // Renamed from fetchAllData to reflect its broader role
   const refreshGameState = async () => {
@@ -79,49 +80,6 @@ function MainApp({ user, token, stats, setStats }) { // stats now included as a 
   useEffect(() => {
     refreshGameState();
   }, [token]);
-
-  // Our new "watchdog effect" to handle Daily Intention auto-completion flow
-  useEffect(() => {
-    // Check if the intention exists and its status is 'completed'
-    // We also add a check to see if a Daily Result has already been created for it
-    const hasDailyResult = !!intention?.daily_result;
-
-    // Updated condition to handle race conditions; only run if status is completed, 
-    // there's no result yet, AND we aren't already in the middle of creating one
-    if (intention?.status === 'completed' && !hasDailyResult && !isCreatingResult) {
-      console.log("Daily Intention completed! Creating Daily Result...");
-
-      const createDailyResult = async () => {
-        setIsCreatingResult(true); // LOCK!
-        try {
-          const response = await fetch('/api/daily-results', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`,
-            },
-            // The backend knows which Daily Intention to use based on the user's token
-            });
-
-            if (!response.ok) {
-              throw new Error('Failed to create Daily Result');
-            }
-
-            // On success, we simply refresh the game state. This will fetch the new Daily
-            // Result and cause the UI to update, naturally fixing our race condition
-            // UPDATED: We MUST wait (await haha) for the state to be updated before continuing
-            await refreshGameState();
-
-        } catch (error) {
-          console.error("Error creating Daily Result:", error);
-        } finally {
-          setIsCreatingResult(false); // UNLOCK!
-        }
-      };
-
-        createDailyResult();
-    }
-  }, [intention, token, isCreatingResult]); // This effect depends on the Daily Intention object, the token and our new "lock"
 
   // After a Focus Block is created, switch the view to the Daily Intention progress update form
   const handleFocusBlockCompleted = () => {
