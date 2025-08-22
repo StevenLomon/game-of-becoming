@@ -520,7 +520,7 @@ def fail_daily_intention(
             daily_intention_id=daily_intention.id,
             succeeded_failed=False, # Explicitly False for failure
             ai_feedback=reflection_data["ai_feedback"],
-            recovery_quest=reflection_data["recovery_back"],
+            recovery_quest=reflection_data["recovery_quest"],
             discipline_stat_gain=discipline_gain
         )
         db.add(db_result)
