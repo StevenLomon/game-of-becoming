@@ -661,6 +661,7 @@ def create_daily_result(
     
     # 1. Call the service to get the logic result
     reflection_data = services.create_daily_reflection(db=db, user=stats.user, daily_intention=daily_intention)
+    discipline_gain = reflection_data.get("discipline_stat_gain", 0)
     
     try:
         # 2. Use the data from the service to build the DB object
@@ -668,12 +669,12 @@ def create_daily_result(
             daily_intention_id=daily_intention.id,
             succeeded_failed=reflection_data["succeeded"],
             ai_feedback=reflection_data["ai_feedback"],
-            recovery_quest=reflection_data["recovery_quest"]
+            recovery_quest=reflection_data["recovery_quest"],
+            discipline_stat_gain=discipline_gain
         )
         db.add(db_result)
 
         # 3. Update stats based on service output
-        discipline_gain = reflection_data.get("discipline_stat_gain", 0)
         if discipline_gain > 0:
             stats.discipline += discipline_gain
 
