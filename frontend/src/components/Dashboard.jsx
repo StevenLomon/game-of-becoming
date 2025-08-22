@@ -154,7 +154,7 @@ function MainApp({ user, token, stats }) { // stats now included as a prop!
               activeBlock ? (
                 <ActiveFocusBlock block={activeBlock} token={token} onBlockCompleted={handleFocusBlockCompleted} />
               ) : (
-                <CreateFocusBlockForm token={token} onBlockCreated={fetchAllData} />
+                <CreateFocusBlockForm token={token} onBlockCreated={refreshGameState} />
               )
             )}
 
@@ -170,7 +170,7 @@ function MainApp({ user, token, stats }) { // stats now included as a prop!
         )
       ) : (
         // If no intention exists at all, show the creation form
-        <CreateDailyIntentionForm token={token} onDailyIntentionCreated={fetchAllData} />
+        <CreateDailyIntentionForm token={token} onDailyIntentionCreated={refreshGameState} />
       )}
     </div>
   );
