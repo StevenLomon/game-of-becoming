@@ -102,11 +102,9 @@ function MainApp({ user, token, stats, setStats }) { // stats now included as a 
   const confirmFailIntention = async () => {
     setIsFailConfirmVisible(false); // Close the modal first
     try {
-      const response = await fethc('api/intentions/today/fail', {
+      const response = await fetch('api/intentions/today/fail', {
         method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
+        headers: { 'Authorization': `Bearer ${token}` },
       });
 
       if (!response.ok) {
