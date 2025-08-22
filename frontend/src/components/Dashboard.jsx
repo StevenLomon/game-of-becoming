@@ -30,7 +30,7 @@ function DisplayIntention({ intention }) {
   )
 }
 
-function MainApp({ user, token, stats }) { // stats now included as a prop!
+function MainApp({ user, token, stats, setStats }) { // stats now included as a prop! And now setStats too; we not to not only show stats but also *update* them
   // State to hold the user's Daily Intention for the day and Focus Blocks
   const [intention, setIntention] = useState(null); // Now also includes Focus Blocks
   const [isLoading, setIsLoading] = useState(true);
@@ -41,20 +41,32 @@ function MainApp({ user, token, stats }) { // stats now included as a prop!
 
   // Renamed from fetchAllData to reflect its broader role
   const refreshGameState = async () => {
-    setIsLoading(true); // Set loading state
+    // We only set the state to 'loading' on boot up
     try {
-      // Fetch Daily Intention AND Focus Blocks now in one endpoint!
-      const response = await fetch('/api/intentions/today/me', {
+      const intentionPromise = await fetch('/api/intentions/today/me', {
         headers: { 'Authorization': `Bearer ${token}` },
+      }); // Daily Intention and Focus Blocks is fetched in one endpoint
+      const statsPromise = await fetch('/api/users/me/stats', {
+        headers: { 'Authorization': `Bearer ${token}`},
       });
-      if (response.status == 404) {
+      
+      const [intentionResponse, statsResponse] = await Promise.all([intentionPromise, statsPromise]);
+
+      if (intentionResponse.status == 404) {
         setIntention(null);
-      } else if (response.ok) {
-        const intentionData = await response.json();
-        setIntention(intentionData);
+      } else if (intentionResponse.ok) {
+        setIntention(await intentionResponse.json());
       } else {
-        throw new Error('Failed to fetch game state.')
+        throw new Error('Failed to fetch Daily Intention Data.')
       }
+
+      // Update the stats state
+      if (statsResponse.ok) {
+        setStats(await statsResponse.json());
+      } else {
+        throw new Error('Failed to fetch stats data.');
+      }
+
     } catch (error) {
       console.error('Failed to fetch game state:', error);
     } finally {
@@ -240,7 +252,7 @@ function Dashboard({ token, onLogout }) {
   return (
     <div className="bg-gray-800 p-8 rounded-lg shadow-lg w-full max-w-2xl">
       {user.hrga ? (
-        <MainApp user={user} token={token} stats={stats} />
+        <MainApp user={user} token={token} stats={stats} setStats={setStats} />
       ) : (
         <Onboarding token={token} onOnboardingComplete={handleOnboardingComplete} />
       )}
