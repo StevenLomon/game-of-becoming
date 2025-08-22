@@ -92,6 +92,34 @@ function MainApp({ user, token, stats, setStats }) { // stats now included as a 
     setView('focus');
   }
 
+  // A new handler for failing a Daily Intention
+  const handleFailIntention = async () => {
+    setError(null); // Reset previous errors
+    if (!window.confirm("Are you sure you want to end today's Daily Intention? This will move you to the Evening Reflection.")) {
+      return; // Simply stop if the user cancels
+    }
+
+    try {
+      const response = await fethc('api/intentions/today/fail', {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to mark Daily Intention as failed.')
+      }
+
+      // On success, simply refresh the game state. The declarative UI will do the rest
+      await refreshGameState();
+
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
   // Find the currently active Focus Blocks (if any)
   const activeBlock = intention ? intention.focus_blocks.find(b => b.status === 'pending' || b.status === 'in progress') : null;
 
@@ -136,6 +164,16 @@ function MainApp({ user, token, stats, setStats }) { // stats now included as a 
                 currentProgress={intention.completed_quantity}
               />
             )}
+
+            {/* --- The "Fail Forward" Button --- */}
+            <div className="mt-6 pt-6 border-t border-gray-700 text-center">
+              <button
+                onClick={handleFailIntention}
+                className="text-gray-400 hover:text-white hover:bg-gray-700 py-2 px-4 rounded-md text-sm"
+              >
+                I can't finish my quest today.
+              </button>
+            </div>
 
           </div>
         )
