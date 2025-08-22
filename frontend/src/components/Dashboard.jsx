@@ -6,6 +6,7 @@ import ActiveFocusBlock from './ActiveFocusBlock';
 import UpdateProgressForm from './UpdateProgressForm';
 import CharacterStats from './CharacterStats';
 import DailyResultDisplay from './DailyResultDisplay';
+import ConfirmationModal from './ConfirmationModal';
 
 function DisplayIntention({ intention }) {
   // Derive the count of completed Focus Blocks from the intention's props
@@ -34,11 +35,10 @@ function MainApp({ user, token, stats, setStats }) { // stats now included as a 
   // State to hold the user's Daily Intention for the day and Focus Blocks
   const [intention, setIntention] = useState(null); // Now also includes Focus Blocks
   const [isLoading, setIsLoading] = useState(true);
-  // New state to manage the UI view after a block is completed
-  const [view, setView] = useState('focus'); // 'focus' or 'progress'
-  // New state to manage race conditions; our "lock" state
-  const [isCreatingResult, setIsCreatingResult] = useState(false);
+  const [view, setView] = useState('focus'); // // Manage the UI view after a Focus Block is completed; 'focus' or 'progress'
   const [error, setError] = useState(null);
+  // New state  to control the modal's visibility
+  const [isFailConfirmVisible, setIsFailConfirmVisible] = useState(false);
 
   // Renamed from fetchAllData to reflect its broader role
   const refreshGameState = async () => {
@@ -92,19 +92,20 @@ function MainApp({ user, token, stats, setStats }) { // stats now included as a 
     setView('focus');
   }
 
-  // A new handler for failing a Daily Intention
-  const handleFailIntention = async () => {
-    setError(null); // Reset previous errors
-    if (!window.confirm("Are you sure you want to end today's Daily Intention? This will move you to the Evening Reflection.")) {
-      return; // Simply stop if the user cancels
-    }
+  // A new handler for *opening* the "Confirm Failing Forward" modal
+  const handleFailIntentionClick = () => {
+    setError(null); // Reset errors when opening the modal
+    setIsFailConfirmVisible(true); // Just open the modal
+  }
 
+  // The updated handler for confirming the action in the modal; no more window.confirm
+  const confirmFailIntention = async () => {
+    setIsFailConfirmVisible(false); // Close the modal first
     try {
       const response = await fethc('api/intentions/today/fail', {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
         },
       });
 
@@ -168,7 +169,7 @@ function MainApp({ user, token, stats, setStats }) { // stats now included as a 
             {/* --- The "Fail Forward" Button --- */}
             <div className="mt-6 pt-6 border-t border-gray-700 text-center">
               <button
-                onClick={handleFailIntention}
+                onClick={handleFailIntentionClick} // We now use the modal click handler
                 className="text-gray-400 hover:text-white hover:bg-gray-700 py-2 px-4 rounded-md text-sm"
               >
                 I can't finish my quest today.
@@ -181,6 +182,16 @@ function MainApp({ user, token, stats, setStats }) { // stats now included as a 
         // If no intention exists at all, show the creation form
         <CreateDailyIntentionForm token={token} onDailyIntentionCreated={refreshGameState} />
       )}
+
+      {/* Render the "Fail Forward" modal conditionally */}
+      <ConfirmationModal
+        isOpen={isFailConfirmVisible}
+        onClose={() => setIsFailConfirmVisible(false)}
+        onConfirm={confirmFailIntention}
+        title="End Today's Quest?"
+      >
+        <p>Are you sure you want to end today's quest? This will move you to your evening reflection.</p>
+      </ConfirmationModal>
     </div>
   );
 }
