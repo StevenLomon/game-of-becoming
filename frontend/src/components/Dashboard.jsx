@@ -4,6 +4,7 @@ import CreateDailyIntentionForm from './CreateDailyIntentionForm';
 import CreateFocusBlockForm from './CreateFocusBlockForm';
 import ActiveFocusBlock from './ActiveFocusBlock';
 import UpdateProgressForm from './UpdateProgressForm';
+import CharacterStats from './CharacterStats';
 
 function DisplayIntention({ intention }) {
   // Derive the count of completed Focus Blocks from the intention's props
@@ -28,7 +29,7 @@ function DisplayIntention({ intention }) {
   )
 }
 
-function MainApp({ user, token }) {
+function MainApp({ user, token, stats }) { // stats now included as a prop!
   // State to hold the user's Daily Intention for the day and Focus Blocks
   const [intention, setIntention] = useState(null); // Now also includes Focus Blocks
   const [isLoading, setIsLoading] = useState(true);
@@ -136,6 +137,9 @@ function MainApp({ user, token }) {
         <p className="text-gray-400">Your HRGA: "{user.hrga}"</p>
       </div>
 
+      {/* We pass the fetched stats data down as a prop. */}
+      <CharacterStats stats={stats} />
+
       {intention ? (
         <div>
           <DisplayIntention intention={intention} />
@@ -167,35 +171,47 @@ function MainApp({ user, token }) {
 function Dashboard({ token, onLogout }) {
     // State to hold the full user profile
     const [user, setUser] = useState(null);
+    const [stats, setStats] = useState(null);
     const [error, setError] = useState(null);
 
-    // Fetch the user's full profile when the component mounts
+    // Modified to fetch both user and stats data
     useEffect(() => {
-        const fetchUser = async () => {
+        const fetchInitialData = async () => {
             try {
-                const response = await fetch('api/users/me', {
+                // We create two promises, one for each API call
+                const userPromise = await fetch('api/users/me', {
                     headers: { 'Authorization': `Bearer ${token}` },
                 });
+                const statsPromise = await fetch('api/users/me/stats', {
+                  headers: { 'Authorization': `Bearer ${token}` },
+                })
 
-                // Spefic 401 Unauthorized logic
-                if (response.status === 401) {
+                // Promise.all lets us run these two in parallel for efficiency
+                const [userResponse, statsResponse] = await Promise.all([userPromise, statsPromise]);
+
+                // Handle potential 401 Unauthorized for either request
+                if (userResponse.status === 401 || statsResponse.status === 401) {
                   // The token is invalid or expired. Call the onLogout function passed down
                   // from the App component
                   onLogout();
                   return;
                 }
 
-                if (!response.ok) {
-                    throw new Error('Failed to fetch user profile.');
-                }
-                const userData = await response.json();
+                if (!userResponse.ok) throw new Error('Failed to fetch user profile.');
+                if (!statsResponse.ok) throw new Error('Failed to fetch character stats.');
+                
+                const userData = await userResponse.json();
+                const statsData = await statsResponse.json();
+                
                 setUser(userData);
+                setStats(statsData);
+
             } catch (err) {
                 setError(err.message);
             }
         };
-        fetchUser();
-    }, [token]); // Re-run this effect if the token changes
+        fetchInitialData();
+    }, [token, onLogout]); // Re-run this effect if the token changes. onLogout also added since it's used inside the effect
 
     const handleOnboardingComplete = (updatedUser) => {
         // When onboarding is done, update the user state with the new data
@@ -206,7 +222,8 @@ function Dashboard({ token, onLogout }) {
     if (error) {
     return <div className="text-red-400">Error: {error}</div>;
     }
-    if (!user) {
+    // Update the loading condition to wait for BOTH user and stats
+    if (!user || !stats) {
         return <div className="text-gray-400">Loading profile...</div>;
     }
 
@@ -214,7 +231,7 @@ function Dashboard({ token, onLogout }) {
   return (
     <div className="bg-gray-800 p-8 rounded-lg shadow-lg w-full max-w-2xl">
       {user.hrga ? (
-        <MainApp user={user} token={token} />
+        <MainApp user={user} token={token} stats={stats} />
       ) : (
         <Onboarding token={token} onOnboardingComplete={handleOnboardingComplete} />
       )}
