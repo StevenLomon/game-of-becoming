@@ -5,6 +5,7 @@ import CreateFocusBlockForm from './CreateFocusBlockForm';
 import ActiveFocusBlock from './ActiveFocusBlock';
 import UpdateProgressForm from './UpdateProgressForm';
 import CharacterStats from './CharacterStats';
+import DailyResultDisplay from './DailyResultDisplay';
 
 function DisplayIntention({ intention }) {
   // Derive the count of completed Focus Blocks from the intention's props
@@ -38,8 +39,8 @@ function MainApp({ user, token, stats }) { // stats now included as a prop!
   // New state to manage race conditions; our "lock" state
   const [isCreatingResult, setIsCreatingResult] = useState(false);
 
-  // A new function to fetch *all* data; Daily Intentions and Focus Blocks
-  const fetchAllData = async () => {
+  // Renamed from fetchAllData to reflect its broader role
+  const refreshGameState = async () => {
     setIsLoading(true); // Set loading state
     try {
       // Fetch Daily Intention AND Focus Blocks now in one endpoint!
@@ -52,18 +53,19 @@ function MainApp({ user, token, stats }) { // stats now included as a prop!
         const intentionData = await response.json();
         setIntention(intentionData);
       } else {
-        throw new Error('Failed to fetch Daily Intention data.')
+        throw new Error('Failed to fetch game state.')
       }
     } catch (error) {
-      console.error('Failed to fetch Daily Intention data:', error);
+      console.error('Failed to fetch game state:', error);
     } finally {
+      // We only set loading to false on the initial load
       setIsLoading(false);
     }
   };
 
   // Fetch all data when the component is mounted
   useEffect(() => {
-    fetchAllData();
+    refreshGameState();
   }, [token]);
 
   // Our new "watchdog effect" to handle Daily Intention auto-completion flow
@@ -93,11 +95,9 @@ function MainApp({ user, token, stats }) { // stats now included as a prop!
               throw new Error('Failed to create Daily Result');
             }
 
-            const resultData = await response.json();
-            console.log("Successfully created Daily Result:", resultData);
-
-            // On success, we should re-fetch all data to get the new result included in our state
-            fetchAllData();
+            // On success, we simply refresh the game state. This will fetch the new Daily
+            // Result and cause the UI to update, naturally fixing our race condition
+            refreshGameState();
 
         } catch (error) {
           console.error("Error creating Daily Result:", error);
@@ -140,28 +140,36 @@ function MainApp({ user, token, stats }) { // stats now included as a prop!
       {/* We pass the fetched stats data down as a prop. */}
       <CharacterStats stats={stats} />
 
+      {/* The core logic is updated: If a Daily Intention exists... */}
       {intention ? (
-        <div>
-          <DisplayIntention intention={intention} />
-          
-          {view === 'focus' && (
-            activeBlock ? (
-              <ActiveFocusBlock block={activeBlock} token={token} onBlockCompleted={handleFocusBlockCompleted} />
-            ) : (
-              <CreateFocusBlockForm token={token} onBlockCreated={fetchAllData} />
-            )
-          )}
+        // ...and it has a daily_result, show the "Reflection Room"
+        intention.daily_result ? (
+          <DailyResultDisplay result={intention.daily_result} />
+        ) : (
+          // ...otherwise, show the main "Execution Loop" UI
+          <div>
+            <DisplayIntention intention={intention} />
+            
+            {view === 'focus' && (
+              activeBlock ? (
+                <ActiveFocusBlock block={activeBlock} token={token} onBlockCompleted={handleFocusBlockCompleted} />
+              ) : (
+                <CreateFocusBlockForm token={token} onBlockCreated={fetchAllData} />
+              )
+            )}
 
-          {view === 'progress' && (
-            <UpdateProgressForm 
-              token={token} 
-              onProgressUpdated={handleProgressUpdated}
-              currentProgress={intention.completed_quantity}
-            />
-          )}
+            {view === 'progress' && (
+              <UpdateProgressForm 
+                token={token} 
+                onProgressUpdated={handleProgressUpdated}
+                currentProgress={intention.completed_quantity}
+              />
+            )}
 
-        </div>
+          </div>
+        )
       ) : (
+        // If no intention exists at all, show the creation form
         <CreateDailyIntentionForm token={token} onDailyIntentionCreated={fetchAllData} />
       )}
     </div>
