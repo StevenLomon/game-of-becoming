@@ -97,7 +97,8 @@ function MainApp({ user, token, stats }) { // stats now included as a prop!
 
             // On success, we simply refresh the game state. This will fetch the new Daily
             // Result and cause the UI to update, naturally fixing our race condition
-            refreshGameState();
+            // UPDATED: We MUST wait (await haha) for the state to be updated before continuing
+            await refreshGameState();
 
         } catch (error) {
           console.error("Error creating Daily Result:", error);
