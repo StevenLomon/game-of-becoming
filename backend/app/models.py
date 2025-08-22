@@ -110,6 +110,7 @@ class DailyResult(Base):
     daily_intention_id: Mapped[int] = mapped_column(ForeignKey("daily_intentions.id"))
     succeeded_failed: Mapped[bool] = mapped_column()
     ai_feedback: Mapped[Optional[str]] = mapped_column(Text)
+    discipline_stat_gain: Mapped[int] = mapped_column(default=0)
     user_confirmation_correction: Mapped[Optional[bool]] = mapped_column() # User can confirm or correct AI feedback. True is confirmation, False is correction
     created_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now(timezone.utc))
 
