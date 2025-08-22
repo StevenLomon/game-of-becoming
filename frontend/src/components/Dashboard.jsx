@@ -117,7 +117,7 @@ function MainApp({ user, token, stats }) { // stats now included as a prop!
 
   // After progress is updated, re-fetch all data and switch back to the 'focus' view
   const handleProgressUpdated = () => {
-    fetchAllData();
+    refreshGameState();
     setView('focus');
   }
 
