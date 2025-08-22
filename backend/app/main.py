@@ -673,13 +673,27 @@ def create_daily_result(
         db.add(db_result)
 
         # 3. Update stats based on service output
-        stats.discipline += reflection_data["discipline_stat_gain"]
+        discipline_gain = reflection_data.get("discipline_stat_gain", 0)
+        if discipline_gain > 0:
+            stats.discipline += discipline_gain
 
         db.commit()
         db.refresh(db_result)
-        db.refresh(stats)
+        if discipline_gain > 0:
+            db.refresh(stats)
 
-        return db_result
+        # Manually construct the response to include the stat gain
+        return schemas.DailyResultResponse(
+            id=db_result.id,
+            daily_intention_id=db_result.daily_intention_id,
+            succeeded_failed=db_result.succeeded_failed,
+            ai_feedback=db_result.ai_feedback,
+            recovery_quest=db_result.recovery_quest,
+            recovery_quest_response=db_result.recovery_quest_response,
+            user_confirmation_correction=db_result.user_confirmation_correction,
+            created_at=db_result.created_at,
+            discipline_stat_gain=discipline_gain # Use the calculated value from the service
+        )
     
     except Exception as e:
         print(f"Database error: {e}") 
