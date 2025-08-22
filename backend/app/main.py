@@ -483,45 +483,59 @@ def complete_daily_intention(
             detail=f"Failed to complete Daily Intention: {str(e)}"
         )
     
-@app.patch("/intentions/today/fail", response_model=schemas.DailyIntentionResponse)
+@app.patch("/intentions/today/fail", response_model=schemas.DailyResultResponse)
 def fail_daily_intention(
     daily_intention: Annotated[models.DailyIntention, Depends(get_current_user_daily_intention)],
+    stats: Annotated[models.CharacterStats, Depends(get_current_user_stats)],
     db: Session = Depends(database.get_db)
     ):
     """
-    Mark today's Daily Intention for the currently logged in user as failed
+    Triggers the "Fail Forward" mechanism by marking the Daily Intention as
+    failed AND creating the corresponding Daily Result in a single, atomic operation.
     
-    This triggers the "Fail Forward" mechanism!
     - AI feedback on failure in order to re-frame failure
     - AI generates and initiates Recovery Quest
     - Opportunity to gain Resilience stat
     """
     # The dependency once again guarantees Daily Intention that belongs to the currently logged in user
+    # But we still need to check if the Daily Intention already has a Daily Result
+    if daily_intention.daily_result:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="A Daily Result for this Daily Intention has alreayd been created."
+        )
     
     try:
         # Mark as failed
         daily_intention.status = 'failed'
+
+        # --- Start of new, integrated logic ---
+
+        # 1. Call the service to get the reflection logic
+        reflection_data = services.create_daily_reflection(db=db, user=stats.user, daily_intention=daily_intention)
+        discipline_gain = reflection_data.get("discipline_stat_gain", 0) # Should be 0 for failure
+
+        # 2. Create the DailyResult database objcet
+        db_result = models.DailyResult(
+            daily_intention_id=daily_intention.id,
+            succeeded_failed=False, # Explicitly False for failure
+            ai_feedback=reflection_data["ai_feedback"],
+            recovery_quest=reflection_data["recovery_back"],
+            discipline_stat_gain=discipline_gain
+        )
+        db.add(db_result)
+
+        # 3. Update user stats (Discipline shouldn't change, but this is good practice)
+        if discipline_gain > 0:
+            stats.discipline += discipline_gain
         
+        # Commit all changes at once (status change and new result)
         db.commit()
-        db.refresh(daily_intention)
+        db.refresh(db_result)
+        db.refresh(stats)
 
-        # Calculate the final completion percentage
-        completion_percentage = (
-            (daily_intention.completed_quantity / daily_intention.target_quantity) * 100
-            if daily_intention.target_quantity > 0 else 0.0
-        )
-
-        return schemas.DailyIntentionResponse(
-            id=daily_intention.id,
-            user_id=daily_intention.user_id,
-            daily_intention_text=daily_intention.daily_intention_text,
-            target_quantity=daily_intention.target_quantity,
-            completed_quantity=daily_intention.completed_quantity,
-            focus_block_count=daily_intention.focus_block_count,
-            completion_percentage=completion_percentage,  # Use the calculated percentage at the time of failure
-            status=daily_intention.status,
-            created_at=daily_intention.created_at
-        )
+        # 4. Return the newly created DailyResult
+        return db_result
     
     except Exception as e:
         print(f"Database error: {e}") 
