@@ -138,7 +138,11 @@ function MainApp({ user, token, stats, setStats }) { // stats now included as a 
       {intention ? (
         // ...and it has a daily_result, show the "Reflection Room"
         intention.daily_result ? (
-          <DailyResultDisplay result={intention.daily_result} />
+          <DailyResultDisplay 
+            result={intention.daily_result} 
+            token={token}
+            refreshGameState={refreshGameState}
+          />
         ) : (
           // ...otherwise, show the main "Execution Loop" UI
           <div>
