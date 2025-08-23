@@ -21,12 +21,19 @@ function CharacterStats({ stats }) {
     return (
     <div className="mb-8 p-4 bg-gray-900 rounded-lg">
       <h2 className="text-lg font-semibold text-gray-300 text-left mb-4">Character Stats</h2>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <StatItem label="Level" value={stats.level} />
-        <StatItem label="XP" value={stats.xp} />
-        <StatItem label="Clarity" value={stats.clarity} />
-        <StatItem label="Discipline" value={stats.discipline} />
-        {/* We can add Resilience and Commitment here later or as you see fit! */}
+      {/* Use a flex column to create rows */}
+      <div className="flex flex-col space-y-4">
+        {/* Top Row */}
+        <div className="grid grid-cols-2 gap-4">
+          <StatItem label="Level" value={stats.level} />
+          <StatItem label="XP" value={stats.xp} />
+        </div>
+        {/* Bottom Row */}
+        <div className="grid grid-cols-3 gap-4">
+          <StatItem label="Clarity" value={stats.clarity} />
+          <StatItem label="Discipline" value={stats.discipline} />
+          <StatItem label="Resilience" value={stats.resilience} />
+        </div>
       </div>
     </div>
   );
