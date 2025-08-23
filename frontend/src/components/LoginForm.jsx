@@ -31,7 +31,10 @@ function loginForm({ onLoginSuccess }) {
                 throw new Error(data.detail || 'Failed to log in.');
             }
 
-            // Instead of setting local state, we call the function from the parent (App.jsx) and pass the token up to it
+            // Fixing Login race conditions: Manually save the token to localStorage right here, right now
+            localStorage.setItem('authToken', data.access_token);
+            
+            // NOW, tell React to update its state
             onLoginSuccess(data.access_token);
         } catch (err) {
             setError(err.message);
