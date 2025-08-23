@@ -57,7 +57,7 @@ function Onboarding({ token, onOnboardingComplete }) {
                     onChange={(e) => setHRGA(e.target.value)}
                     className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-teal-500 focus:border-teal-500"
                     rows={3}
-                    placeholder="e.g., 'Sending 5 personalized outreach emails per day to new prospects in the SaaS industry.'"
+                    placeholder="e.g., 'Sending personalized outreach emails per day to new prospects in the SaaS industry.'"
                 />
                 </div>
                 {error && (
