@@ -1,16 +1,31 @@
-function DailyResultDisplay({ result }) {
+import { useState } from 'react';
+import AnswerRecoveryQuestForm from './AnswerRecoveryQuestForm';
+
+// This component now needs the token and a way to refresh the parent's state
+function DailyResultDisplay({ result, token, refreshGameState }) {
   const succeeded = result.succeeded_failed;
 
-  return (
-    <div className={`mt-6 p-4 rounded-lg border ${succeeded ? 'bg-green-900 border-green-700' : 'bg-red-900 border-red-700'}`}>
-      <h3 className="text-xl font-bold text-white mb-2">
-        {succeeded ? "Quest Complete!" : "Quest Incomplete"}
-      </h3>
-      
-      {/* Display the AI's feedback */}
-      <p className="text-gray-300 italic">"{result.ai_feedback}"</p>
+  // This component now has its own state to track; if the reflection has been submitted
+  // We initialize it based on whether the data from teh server *already* has a response
+  const [isSubmitted, setIsSubmitted] = useState(!!result.recovery_quest_response);
 
-      {/* --- NEW: The Rewards Section --- */}
+  // This is the handler that our form will call on success
+  const handleReflectionSubmitted = () => {
+    setIsSubmitted(true); // Update our local state to hide the form
+    refreshGameState(); // Call the parent's refresh function to get the new stats and AI feedback
+  };
+
+  return (
+    <div className={`mt-6 p-6 rounded-lg border ${succeeded ? 'bg-gray-800 border-green-700' : 'bg-red-900 border-red-700'}`}>
+      <div className="text-center">
+        <h3 className="text-2xl font-bold text-white mb-2">
+          {succeeded ? "Quest Complete!" : "Quest Incomplete"}
+        </h3>
+        {/* Display the AI's feedback */}
+        <p className="text-gray-300 italic mb-4">"{result.ai_feedback}"</p>
+      </div>
+
+      {/* The Rewards Section */}
       {succeeded && result.discipline_stat_gain > 0 && (
         <div className="text-center bg-gray-900 p-3 rounded-lg mb-4">
           <p className="text-md font-medium text-gray-400">Reward Earned</p>
@@ -20,19 +35,37 @@ function DailyResultDisplay({ result }) {
         </div>
       )}
 
-      {/* Conditionally render the Recovery Quest if the day was a failure */}
+      {/* --- This is the upgraded Recovery Quest Section --- */}
       {!succeeded && result.recovery_quest && (
         <div className="mt-4 pt-4 border-t border-red-700">
           <h4 className="font-bold text-red-300">Recovery Quest:</h4>
           <p className="text-white mt-1">{result.recovery_quest}</p>
-          {/* We'll add a form here later to let the user respond */}
+          
+          {/* If a response exists (or was just submitted, show it. Otherwise, show the form. */}
+          {isSubmitted && result.recovery_quest_response ? (
+            <div className="bg-gray-700 p-4 rounded-lg">
+              <p className="text-gray-300 text-sm">Your Reflection:</p>
+              <p className="italic text-white">"{result.recovery_quest_response}"</p>
+
+              {/* Here we can display the final AI coaching feedback once it's in the data */}
+              {/* For now, this confirms the submission worked. */}
+            </div>
+          ) : (
+            <AnswerRecoveryQuestForm
+              token={token}
+              resultId={result.id}
+              onReflectionSubmitted={handleReflectionSubmitted}
+            />
+          )}
         </div>
       )}
 
-      {/* --- NEW: The Forward-Looking Message --- */}
-      <p className="text-center text-gray-500 mt-4 text-sm">
-        Well done. Rest and prepare for your next quest tomorrow.
-      </p>
+      {/* Show the final message only if the day is truly "done" */}
+      {(succeeded || isSubmitted) && (
+        <p className="text-center text-gray-500 mt-4 text-sm">
+          Well done. Rest and prepare for your next quest tomorrow.
+        </p>
+      )}
     </div>
   );
 }
