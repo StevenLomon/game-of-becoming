@@ -221,6 +221,7 @@ class RecoveryQuestResponse(BaseModel):
     """Schema for the complete Recovery Quest response (includes AI feedback)"""
     recovery_quest_response: str
     ai_coaching_feedback: str  # AI generates this
+    resilience_stat_gain: int = 0
 
 
 # DailyIntentionResponse is down here since it contain both Focus Blocks and potentially a Daily Result
