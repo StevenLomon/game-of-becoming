@@ -39,7 +39,7 @@ function CreateFocusBlockForm({ token, onBlockCreated }) {
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label htmlFor="block-intention" className="block text-sm font-medium text-gray-300">
-            What is your specific goal for this block?
+            What is your specific intention for this block?
           </label>
           <input
             id="block-intention" type="text" required
