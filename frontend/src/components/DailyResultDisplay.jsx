@@ -6,14 +6,21 @@ function DailyResultDisplay({ result, token, refreshGameState }) {
   const succeeded = result.succeeded_failed;
 
   // This component now has its own state to track; if the reflection has been submitted
-  // We initialize it based on whether the data from teh server *already* has a response
+  // We initialize it based on whether the data from the server *already* has a response
   const [isSubmitted, setIsSubmitted] = useState(!!result.recovery_quest_response);
+  // New state to hold the final reward data after submission
+  const [finalCoaching, setFinalCoaching] = useState(null);
 
   // This is the handler that our form will call on success
-  const handleReflectionSubmitted = () => {
+  const handleReflectionSubmitted = (submissionResult) => {
+    setFinalCoaching(submissionResult) // Store the full result from the submission
     setIsSubmitted(true); // Update our local state to hide the form
     refreshGameState(); // Call the parent's refresh function to get the new stats and AI feedback
   };
+
+  // Determine which AI feedback to show
+  const aiFeedback = finalCoaching?.ai_coaching_feedback || result.ai_feedback;
+  const resilienceGain = finalCoaching?.resilience_stat_gain || 0;
 
   return (
     <div className={`mt-6 p-6 rounded-lg border ${succeeded ? 'bg-gray-800 border-green-700' : 'bg-red-900 border-red-700'}`}>
@@ -32,6 +39,14 @@ function DailyResultDisplay({ result, token, refreshGameState }) {
           <p className="text-xl font-bold text-yellow-400">
             + {result.discipline_stat_gain} Discipline
           </p>
+        </div>
+      )}
+
+      {/* NEW: Show Resilience reward after submission */}
+      {isSubmitted && resilienceGain > 0 && (
+        <div className="text-center bg-gray-900 p-3 rounded-lg mb-4">
+          <p className="text-md font-medium text-gray-400">Reward Earned</p>
+          <p className="text-xl font-bold text-yellow-400">+ {resilienceGain} Resilience</p>
         </div>
       )}
 
