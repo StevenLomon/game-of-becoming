@@ -440,13 +440,15 @@ def update_daily_intention_progress(
             detail=f"Failed to update Daily Intention progress: {str(e)}"
         )
 
-@app.patch("/intentions/today/complete", response_model=schemas.DailyIntentionResponse)
+@app.patch("/intentions/today/complete", response_model=schemas.DailyResultResponse)
 def complete_daily_intention(
     daily_intention: Annotated[models.DailyIntention, Depends(get_current_user_daily_intention)],
+    stats: Annotated[models.CharacterStats, Depends(get_current_user_stats)],
     db: Session = Depends(database.get_db)
     ):
     """
-    Mark today's Daily Intention for the currently logged in user as completed
+    Marks the Daily Intention as completed AND creates the corresponding Daily Result
+    in a single, atomic operation.
     
     This triggers:
     - XP gain for the user
@@ -454,26 +456,49 @@ def complete_daily_intention(
     - Streak continuation
     """
     # The dependency guarantees Daily Intention that belongs to the currently logged in user
+
+    if daily_intention.daily_result:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="A result for this intention has already been created."
+        )
+    
+    # Ensure the intention is actually ready to be completed
+    if daily_intention.completed_quantity < daily_intention.target_quantity:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Intention progress is not yet complete."
+        )
     
     try:
         # Mark as completed
         daily_intention.status = 'completed'
-        daily_intention.completed_quantity = daily_intention.target_quantity  # Ensure full completion
 
-        db.commit()
-        db.refresh(daily_intention)
+        # Call the service to get the reflection logic
+        reflection_data = services.create_daily_reflection(db=db, user=stats.user, daily_intention=daily_intention)
+        discipline_gain = reflection_data.get("discipline_stat_gain", 0)
 
-        return schemas.DailyIntentionResponse(
-            id=daily_intention.id,
-            user_id=daily_intention.user_id,
-            daily_intention_text=daily_intention.daily_intention_text,
-            target_quantity=daily_intention.target_quantity,
-            completed_quantity=daily_intention.completed_quantity,
-            focus_block_count=daily_intention.focus_block_count,
-            completion_percentage=100.0,  # Fully completed
-            status=daily_intention.status,
-            created_at=daily_intention.created_at
+        # Create the DailyResult
+        db_result = models.DailyResult(
+            daily_intention_id=daily_intention.id,
+            succeeded_failed=True, # Explicitly True
+            ai_feedback=reflection_data["ai_feedback"],
+            recovery_quest=None, # No recovery quest on success
+            discipline_stat_gain=discipline_gain
         )
+        db.add(db_result)
+
+        # Update stats
+        if discipline_gain > 0:
+            stats.discipline += discipline_gain
+
+        # Commit all changes at once
+        db.commit()
+        db.refresh(db_result)
+        db.refresh(stats)
+
+        # Return the newly created DailyResult
+        return db_result
     
     except Exception as e:
         print(f"Database error: {e}") 
