@@ -9,13 +9,15 @@ import CharacterStats from './CharacterStats';
 import DailyResultDisplay from './DailyResultDisplay';
 import ConfirmationModal from './ConfirmationModal';
 
-function DisplayIntention({ intention }) {
+function DisplayIntention({ intention, onComplete }) { // New onComplete prop for conditional rendering of "Complete Quest" button
   // Derive the count of completed Focus Blocks from the intention's props
   const completedBlocksCount = intention.focus_blocks.filter(
     (block) => block.status === 'completed'
   ).length;
 
-  // A new component to display the existing intention
+  // Determine if the quest is ready to be completed
+  const isCompletable = intention.completed_quantity >= intention.target_quantity;
+
   return (
     <div>
       <h2 className="text-lg font-semibold text-gray-400">Today's Quest:</h2>
@@ -27,16 +29,17 @@ function DisplayIntention({ intention }) {
         <p className="text-md text-gray-300">
           Focus Blocks: {completedBlocksCount} / {intention.focus_block_count}
         </p>
-        {/* Conditionally render "Complete Quest" button */}
-        {intention.completed_quantity === intention.target_quantity ? (
-          <button type="submit" className="w-full flex justify-center py-2 px-4 border rounded-md font-medium text-white bg-green-600 hover:bg-teal-700 mt-2">
+        
+        {/* The New "Complete Quest" Button */}
+        <div className="mt-4 pt-4 border-t border-gray-600">
+          <button
+            onClick={onComplete}
+            disabled={!isCompletable}
+            className="w-full flex justify-center py-2 px-4 border rounded-md font-medium text-white bg-green-600 hover:bg-green-700 disabled:bg-gray-500 disabled:cursor-not-allowed"
+          >
             Complete Quest
           </button>
-        ) : (
-          <button type="submit" className="w-full flex justify-center py-2 px-4 border rounded-md font-medium text-white bg-red-600 hover:bg-teal-700 mt-2">
-            Complete Quest
-          </button>
-        )}
+        </div>
       </div>
     </div>
   )
@@ -48,7 +51,6 @@ function MainApp({ user, token, stats, setStats }) { // stats now included as a 
   const [isLoading, setIsLoading] = useState(true);
   const [view, setView] = useState('focus'); // // Manage the UI view after a Focus Block is completed; 'focus' or 'progress'
   const [error, setError] = useState(null);
-  // New state  to control the modal's visibility
   const [isFailConfirmVisible, setIsFailConfirmVisible] = useState(false);
 
   // Renamed from fetchAllData to reflect its broader role
@@ -125,6 +127,26 @@ function MainApp({ user, token, stats, setStats }) { // stats now included as a 
     }
   }
 
+  // New handler for completing a Daily Intention
+  const handleCompleteIntention = async () => {
+    setError(null);
+    try {
+      const response = await authFetch('/api/intentions/today/complete', {
+        method: 'PATCH',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to complete the intention.');
+      }
+
+      // On success, refresh and let the declarative UI work its magic
+      await refreshGameState();
+
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
   // Find the currently active Focus Blocks (if any)
   const activeBlock = intention ? intention.focus_blocks.find(b => b.status === 'pending' || b.status === 'in progress') : null;
 
@@ -156,7 +178,7 @@ function MainApp({ user, token, stats, setStats }) { // stats now included as a 
         ) : (
           // ...otherwise, show the main "Execution Loop" UI
           <div>
-            <DisplayIntention intention={intention} />
+            <DisplayIntention intention={intention} onComplete={handleCompleteIntention} />
             
             {view === 'focus' && (
               activeBlock ? (
