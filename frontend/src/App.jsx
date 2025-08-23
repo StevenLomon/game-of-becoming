@@ -48,6 +48,18 @@ function App() {
     } else {
       localStorage.removeItem('authToken');
     }
+
+    // --- NEW: Listen for the global logout signal ---
+    const handleAuthError = () => {
+      console.log("Global auth error detected, logging out.");
+      setToken(null);
+    };
+    window.addEventListener('auth-error', handleAuthError);
+
+    // Cleanup the listener when the component unmounts
+    return () => {
+      window.returnEventListener('auth-error', handleAuthError);
+    }
   }, [token]); // This effect runs whenever the 'token' state changes
 
   const handleLogout = () => {
