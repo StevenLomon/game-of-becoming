@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import authFetch from '../utils/authFetch';
 
 function CreateFocusBlockForm({ token, onBlockCreated }) {
   const [intention, setIntention] = useState('');
@@ -10,12 +11,8 @@ function CreateFocusBlockForm({ token, onBlockCreated }) {
     setError(null);
 
     try {
-      const response = await fetch('/api/focus-blocks', {
+      const response = await authFetch('/api/focus-blocks', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
         body: JSON.stringify({
           focus_block_intention: intention,
           duration_minutes: parseInt(duration, 10),

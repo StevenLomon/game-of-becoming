@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import authFetch from '../utils/authFetch';
 
 // It receives the token for the API call and a function to call on success
 function CreateIntentionForm({ token, onDailyIntentionCreated }) {
@@ -12,12 +13,8 @@ function CreateIntentionForm({ token, onDailyIntentionCreated }) {
     setError(null);
 
     try {
-      const response = await fetch('/api/intentions', {
+      const response = await authFetch('/api/intentions', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
         body: JSON.stringify({
           daily_intention_text: text,
           target_quantity: parseInt(target, 10),

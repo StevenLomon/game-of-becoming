@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import authFetch from '../utils/authFetch';
 
 function ActiveFocusBlock({ block, token, onBlockCompleted }) {
     // --- START OF TIMER LOGIC ---
@@ -50,12 +51,8 @@ function ActiveFocusBlock({ block, token, onBlockCompleted }) {
     // This tells React that `handleComplete` itself won't change unless its own dependencies change
     const handleComplete = useCallback(async () => {
         try {
-            const response = await fetch(`/api/focus-blocks/${block.id}`, {
+            const response = await authFetch(`/api/focus-blocks/${block.id}`, {
                 method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`,
-                },
                 body: JSON.stringify({ status: 'completed' }),
             });
             if (!response.ok) {

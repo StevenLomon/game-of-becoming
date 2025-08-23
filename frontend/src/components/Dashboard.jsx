@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import authFetch from '../utils/authFetch';
 import Onboarding from './Onboarding';
 import CreateDailyIntentionForm from './CreateDailyIntentionForm';
 import CreateFocusBlockForm from './CreateFocusBlockForm';
@@ -44,12 +45,8 @@ function MainApp({ user, token, stats, setStats }) { // stats now included as a 
   const refreshGameState = async () => {
     // We only set the state to 'loading' on boot up
     try {
-      const intentionPromise = await fetch('/api/intentions/today/me', {
-        headers: { 'Authorization': `Bearer ${token}` },
-      }); // Daily Intention and Focus Blocks is fetched in one endpoint
-      const statsPromise = await fetch('/api/users/me/stats', {
-        headers: { 'Authorization': `Bearer ${token}`},
-      });
+      const intentionPromise = authFetch('/api/intentions/today/me'); // Daily Intention and Focus Blocks is fetched in one endpoint
+      const statsPromise = authFetch('/api/users/me/stats');
       
       const [intentionResponse, statsResponse] = await Promise.all([intentionPromise, statsPromise]);
 
@@ -102,9 +99,8 @@ function MainApp({ user, token, stats, setStats }) { // stats now included as a 
   const confirmFailIntention = async () => {
     setIsFailConfirmVisible(false); // Close the modal first
     try {
-      const response = await fetch('api/intentions/today/fail', {
+      const response = await authFetch('api/intentions/today/fail', {
         method: 'PATCH',
-        headers: { 'Authorization': `Bearer ${token}` },
       });
 
       if (!response.ok) {
@@ -205,12 +201,8 @@ function Dashboard({ token, onLogout }) {
         const fetchInitialData = async () => {
             try {
                 // We create two promises, one for each API call
-                const userPromise = await fetch('api/users/me', {
-                    headers: { 'Authorization': `Bearer ${token}` },
-                });
-                const statsPromise = await fetch('api/users/me/stats', {
-                  headers: { 'Authorization': `Bearer ${token}` },
-                })
+                const userPromise = authFetch('api/users/me');
+                const statsPromise = authFetch('api/users/me/stats')
 
                 // Promise.all lets us run these two in parallel for efficiency
                 const [userResponse, statsResponse] = await Promise.all([userPromise, statsPromise]);

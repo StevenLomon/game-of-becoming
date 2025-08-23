@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import authFetch from '../utils/authFetch';
 
 // This component will need the user's token to make an authenticated API call
 function Onboarding({ token, onOnboardingComplete }) {
@@ -10,12 +11,8 @@ function Onboarding({ token, onOnboardingComplete }) {
         setError(null);
 
         try {
-            const response = await fetch('api/users/me', {
+            const response = await authFetch('api/users/me', {
                 method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`, // Send the auth token
-                },
                 body: JSON.stringify({hrga: hrga}),
             });
 

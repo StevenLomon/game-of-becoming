@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import authFetch from '../utils/authFetch';
 
 function AnswerRecoveryQuestForm({ token, resultId, onReflectionSubmitted }) {
   const [responseText, setResponseText] = useState('');
@@ -11,12 +12,8 @@ function AnswerRecoveryQuestForm({ token, resultId, onReflectionSubmitted }) {
     setIsSubmitting(true);
 
     try {
-      const response = await fetch(`/api/daily-results/${resultId}/recovery-quest`, {
+      const response = await authFetch(`/api/daily-results/${resultId}/recovery-quest`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
         body: JSON.stringify({ recovery_quest_response: responseText }),
       });
 

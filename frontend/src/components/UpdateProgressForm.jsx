@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import authFetch from '../utils/authFetch';
 
 function UpdateProgressForm({ token, onProgressUpdated, currentProgress }) {
     // The form starrts with the current progress
@@ -10,12 +11,8 @@ function UpdateProgressForm({ token, onProgressUpdated, currentProgress }) {
         setError(null);
 
         try {
-            const response = await fetch('api/intentions/today/progress', {
+            const response = await authFetch('api/intentions/today/progress', {
                 method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`,
-                },
                 body: JSON.stringify({
                     completed_quantity: parseInt(quantity, 10),
                 }),
