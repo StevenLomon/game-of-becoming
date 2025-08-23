@@ -27,6 +27,16 @@ function DisplayIntention({ intention }) {
         <p className="text-md text-gray-300">
           Focus Blocks: {completedBlocksCount} / {intention.focus_block_count}
         </p>
+        {/* Conditionally render "Complete Quest" button */}
+        {intention.completed_quantity === intention.target_quantity ? (
+          <button type="submit" className="w-full flex justify-center py-2 px-4 border rounded-md font-medium text-white bg-green-600 hover:bg-teal-700 mt-2">
+            Complete Quest
+          </button>
+        ) : (
+          <button type="submit" className="w-full flex justify-center py-2 px-4 border rounded-md font-medium text-white bg-red-600 hover:bg-teal-700 mt-2">
+            Complete Quest
+          </button>
+        )}
       </div>
     </div>
   )
