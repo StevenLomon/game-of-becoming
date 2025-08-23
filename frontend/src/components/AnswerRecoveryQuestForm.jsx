@@ -17,13 +17,15 @@ function AnswerRecoveryQuestForm({ token, resultId, onReflectionSubmitted }) {
         body: JSON.stringify({ recovery_quest_response: responseText }),
       });
 
+      // 1. Get the completion report (the JSON) from the response
+      const submissionResult = await response.json();
+
       if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.detail || 'Failed to submit reflection.');
+        throw new Error(submissionResult.detail || 'Failed to submit reflection.');
       }
 
-      // On success, call the parent's function to let it know we're done.
-      onReflectionSubmitted();
+      // 2. Hand the report over to the parent when the call is made
+      onReflectionSubmitted(submissionResult);
 
     } catch (err) {
       setError(err.message);
