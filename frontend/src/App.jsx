@@ -58,7 +58,7 @@ function App() {
 
     // Cleanup the listener when the component unmounts
     return () => {
-      window.returnEventListener('auth-error', handleAuthError);
+      window.removeEventListener('auth-error', handleAuthError);
     }
   }, [token]); // This effect runs whenever the 'token' state changes
 
