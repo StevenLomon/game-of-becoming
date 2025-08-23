@@ -678,70 +678,8 @@ def update_focus_block(
 
 
 # --- DAILY RESULTS ENDPOINTS ---
-
-@app.post("/daily-results", response_model=schemas.DailyResultResponse, status_code=status.HTTP_201_CREATED)
-def create_daily_result(
-    daily_intention: Annotated[models.DailyIntention, Depends(get_current_user_daily_intention)],
-    stats: Annotated[models.CharacterStats, Depends(get_current_user_stats)], 
-    db: Session = Depends(database.get_db)
-):
-    """Creates the evening Daily Result and triggers reflection via the service layer."""
-    # The get_current_user_daily_intention dependency guarantees a Daily Intention from the currently logged in user
-    
-    # Check if Daily Result already exists for this intention
-    existing_result = db.query(models.DailyResult).filter(
-        models.DailyResult.daily_intention_id == daily_intention.id
-    ).first()
-    if existing_result:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Daily Result already exists for this intention. Sacred finality!"
-        )
-    
-    # 1. Call the service to get the logic result
-    reflection_data = services.create_daily_reflection(db=db, user=stats.user, daily_intention=daily_intention)
-    discipline_gain = reflection_data.get("discipline_stat_gain", 0)
-    
-    try:
-        # 2. Use the data from the service to build the DB object
-        db_result = models.DailyResult(
-            daily_intention_id=daily_intention.id,
-            succeeded_failed=reflection_data["succeeded"],
-            ai_feedback=reflection_data["ai_feedback"],
-            recovery_quest=reflection_data["recovery_quest"],
-            discipline_stat_gain=discipline_gain
-        )
-        db.add(db_result)
-
-        # 3. Update stats based on service output
-        if discipline_gain > 0:
-            stats.discipline += discipline_gain
-
-        db.commit()
-        db.refresh(db_result)
-        if discipline_gain > 0:
-            db.refresh(stats)
-
-        # Manually construct the response to include the stat gain
-        return schemas.DailyResultResponse(
-            id=db_result.id,
-            daily_intention_id=db_result.daily_intention_id,
-            succeeded_failed=db_result.succeeded_failed,
-            ai_feedback=db_result.ai_feedback,
-            recovery_quest=db_result.recovery_quest,
-            recovery_quest_response=db_result.recovery_quest_response,
-            user_confirmation_correction=db_result.user_confirmation_correction,
-            created_at=db_result.created_at,
-            discipline_stat_gain=discipline_gain # Use the calculated value from the service
-        )
-    
-    except Exception as e:
-        print(f"Database error: {e}") 
-        db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to create Daily Result: {str(e)}"
-        )
+# The old POST Daily Result creation endpoint /daily-results is no longer needed; 
+# it is all taken care of by the /complete and /fail endpoints!
 
 @app.get("/daily-results/{intention_id}", response_model=schemas.DailyResultResponse)
 def get_daily_result(
