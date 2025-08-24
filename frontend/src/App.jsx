@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import LoginForm from './components/LoginForm'
 import RegistrationForm from './components/RegistrationForm';
 import Dashboard from './components/Dashboard';
+import NotificationModal from './components/NotificationModal';
 
 // A new component to manage the authentication view
 function AuthScreen({ onLoginSuccess }) {
@@ -40,6 +41,8 @@ function AuthScreen({ onLoginSuccess }) {
 function App() {
   // 1. We initialize the token state by trying to read from localStorage first
   const [token, setToken] = useState(localStorage.getItem('authToken'));
+  // New state to control the visibility of our new notification modal
+  const [isSessionExpired, setIsSessionExpired] = useState(false);
 
   // 2. We use useEffect to save the token to localStorage whenever it changes
   useEffect(() => {
@@ -51,8 +54,9 @@ function App() {
 
     // --- NEW: Listen for the global logout signal ---
     const handleAuthError = () => {
-      console.log("Global auth error detected, logging out.");
-      setToken(null);
+      console.log("Global auth error detected, showing expiry modal.");
+      setIsSessionExpired(true); // Instead of logging out, we show the modal
+      // setToken(null); is not done here anymore...
     };
     window.addEventListener('auth-error', handleAuthError);
 
@@ -62,20 +66,30 @@ function App() {
     }
   }, [token]); // This effect runs whenever the 'token' state changes
 
-  const handleLogout = () => {
-    setToken(null); // Logging out is as simple as clearing the token
+  const handleModalClose = () => {
+    setIsSessionExpired(false); // Hide the modal
+    setToken(null); // ...but here! Which is still as simple as clearing the token
   }
 
   return (
     <div className="bg-gray-900 min-h-screen flex flex-col items-center justify-center text-white font-sans">
       {token ? (
         // If we have a token, show the Dashboard
-        <Dashboard token={token} onLogout={handleLogout} />
+        <Dashboard token={token} onLogout={() => setToken(null)} />
       ) : (
         // If we don't have a token, show the AuthScreen. setToken is passed directly. 
         // When called, it updates the state, which triggers the useEffect
         <AuthScreen onLoginSuccess={setToken} />
       )}
+
+      {/* Conditionally render the expiry modal */}
+      <NotificationModal
+        isOpen={isSessionExpired}
+        onClose={handleModalClose}
+        title="Session Expired"
+      >
+        <p>Your session has expired. Logging you out...</p>
+      </NotificationModal>
     </div>
   );
 }
