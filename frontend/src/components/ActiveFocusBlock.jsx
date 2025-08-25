@@ -55,6 +55,9 @@ function ActiveFocusBlock({ block, token, onBlockCompleted }) {
                 method: 'PATCH',
                 body: JSON.stringify({ status: 'completed' }),
             });
+
+            const completionData = await response.json(); // Get the full response
+
             if (!response.ok) {
                 let errorMessage = 'Failed to complete Focus Block.';
                 if (data.detail) {
@@ -62,7 +65,7 @@ function ActiveFocusBlock({ block, token, onBlockCompleted }) {
                 }
                 throw new Error(errorMessage);
             }
-            onBlockCompleted(); // Tell parent to re-fetch
+            onBlockCompleted(completionData); // UPDATED: Tell parent to re-fetch AND pass the full data object up!
         } catch(error) {
             console.error("Failed to complete Focus Block:", error);
         }
