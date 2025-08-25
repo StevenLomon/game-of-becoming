@@ -250,7 +250,7 @@ class DailyIntentionResponse(BaseModel):
     needs_refinement: bool = False # New. Always False for an approved intention (doesn't need refinement)
     
     focus_blocks: list[FocusBlockResponse] = [] # It tells Pydantic to expect a list of objects that match the FocusBlockResponse schema
-    daily_result: Optional[DailyResultResponse] = None
+    daily_result: Optional[DailyResultCompletionResponse] = None
 
     model_config = ConfigDict(from_attributes=True) # Allows model to be created from ORM attributes
 
