@@ -171,6 +171,13 @@ function MainApp({ user, token, stats, setStats }) { // stats now included as a 
       {/* We pass the fetched stats data down as a prop. */}
       <CharacterStats stats={stats} />
 
+      {/* Show errors if there are any! */}
+      {error && (
+        <div className="bg-red-900 border-red-700 text-red-300 px-4 py-3 rounded-md mb-4">
+          {error}
+        </div>
+      )}
+
       {/* The core logic is updated: If a Daily Intention exists... */}
       {intention ? (
         // ...and it has a daily_result, show the "Reflection Room"
