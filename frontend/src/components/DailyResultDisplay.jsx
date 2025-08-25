@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import AnswerRecoveryQuestForm from './AnswerRecoveryQuestForm';
+import RewardDisplay from './RewardDisplay';
 
 // This component now needs the token and a way to refresh the parent's state
 function DailyResultDisplay({ result, token, refreshGameState }) {
@@ -29,28 +30,19 @@ function DailyResultDisplay({ result, token, refreshGameState }) {
           {succeeded ? "Quest Complete!" : "Quest Incomplete"}
         </h3>
         {/* Display the AI's feedback */}
-        <p className="text-gray-300 italic mb-4">"{result.ai_feedback}"</p>
+        <p className="text-gray-300 italic mb-4">"{aiFeedback}"</p>
       </div>
 
-      {/* The Rewards Section */}
-      {succeeded && result.discipline_stat_gain > 0 && (
-        <div className="text-center bg-gray-900 p-3 rounded-lg mb-4">
-          <p className="text-md font-medium text-gray-400">Reward Earned</p>
-          <p className="text-xl font-bold text-yellow-400">
-            + {result.discipline_stat_gain} Discipline
-          </p>
-        </div>
-      )}
+      {/* The updated Rewards Section: we now use our reusable RewardDisplay for ALL rewards */}
+      <RewardDisplay
+        rewards={{
+          XP: result.xp_awarded,
+          Discipline: result.discipline_stat_gain,
+          Resilience: resilienceGain // This will be 0 unless a reflection was just submitted
+        }}
+      />
 
-      {/* NEW: Show Resilience reward after submission */}
-      {isSubmitted && resilienceGain > 0 && (
-        <div className="text-center bg-gray-900 p-3 rounded-lg mb-4">
-          <p className="text-md font-medium text-gray-400">Reward Earned</p>
-          <p className="text-xl font-bold text-yellow-400">+ {resilienceGain} Resilience</p>
-        </div>
-      )}
-
-      {/* --- This is the upgraded Recovery Quest Section --- */}
+      {/* The upgraded Recovery Quest Section */}
       {!succeeded && result.recovery_quest && (
         <div className="mt-4 pt-4 border-t border-red-700">
           <h4 className="font-bold text-red-300">Recovery Quest:</h4>
