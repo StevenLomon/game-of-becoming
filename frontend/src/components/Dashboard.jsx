@@ -8,6 +8,7 @@ import UpdateProgressForm from './UpdateProgressForm';
 import CharacterStats from './CharacterStats';
 import DailyResultDisplay from './DailyResultDisplay';
 import ConfirmationModal from './ConfirmationModal';
+import RewardDisplay from './RewardDisplay';
 
 function DisplayIntention({ intention, onComplete }) { // New onComplete prop for conditional rendering of "Complete Quest" button
   // Derive the count of completed Focus Blocks from the intention's props
@@ -52,6 +53,7 @@ function MainApp({ user, token, stats, setStats }) { // stats now included as a 
   const [view, setView] = useState('focus'); // // Manage the UI view after a Focus Block is completed; 'focus' or 'progress'
   const [error, setError] = useState(null);
   const [isFailConfirmVisible, setIsFailConfirmVisible] = useState(false);
+  const [lastReward, setLastReward] = useState(null);
 
   // Renamed from fetchAllData to reflect its broader role
   const refreshGameState = async () => {
@@ -90,22 +92,25 @@ function MainApp({ user, token, stats, setStats }) { // stats now included as a 
     refreshGameState();
   }, [token]);
 
-  // After a Focus Block is created, switch the view to the Daily Intention progress update form
-  const handleFocusBlockCompleted = () => {
+  // UPDATED: Switch the view to the Daily Intention progress update form and include XP gain
+  const handleFocusBlockCompleted = (completionData) => {
+    // We received the full response, which includes xp_awarded
+    setLastReward( { XP: completionData.xp_awarded });
     setView('progress');
-  }
+  };
 
   // After progress is updated, re-fetch all data and switch back to the 'focus' view
   const handleProgressUpdated = () => {
+    setLastReward(null); // Clear the last reward when progress is updated
     refreshGameState();
     setView('focus');
-  }
+  };
 
   // A new handler for *opening* the "Confirm Failing Forward" modal
   const handleFailIntentionClick = () => {
     setError(null); // Reset errors when opening the modal
     setIsFailConfirmVisible(true); // Just open the modal
-  }
+  };
 
   // The updated handler for confirming the action in the modal; no more window.confirm
   const confirmFailIntention = async () => {
@@ -125,7 +130,7 @@ function MainApp({ user, token, stats, setStats }) { // stats now included as a 
     } catch (err) {
       setError(err.message);
     }
-  }
+  };
 
   // New handler for completing a Daily Intention
   const handleCompleteIntention = async () => {
@@ -145,7 +150,7 @@ function MainApp({ user, token, stats, setStats }) { // stats now included as a 
     } catch (err) {
       setError(err.message);
     }
-  }
+  };
 
   // Find the currently active Focus Blocks (if any)
   const activeBlock = intention ? intention.focus_blocks.find(b => b.status === 'pending' || b.status === 'in progress') : null;
@@ -179,6 +184,9 @@ function MainApp({ user, token, stats, setStats }) { // stats now included as a 
           // ...otherwise, show the main "Execution Loop" UI
           <div>
             <DisplayIntention intention={intention} onComplete={handleCompleteIntention} />
+
+            {/* Conditionally render our new RewardDisplay */}
+            {view === 'progress' && <RewardDisplay rewards={lastReward} />}
             
             {view === 'focus' && (
               activeBlock ? (
