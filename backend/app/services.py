@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Literal
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field
 import os
@@ -7,6 +7,13 @@ import os
 from . import models
 from . import schemas
 from .llm_providers.factory import get_llm_provider
+
+# --- NEW: A central, single source of truth for game rules ---
+XP_REWARDS = {
+    'focus_block_completed': 10,
+    'daily_intention_completed': 20,
+    'recovery_quest_completed': 15,
+}
 
 # --- Our Secret Sauce: Pydantic Models for Structured AI Responses ensuring reliable AI output ---
 
@@ -97,18 +104,23 @@ def complete_focus_block(
         user: models.User, 
         block: models.FocusBlock # Future-proofing: kept for future, more complex XP rules
 ) -> dict[str, Any]:
-    """Awards XP for a completed Focus Block. Returns data for the endpoint to commit."""
+    """Awards XP for a completed Focus Block using the central rulebook. Returns data for the endpoint to commit."""
     # In the future, the logic here could inspect the 'block' object's properties
     # (e.g., duration, intention text) to award variable XP.
-    xp_to_award = 10 # Business rule: 10 XP per block
+    xp_to_award = XP_REWARDS.get('focus_block_completed', 0) # UPDATED: Rather than "magic numbers", refer to XP_REWARDS
     return {"xp_awarded": xp_to_award}
 
 def create_daily_reflection(db: Session, user: models.User, daily_intention: models.DailyIntention) -> dict[str, Any]:
     """
     Generates the end-of-day reflection, celebrating success or creating a recovery quest for failure.
     This combines generate_success_feedback and generate_recovery_quest from main.py.
+    UPDATE: Now including XP gain calculations!
     """
     succeeded = daily_intention.status == "completed"
+    xp_to_award = 0
+    if succeeded:
+        xp_to_award = XP_REWARDS.get('daily_intention_completed', 0) # Refer to our single source of truth
+
     if os.getenv("DISABLE_AI_CALLS") == "True":
         print("--- AI CALL DISABLED: Returning mock reflection. ---")
         if succeeded:
@@ -166,13 +178,17 @@ def create_daily_reflection(db: Session, user: models.User, daily_intention: mod
         return {"succeeded": succeeded, "ai_feedback": "Great work reflecting today.", "recovery_quest": None, "discipline_stat_gain": 1 if succeeded else 0}
     
     reflection["succeeded"] = succeeded
+    reflection["xp_awarded"] = xp_to_award # XP gain now included
     return reflection
 
 def process_recovery_quest_response(db: Session, user: models.User, result: models.DailyResult, response_text: str) -> dict[str, Any]:
     """
     Provides personalized coaching based on a user's reflection on failure.
     This replaces generate_coaching_response from main.py.
+    UPDATE: Now including XP gain calculations!
     """
+    xp_to_award = XP_REWARDS.get('recovery_quest_completed', 0) # Refer to our single source of truth
+
     if os.getenv("DISABLE_AI_CALLS") == "True":
         print("--- AI CALL DISABLED: Returning mock coaching. ---")
         return {"ai_coaching_feedback": "Mock Coaching: That's a great insight.", "resilience_stat_gain": 1}
@@ -211,4 +227,5 @@ def process_recovery_quest_response(db: Session, user: models.User, result: mode
     if "error" in coaching:
         return {"ai_coaching_feedback": "Thank you for sharing. This is how we grow.", "resilience_stat_gain": 1}
         
+    coaching["xp_awarded"] = xp_to_award # Include XP gain
     return coaching
