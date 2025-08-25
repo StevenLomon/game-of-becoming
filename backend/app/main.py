@@ -618,7 +618,7 @@ def create_focus_block(
             detail=f"Failed to create Focus Block: {str(e)}"
         )
 
-@app.patch("/focus-blocks/{block_id}", response_model=schemas.FocusBlockResponse)
+@app.patch("/focus-blocks/{block_id}", response_model=schemas.FocusBlockCompletionResponse)
 def update_focus_block(
     update_data: schemas.FocusBlockUpdate, 
     block: Annotated[models.FocusBlock, Depends(get_owned_focus_block)],
@@ -667,7 +667,17 @@ def update_focus_block(
         if xp_awarded > 0:
             db.refresh(stats)
             
-        return block
+        return schemas.FocusBlockCompletionResponse(
+            id=block.id,
+            daily_intention_id=block.daily_intention_id,
+            status=block.status,
+            pre_block_video_url=block.pre_block_video_url,
+            post_block_video_url=block.post_block_video_url,
+            created_at=block.created_at,
+            focus_block_intention=block.focus_block_intention,
+            duration_minutes=block.duration_minutes,
+            xp_awarded=xp_awarded # Include our calculated field
+        )
 
     except Exception as e:
         db.rollback()

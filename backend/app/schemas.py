@@ -173,6 +173,10 @@ class FocusBlockUpdate(BaseModel):
     post_block_video_url: Optional[str] = None
     status: Optional[str] = None # To mark as 'completed' later
 
+class FocusBlockCompletionResponse(FocusBlockResponse):
+    """Specific response for when a Focus Block is completed, including the XP awarded."""
+    xp_awarded: int = 0
+
 
 # =============================================================================
 # DAILY RESULTS SCHEMAS (Evening Reflection)
