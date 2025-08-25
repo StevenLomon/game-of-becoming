@@ -117,7 +117,7 @@ function MainApp({ user, token, stats, setStats }) { // stats now included as a 
     setIsFailConfirmVisible(false); // Close the modal first
     try {
       const response = await authFetch('api/intentions/today/fail', {
-        method: 'PATCH',
+        method: 'POST',
       });
 
       if (!response.ok) {
@@ -137,7 +137,7 @@ function MainApp({ user, token, stats, setStats }) { // stats now included as a 
     setError(null);
     try {
       const response = await authFetch('/api/intentions/today/complete', {
-        method: 'PATCH',
+        method: 'POST',
       });
 
       if (!response.ok) {
