@@ -124,9 +124,9 @@ def create_daily_reflection(db: Session, user: models.User, daily_intention: mod
     if os.getenv("DISABLE_AI_CALLS") == "True":
         print("--- AI CALL DISABLED: Returning mock reflection. ---")
         if succeeded:
-            return {"succeeded": True, "ai_feedback": "Mock Success: Great job!", "recovery_quest": None, "discipline_stat_gain": 1}
+            return {"succeeded": True, "ai_feedback": "Mock Success: Great job!", "recovery_quest": None, "discipline_stat_gain": 1, "xp_awarded": xp_to_award}
         else:
-            return {"succeeded": False, "ai_feedback": "Mock Fail: Let's reflect.", "recovery_quest": "What was the main obstacle?", "discipline_stat_gain": 0}
+            return {"succeeded": False, "ai_feedback": "Mock Fail: Let's reflect.", "recovery_quest": "What was the main obstacle?", "discipline_stat_gain": 0, "xp_awarded": 0}
 
     llm_provider = get_llm_provider()
     

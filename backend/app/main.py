@@ -474,9 +474,10 @@ def complete_daily_intention(
         # Mark as completed
         daily_intention.status = 'completed'
 
-        # Call the service to get the reflection logic
+        # Call the service to get the reflection logic, Discipline stat gain and XP gain
         reflection_data = services.create_daily_reflection(db=db, user=stats.user, daily_intention=daily_intention)
         discipline_gain = reflection_data.get("discipline_stat_gain", 0)
+        xp_gain = reflection_data.get("xp_awarded", 0)
 
         # Create the DailyResult
         db_result = models.DailyResult(
@@ -484,21 +485,35 @@ def complete_daily_intention(
             succeeded_failed=True, # Explicitly True
             ai_feedback=reflection_data["ai_feedback"],
             recovery_quest=None, # No recovery quest on success
-            discipline_stat_gain=discipline_gain
+            discipline_stat_gain=discipline_gain,
+            xp_awarded=xp_gain # Save the XP gain to the database
         )
         db.add(db_result)
 
-        # Update stats
+        # Update stats with BOTH rewards
         if discipline_gain > 0:
             stats.discipline += discipline_gain
+        if xp_gain > 0:
+            stats.xp += xp_gain
 
         # Commit all changes at once
         db.commit()
         db.refresh(db_result)
         db.refresh(stats)
 
-        # Return the newly created DailyResult
-        return db_result
+        # Manually construct the final, rich response object
+        return schemas.DailyResultCompletionResponse(
+            id=db_result.id,
+            daily_intention_id=db_result.daily_intention_id,
+            succeeded_failed=db_result.succeeded_failed,
+            ai_feedback=db_result.ai_feedback,
+            recovery_quest=db_result.recovery_quest,
+            recovery_quest_response=db_result.recovery_quest_response,
+            user_confirmation_correction=db_result.user_confirmation_correction,
+            created_at=db_result.created_at,
+            discipline_stat_gain=discipline_gain, # Use the calculated value
+            xp_awarded=xp_gain # Use the calculated value
+        )
     
     except Exception as e:
         print(f"Database error: {e}") 
@@ -539,6 +554,7 @@ def fail_daily_intention(
         # 1. Call the service to get the reflection logic
         reflection_data = services.create_daily_reflection(db=db, user=stats.user, daily_intention=daily_intention)
         discipline_gain = reflection_data.get("discipline_stat_gain", 0) # Should be 0 for failure
+        xp_gain = reflection_data.get("xp_awarded", 0) # Should also be 0 for failure
 
         # 2. Create the DailyResult database objcet
         db_result = models.DailyResult(
@@ -546,21 +562,35 @@ def fail_daily_intention(
             succeeded_failed=False, # Explicitly False for failure
             ai_feedback=reflection_data["ai_feedback"],
             recovery_quest=reflection_data["recovery_quest"],
-            discipline_stat_gain=discipline_gain
+            discipline_stat_gain=discipline_gain,
+            xp_awarded=xp_gain
         )
         db.add(db_result)
 
-        # 3. Update user stats (Discipline shouldn't change, but this is good practice)
+        # 3. Update user stats (Discipline and XP shouldn't change, but this is good practice)
         if discipline_gain > 0:
             stats.discipline += discipline_gain
+        if xp_gain > 0:
+            stats.xp += xp_gain
         
         # Commit all changes at once (status change and new result)
         db.commit()
         db.refresh(db_result)
         db.refresh(stats)
 
-        # 4. Return the newly created DailyResult
-        return db_result
+        # Manually construct the final, rich response object
+        return schemas.DailyResultCompletionResponse(
+            id=db_result.id,
+            daily_intention_id=db_result.daily_intention_id,
+            succeeded_failed=db_result.succeeded_failed,
+            ai_feedback=db_result.ai_feedback,
+            recovery_quest=db_result.recovery_quest,
+            recovery_quest_response=db_result.recovery_quest_response,
+            user_confirmation_correction=db_result.user_confirmation_correction,
+            created_at=db_result.created_at,
+            discipline_stat_gain=discipline_gain, # Use the calculated value, despite it being 0
+            xp_awarded=0 # Use the calculated value, despite it being 0
+        )
     
     except Exception as e:
         print(f"Database error: {e}") 
