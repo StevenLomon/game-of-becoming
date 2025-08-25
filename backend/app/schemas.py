@@ -203,9 +203,13 @@ class DailyResultResponse(BaseModel):
     recovery_quest_response: Optional[str] = None
     user_confirmation_correction: Optional[bool] = None
     created_at: datetime
-    discipline_stat_gain: int = 0 # Updated to include and show Discipline stat gain during Daily Result
 
     model_config = ConfigDict(from_attributes=True)
+
+class DailyResultCompletionResponse(DailyResultResponse):
+    """Specific response for when a Daily Intention is completed or failed, including the XP awarded and stat gain."""
+    xp_awarded: int = 0
+    discipline_stat_gain: int = 0
 
 
 class RecoveryQuestInput(BaseModel):
