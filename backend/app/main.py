@@ -440,7 +440,7 @@ def update_daily_intention_progress(
             detail=f"Failed to update Daily Intention progress: {str(e)}"
         )
 
-@app.post("/intentions/today/complete", response_model=schemas.DailyResultResponse)
+@app.post("/intentions/today/complete", response_model=schemas.DailyResultCompletionResponse)
 def complete_daily_intention(
     daily_intention: Annotated[models.DailyIntention, Depends(get_current_user_daily_intention)],
     stats: Annotated[models.CharacterStats, Depends(get_current_user_stats)],
@@ -508,7 +508,7 @@ def complete_daily_intention(
             detail=f"Failed to complete Daily Intention: {str(e)}"
         )
     
-@app.post("/intentions/today/fail", response_model=schemas.DailyResultResponse)
+@app.post("/intentions/today/fail", response_model=schemas.DailyResultCompletionResponse)
 def fail_daily_intention(
     daily_intention: Annotated[models.DailyIntention, Depends(get_current_user_daily_intention)],
     stats: Annotated[models.CharacterStats, Depends(get_current_user_stats)],
