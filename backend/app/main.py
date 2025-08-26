@@ -193,7 +193,7 @@ def login_for_access_token(
     return {"access_token": access_token, "token_type": "bearer"}
 
 
-# --- USER ENDPOINTS ---
+# --- USER & ONBOARDING ENDPOINTS ---
 
 # Simplified using create_user in crud.py
 @app.post("/register", response_model=schemas.UserResponse, status_code=status.HTTP_201_CREATED)
