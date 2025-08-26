@@ -1,11 +1,32 @@
 # FILE: tests/test_daily_loop.py
-# TRULY FINAL VERSION
+# FINAL VERSION - Green Checkmarks Edition
 
 from freezegun import freeze_time
+from datetime import datetime, timezone
 
-# --- Mocks (Unchanged) ---
+# --- Mocks ---
+
 def mock_intention_approved(db, user, intention_data):
-    return {"id": 1, "daily_intention_text": intention_data.daily_intention_text, "target_quantity": intention_data.target_quantity}
+    """
+    A production-grade mock. It returns a dictionary with all the fields
+    that a real DailyIntention object would have, which will satisfy
+    the Pydantic ResponseValidationError.
+    """
+    return {
+        "id": 1,
+        "user_id": user.id,
+        "daily_intention_text": intention_data.daily_intention_text,
+        "target_quantity": intention_data.target_quantity,
+        "completed_quantity": 0,
+        "focus_block_count": intention_data.focus_block_count,
+        "status": "active",
+        "is_refined": True,
+        "created_at": datetime.now(timezone.utc),
+        # Fix for ResponseValidationError: Provide the expected fields
+        "ai_feedback": "Mock AI Feedback: Looks good!",
+        "completion_percentage": 0 # This will satisfy the schema
+    }
+
 def mock_reflection_success(db, user, daily_intention):
     return {"succeeded": True, "ai_feedback": "Mock Success!", "recovery_quest": None, "discipline_stat_gain": 1, "xp_awarded": 20}
 
@@ -14,7 +35,6 @@ def mock_reflection_success(db, user, daily_intention):
 def test_create_and_get_daily_intention(client, user_token, monkeypatch):
     monkeypatch.setattr("app.services.create_and_process_intention", mock_intention_approved)
     headers = {"Authorization": f"Bearer {user_token}"}
-    # FIX: Added focus_block_count back to the payload
     payload = {"daily_intention_text": "Write tests", "target_quantity": 5, "focus_block_count": 3, "is_refined": True}
 
     create_resp = client.post("/intentions", headers=headers, json=payload)
@@ -34,7 +54,6 @@ def test_complete_intention_updates_stats_and_streak(client, long_lived_user_tok
     # Day 1
     with freeze_time("2025-08-26"):
         client.put("/users/me", headers=headers, json={"hrga": "Test HRGA"})
-        # FIX: Added focus_block_count back to the payload
         client.post("/intentions", headers=headers, json={"daily_intention_text": "First day", "target_quantity": 1, "focus_block_count": 1, "is_refined": True})
         client.patch("/intentions/today/progress", headers=headers, json={"completed_quantity": 1})
         client.post("/intentions/today/complete", headers=headers)
@@ -43,7 +62,6 @@ def test_complete_intention_updates_stats_and_streak(client, long_lived_user_tok
 
     # Day 2
     with freeze_time("2025-08-27"):
-        # FIX: Added focus_block_count back to the payload
         client.post("/intentions", headers=headers, json={"daily_intention_text": "Second day", "target_quantity": 1, "focus_block_count": 1, "is_refined": True})
         client.patch("/intentions/today/progress", headers=headers, json={"completed_quantity": 1})
         client.post("/intentions/today/complete", headers=headers)
