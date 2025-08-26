@@ -70,6 +70,8 @@ class UserResponse(BaseModel):
     name: str
     email: str
     hrga: Optional[str]
+    current_streak: int # NEW
+    longest_streak: int # NEW
     registered_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
