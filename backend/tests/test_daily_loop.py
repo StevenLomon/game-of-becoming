@@ -5,7 +5,16 @@ from freezegun import freeze_time # Freezegun now implemented!
 # These functions mimic the behavior of our real service layer for predictable testing.
 
 def mock_intention_approved(db, user, intention_data):
-    return {"needs_refinement": False, "ai_feedback": "Mock: Approved!", "clarity_stat_gain": 1}
+    # This mock now realistically includes the data that was "saved".
+    # We also add a mock ID, which a real database would do.
+    return {
+        "id": 1, 
+        "daily_intention_text": intention_data["daily_intention_text"],
+        "target_quantity": intention_data["target_quantity"],
+        "needs_refinement": False, 
+        "ai_feedback": "Mock: Approved!", 
+        "clarity_stat_gain": 1
+    }
 
 def mock_reflection_success(db, user, daily_intention):
     return {"succeeded": True, "ai_feedback": "Mock Success!", "recovery_quest": None, "discipline_stat_gain": 1, "xp_awarded": 20}
@@ -65,8 +74,11 @@ def test_complete_intention_updates_stats_and_streak(client, user_token, monkeyp
         day2_user = client.get("/users/me", headers=headers).json()
         day2_stats = client.get("/users/me/stats", headers=headers).json()
         
+        # Assert against the /users/me response for the streak
         assert day2_user["current_streak"] == 2
-        assert day2_stats["discipline"] > 0 # Check that stats are accumulating
+        
+        # Assert against the /users/me/stats response for other stats
+        assert day2_stats["discipline"] > 0
         assert day2_stats["xp"] > 0
 
 
