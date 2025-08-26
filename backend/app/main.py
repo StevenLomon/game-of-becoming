@@ -770,6 +770,7 @@ def respond_to_recovery_quest(
 
         # Apply the user's input and the service's results to the models
         result.recovery_quest_response = quest_response.recovery_quest_response.strip()
+        result.xp_awarded = xp_awarded
         if resilience_gain > 0:
             stats.resilience += resilience_gain
         if xp_awarded > 0:
