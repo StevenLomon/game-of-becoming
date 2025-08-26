@@ -76,4 +76,4 @@ def test_onboarding_sets_hrga_and_starts_streak(client, user_token):
     assert final_user_resp.status_code == 200
     final_user_data = final_user_resp.json()
     assert final_user_data["hrga"] == "My new awesome HRGA!"
-    assert final_user_data["current_streak"] == 1 # Streak should be "ignited" to 1
+    assert final_user_data["current_streak"] == 1 # Streak should be "ignited" to 1 
