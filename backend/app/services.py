@@ -1,6 +1,7 @@
 from typing import Any
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field
+from datetime import datetime, date, timedelta
 import os
 
 # Import modules
@@ -36,6 +37,11 @@ class RecoveryQuestCoachingResponse(BaseModel):
 # All functions include a db object in their signature for future-proofing: the rules
 # are simple in this MVP version but they won't always be simple. For V2 and future versions
 # we want to use db to fetch the user's history to give better feedback!
+
+def update_user_streak(user: models.User, today: date = date.today()):
+    """
+    The "Streak Guardian". Will also handle the "two-day failure" rule:
+    """
 
 def create_and_process_intention(db: Session, user: models.User, intention_data: schemas.DailyIntentionCreate) -> dict[str, Any]:
     """
