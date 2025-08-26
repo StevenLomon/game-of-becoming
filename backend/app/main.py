@@ -503,7 +503,7 @@ def complete_daily_intention(
         # NEW: Streak implementation! This is a confirmed "successful action"
         services.update_user_streak(user=stats.user)
 
-        # Explicitly add the user object to the session to ensure its changes are tracked
+        # Explicitly add the user object to the session to ensure its changes are tracked 
         db.add(stats.user)
 
         # Commit all changes at once
