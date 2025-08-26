@@ -30,8 +30,8 @@ class User(Base):
     registered_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now(timezone.utc))
 
     # --- NEW: Streak-related fields ---
-    current_streak: Mapped[int] = mapped_column(default=0)
-    longest_streak: Mapped[int] = mapped_column(default=0)
+    current_streak: Mapped[int] = mapped_column(default=0, server_default='0', nullable=False)
+    longest_streak: Mapped[int] = mapped_column(default=0, server_default='0', nullable=False)
     last_streak_update: Mapped[Optional[datetime]] = mapped_column()
 
     # Relationships
