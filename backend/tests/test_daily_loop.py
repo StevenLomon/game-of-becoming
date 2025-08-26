@@ -1,28 +1,21 @@
 #Full, self-contained showcase of the daily loop endpoints.
 from freezegun import freeze_time # Freezegun now implemented!
+from app import services, models, schemas
 
 # --- Reusable Mock Service Functions ---
 # These functions mimic the behavior of our real service layer for predictable testing.
 
-def mock_intention_approved(db, user, intention_data):
-    # This mock now realistically includes the data that was "saved".
-    # We also add a mock ID, which a real database would do.
-    return {
-        "id": 1, 
-        "daily_intention_text": intention_data["daily_intention_text"],
-        "target_quantity": intention_data["target_quantity"],
-        "needs_refinement": False, 
-        "ai_feedback": "Mock: Approved!", 
-        "clarity_stat_gain": 1
-    }
+# Updated to use dot notation for Pydantic objects
+def mock_intention_approved(db, user: models.User, intention_data: schemas.DailyIntentionCreate):
+    return {"needs_refinement": False, "ai_feedback": "Mock: Approved!", "clarity_stat_gain": 1}
 
-def mock_reflection_success(db, user, daily_intention):
+def mock_reflection_success(db, user: models.User, daily_intention: models.DailyIntention):
     return {"succeeded": True, "ai_feedback": "Mock Success!", "recovery_quest": None, "discipline_stat_gain": 1, "xp_awarded": 20}
 
-def mock_reflection_failed(db, user, daily_intention):
+def mock_reflection_failed(db, user: models.User, daily_intention: models.DailyIntention):
     return {"succeeded": False, "ai_feedback": "Mock Fail.", "recovery_quest": "What happened?", "discipline_stat_gain": 0, "xp_awarded": 0}
 
-def mock_recovery_quest_coaching(db, user, result, response_text):
+def mock_recovery_quest_coaching(db, user: models.User, result: models.DailyResult, response_text: str):
     return {"ai_coaching_feedback": "Mock Coaching.", "resilience_stat_gain": 1, "xp_awarded": 15}
 
 # --- Tests ---
