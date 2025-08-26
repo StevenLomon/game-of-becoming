@@ -766,22 +766,28 @@ def respond_to_recovery_quest(
             response_text=quest_response.recovery_quest_response
         )
         resilience_gain = coaching_data.get("resilience_stat_gain", 0)
+        xp_awarded = coaching_data.get("xp_awarded", 0)
 
         # Apply the user's input and the service's results to the models
         result.recovery_quest_response = quest_response.recovery_quest_response.strip()
         if resilience_gain > 0:
             stats.resilience += resilience_gain
+        if xp_awarded > 0:
+            stats.xp += xp_awarded
 
         db.commit()
         db.refresh(result)
         if resilience_gain > 0:
+            db.refresh(stats)
+        if xp_awarded > 0:
             db.refresh(stats)
 
         # Return the data, using the coaching feedback from the service
         return schemas.RecoveryQuestResponse(
             recovery_quest_response=result.recovery_quest_response,
             ai_coaching_feedback=coaching_data["ai_coaching_feedback"],
-            resilience_stat_gain=resilience_gain
+            resilience_stat_gain=resilience_gain,
+            xp_awarded=xp_awarded
         )
     
     except Exception as e:
