@@ -242,6 +242,10 @@ def update_user_me(
     try:
         # Update the user model with the new data
         current_user.hrga = user_data.hrga
+
+        # The "ignition". By completing the onboarding, the user performs their first
+        # successful action. We call the Streak Guardian to officially start their streak at 1
+        services.update_user_streak(user=current_user)
         
         db.commit()
         db.refresh(current_user)
