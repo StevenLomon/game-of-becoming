@@ -29,6 +29,11 @@ class User(Base):
     default_focus_block_duration: Mapped[int] = mapped_column(default=50) # In minutes
     registered_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now(timezone.utc))
 
+    # --- NEW: Streak-related fields ---
+    current_streak: Mapped[int] = mapped_column(default=0)
+    longest_streak: Mapped[int] = mapped_column(default=0)
+    last_streak_update: Mapped[Optional[datetime]] = mapped_column()
+
     # Relationships
     daily_intentions: Mapped[List["DailyIntention"]] = relationship(back_populates="user")
     ai_coaching_logs: Mapped[List["AICoachingLog"]] = relationship(back_populates="user")
