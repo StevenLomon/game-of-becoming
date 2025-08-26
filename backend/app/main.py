@@ -453,7 +453,7 @@ def complete_daily_intention(
     This triggers:
     - XP gain for the user
     - Discipline stat increase
-    - Streak continuation
+    - Streak continuation; now implemented!
     """
     # The dependency guarantees Daily Intention that belongs to the currently logged in user
 
@@ -495,6 +495,9 @@ def complete_daily_intention(
             stats.discipline += discipline_gain
         if xp_gain > 0:
             stats.xp += xp_gain
+
+        # NEW: Streak implementation! This is a confirmed "successful action"
+        services.update_user_streak(user=stats.user)
 
         # Commit all changes at once
         db.commit()
@@ -775,6 +778,10 @@ def respond_to_recovery_quest(
             stats.resilience += resilience_gain
         if xp_awarded > 0:
             stats.xp += xp_awarded
+        
+        # The user has successfully learned from failure. This is a "successful action",
+        # so we call the Streak Guardian to preserve their streak.
+        services.update_user_streak(user=stats.user)
 
         db.commit()
         db.refresh(result)
