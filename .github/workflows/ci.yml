@@ -50,4 +50,4 @@ jobs:
     # which will cause this step (and the entire job) to fail.
     - name: Run tests with pytest
       run: |
-        pytest
+        pytest -vv
