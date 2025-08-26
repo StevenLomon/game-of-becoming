@@ -1,21 +1,29 @@
-#Full, self-contained showcase of the daily loop endpoints.
-from freezegun import freeze_time # Freezegun now implemented!
-from app import services, models, schemas
+# Full, self-contained showcase of the daily loop endpoints.
+from freezegun import freeze_time
 
 # --- Reusable Mock Service Functions ---
-# These functions mimic the behavior of our real service layer for predictable testing.
 
-# Updated to use dot notation for Pydantic objects
-def mock_intention_approved(db, user: models.User, intention_data: schemas.DailyIntentionCreate):
-    return {"needs_refinement": False, "ai_feedback": "Mock: Approved!", "clarity_stat_gain": 1}
+def mock_intention_approved(db, user, intention_data):
+    """
+    Mock for a successfully processed intention.
+    FIXED: Now uses dot notation to access Pydantic model attributes.
+    """
+    return {
+        "id": 1,
+        "daily_intention_text": intention_data.daily_intention_text,
+        "target_quantity": intention_data.target_quantity,
+        "needs_refinement": False,
+        "ai_feedback": "Mock: Approved!",
+        "clarity_stat_gain": 1
+    }
 
-def mock_reflection_success(db, user: models.User, daily_intention: models.DailyIntention):
+def mock_reflection_success(db, user, daily_intention):
     return {"succeeded": True, "ai_feedback": "Mock Success!", "recovery_quest": None, "discipline_stat_gain": 1, "xp_awarded": 20}
 
-def mock_reflection_failed(db, user: models.User, daily_intention: models.DailyIntention):
+def mock_reflection_failed(db, user, daily_intention):
     return {"succeeded": False, "ai_feedback": "Mock Fail.", "recovery_quest": "What happened?", "discipline_stat_gain": 0, "xp_awarded": 0}
 
-def mock_recovery_quest_coaching(db, user: models.User, result: models.DailyResult, response_text: str):
+def mock_recovery_quest_coaching(db, user, result, response_text):
     return {"ai_coaching_feedback": "Mock Coaching.", "resilience_stat_gain": 1, "xp_awarded": 15}
 
 # --- Tests ---
@@ -44,7 +52,7 @@ def test_complete_intention_updates_stats_and_streak(client, user_token, monkeyp
 
     # --- Day 1 ---
     with freeze_time("2025-08-26"):
-        # 1. Onboard the user to start their streak at 1
+        # 1. Onboard the user
         client.put("/users/me", headers=headers, json={"hrga": "Test HRGA"})
 
         # 2. Create and complete the Daily Intention for Day 1
@@ -62,19 +70,14 @@ def test_complete_intention_updates_stats_and_streak(client, user_token, monkeyp
         client.post("/intentions", headers=headers, json={"daily_intention_text": "Second day", "target_quantity": 1, "focus_block_count": 1, "is_refined": True})
         client.patch("/intentions/today/progress", headers=headers, json={"completed_quantity": 1})
         client.post("/intentions/today/complete", headers=headers)
-        
+
         # 5. Verify the streak has continued on the next day
         day2_user = client.get("/users/me", headers=headers).json()
         day2_stats = client.get("/users/me/stats", headers=headers).json()
-        
-        # Assert against the /users/me response for the streak
+
         assert day2_user["current_streak"] == 2
-        
-        # Assert against the /users/me/stats response for other stats
         assert day2_stats["discipline"] > 0
         assert day2_stats["xp"] > 0
-
-
 
 def test_full_fail_forward_recovery_quest_loop(client, user_token, monkeypatch):
     """Tests the full 'Fail Forward' loop, from failing an intention to completing the Recovery Quest."""
