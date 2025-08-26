@@ -9,6 +9,7 @@ import CharacterStats from './CharacterStats';
 import DailyResultDisplay from './DailyResultDisplay';
 import ConfirmationModal from './ConfirmationModal';
 import RewardDisplay from './RewardDisplay';
+import StreakCounter from './StreakCounter';
 
 function DisplayIntention({ intention, onComplete }) { // New onComplete prop for conditional rendering of "Complete Quest" button
   // Derive the count of completed Focus Blocks from the intention's props
@@ -166,6 +167,8 @@ function MainApp({ user, token, stats, setStats }) { // stats now included as a 
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-white">Welcome, {user.name}</h1>
         <p className="text-gray-400">Your HRGA: "{user.hrga}"</p>
+        {/* Render the StreakCounter and pass the streak from the user object */}
+        <StreakCounter currentStreak={user.current_streak} />
       </div>
 
       {/* We pass the fetched stats data down as a prop. */}
