@@ -191,7 +191,7 @@ def process_recovery_quest_response(db: Session, user: models.User, result: mode
 
     if os.getenv("DISABLE_AI_CALLS") == "True":
         print("--- AI CALL DISABLED: Returning mock coaching. ---")
-        return {"ai_coaching_feedback": "Mock Coaching: That's a great insight.", "resilience_stat_gain": 1}
+        return {"ai_coaching_feedback": "Mock Coaching: That's a great insight.", "resilience_stat_gain": 1, "xp_awarded": xp_to_award}
 
     llm_provider = get_llm_provider()
     
