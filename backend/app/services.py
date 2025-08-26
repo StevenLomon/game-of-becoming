@@ -52,19 +52,19 @@ def update_user_streak(user: models.User, today: date = date.today()):
     
     # Calculate the number of days since the last successful action
     # If it's the very first time, treat it as infinite
-    days_since_last_update = (today - user.last_streak_update.date()).days if user.last_streak_update else float('inf')
+    days_since_last_update = float('inf')
+    if user.last_streak_update:
+        days_since_last_update = (today - user.last_streak_update.date()).days
 
     if days_since_last_update == 1:
         # Perfect continuation from yesterday. The streak continues
         user.current_streak += 1
-    elif days_since_last_update > 1:
-        # The chain is broken because more than one full day has passed
-        # We start a new streak of 1 for today's success
+    elif days_since_last_update > 1 or days_since_last_update == float('inf'):
+        # The chain was broken OR this is the very first action. Start a new streak.
         user.current_streak = 1
-    else:
-        # This covers the very first successful action ever (days_since_last_update == inf)
-        # and same-day successes if the clock rolls over. Start a streak of 1
-        user.current_streak = 1
+    
+    # Note: If days_since_last_update is 0 or less, we do nothing to the streak count,
+    # because the guard clause at the top already handled it.
 
     # Update the longest streak if the current one has surpassed it
     if user.current_streak > user.longest_streak:
