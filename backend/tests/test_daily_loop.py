@@ -1,4 +1,6 @@
-# Full, self-contained showcase of the daily loop endpoints.
+# FILE: tests/test_daily_loop.py
+# FINAL CORRECTED VERSION
+
 from freezegun import freeze_time
 
 # --- Reusable Mock Service Functions ---
@@ -6,7 +8,9 @@ from freezegun import freeze_time
 def mock_intention_approved(db, user, intention_data):
     """
     Mock for a successfully processed intention.
-    FIXED: Now uses dot notation to access Pydantic model attributes.
+    This version is now correct:
+    1. It uses dot notation (e.g., intention_data.daily_intention_text).
+    2. It returns all the keys the test expects, including 'daily_intention_text'.
     """
     return {
         "id": 1,
