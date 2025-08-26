@@ -44,10 +44,10 @@ def test_create_and_get_daily_intention(client, user_token, monkeypatch):
     assert get_resp.status_code == 200
     assert get_resp.json()["id"] == create_resp.json()["id"]
 
-def test_complete_intention_updates_stats_and_streak(client, user_token, monkeypatch):
+def test_complete_intention_updates_stats_and_streak(client, long_lived_user_token, monkeypatch): # Now uses long_lived_user_token instead of the regular user_token
     monkeypatch.setattr("app.services.create_and_process_intention", mock_intention_approved)
     monkeypatch.setattr("app.services.create_daily_reflection", mock_reflection_success)
-    headers = {"Authorization": f"Bearer {user_token}"}
+    headers = {"Authorization": f"Bearer {long_lived_user_token}"}
 
     # --- Day 1 ---
     with freeze_time("2025-08-26"):

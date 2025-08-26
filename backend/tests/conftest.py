@@ -73,3 +73,29 @@ def user_token(client):
     assert login.status_code == 200, f"login failed: {login.json()}"
 
     return login.json()["access_token"]   # now guaranteed to exist
+
+@pytest.fixture(scope="function")
+def long_lived_user_token(client, monkeypatch):
+    """
+    Creates a user and returns an access token with a long (48-hour)
+    lifespan, specifically for tests that involve time travel.
+    """
+    # Temporarily change the app's token lifespan setting to 2 days (2880 minutes)
+    monkeypatch.setattr("app.security.ACCESS_TOKEN_EXPIRE_MINUTES", 2880)
+
+    # The rest of the logic is identical to your original user_token fixture
+    payload = {
+        "name": "Demo", "email": "demo@example.com",
+        "hrga": "LinkedIn Outreach", "password": "pass123123123"
+    }
+    r = client.post("/register", json=payload)
+    assert r.status_code == 201, f"registration failed: {r.json()}"
+
+    login = client.post("/login", data={
+        "username": "demo@example.com", "password": "pass123123123"
+    })
+    assert login.status_code == 200, f"login failed: {login.json()}"
+
+    # Pytest automatically cleans up the monkeypatch after this test,
+    # so your real app setting is not affected.
+    return login.json()["access_token"]
