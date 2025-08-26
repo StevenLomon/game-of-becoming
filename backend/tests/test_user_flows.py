@@ -1,4 +1,5 @@
 # No need to import TestClient here, the `client` fixture provides it.
+from freezegun import freeze_time
 
 def test_register_user_success(client):
     """
@@ -50,6 +51,7 @@ def test_register_user_duplicate_email(client):
     assert response2.status_code == 400
     assert response2.json() == {"detail": "Email already registered. Ready to log in instead?"}
 
+@freeze_time("2025-08-26")
 def test_onboarding_sets_hrga_and_starts_streak(client, user_token):
     """
     Verify that the onboarding endpoint (`PUT /users/me`) sets the HRGA
