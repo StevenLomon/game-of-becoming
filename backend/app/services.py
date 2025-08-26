@@ -1,7 +1,7 @@
 from typing import Any
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 import os
 
 # Import modules
@@ -40,8 +40,40 @@ class RecoveryQuestCoachingResponse(BaseModel):
 
 def update_user_streak(user: models.User, today: date = date.today()):
     """
-    The "Streak Guardian". Will also handle the "two-day failure" rule:
+    The "Streak Guardian." Contains the core logic for updating a user's streak,
+    following the "one grace day" rule. 
+    
+    For a full breakdown of the rules, see the file:
+    docs/streak_rules.txt
     """
+    if user.last_streak_update and user.last_streak_update.date() >= today:
+        # The streak has already been updated for today or a future date. Do nothing
+        return False
+    
+    # Calculate the number of days since the last successful action
+    # If it's the very first time, treat it as infinite
+    days_since_last_update = (today - user.last_streak_update.date()).days if user.last_streak_update else float('inf')
+
+    if days_since_last_update == 1:
+        # Perfect continuation from yesterday. The streak continues
+        user.current_streak += 1
+    elif days_since_last_update > 1:
+        # The chain is broken because more than one full day has passed
+        # We start a new streak of 1 for today's success
+        user.current_streak = 1
+    else:
+        # This covers the very first successful action ever (days_since_last_update == inf)
+        # and same-day successes if the clock rolls over. Start a streak of 1
+        user.current_streak = 1
+
+    # Update the longest streak if the current one has surpassed it
+    if user.current_streak > user.longest_streak:
+        user.longest_streak = user.current_streak
+
+    # Mark today as the date of the latest successful action
+    user.last_streak_update = datetime.now(timezone.utc)
+
+    return True
 
 def create_and_process_intention(db: Session, user: models.User, intention_data: schemas.DailyIntentionCreate) -> dict[str, Any]:
     """
