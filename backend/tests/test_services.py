@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from freezegun import freeze_time
 from app import services
 from app import models
@@ -25,7 +25,7 @@ def test_update_user_streak_continuation():
         current_streak=3,
         longest_streak=3,
         # The last update was "yesterday"
-        last_streak_update=date(2025, 8, 25)
+        last_streak_update=datetime(2025, 8, 25)
     )
     
     services.update_user_streak(user)
@@ -40,7 +40,7 @@ def test_update_user_streak_grace_day_used():
         current_streak=5,
         longest_streak=5,
         # The last update was two days ago, so "yesterday" was missed.
-        last_streak_update=date(2025, 8, 24)
+        last_streak_update=datetime(2025, 8, 24)
     )
 
     services.update_user_streak(user)
@@ -54,7 +54,7 @@ def test_update_user_streak_already_updated_today():
     user = models.User(
         current_streak=2,
         longest_streak=2,
-        last_streak_update=date(2025, 8, 26) # Already updated today
+        last_streak_update=datetime(2025, 8, 26) # Already updated today
     )
 
     updated = services.update_user_streak(user)
