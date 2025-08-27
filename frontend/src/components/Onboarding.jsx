@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import authFetch from '../utils/authFetch';
+import { updateUserProfile } from '../services/api';
 
 // This component will need the user's token to make an authenticated API call
 function Onboarding({ token, onOnboardingComplete }) {
@@ -11,27 +11,8 @@ function Onboarding({ token, onOnboardingComplete }) {
         setError(null);
 
         try {
-            const response = await authFetch('api/users/me', {
-                method: 'PUT',
-                body: JSON.stringify({hrga: hrga}),
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                let errorMessage = 'An unknown error occurred. Failed to save HRGA';
-                if (data.detail) {
-                    // Check if detail is an array (Pydantic error) or a string
-                    if (Array.isArray(data.detail)) {
-                        // It's a Pydantic error, so we pull the 'msg' from the first error object.
-                        errorMessage = data.detail[0].msg;
-                    } else {
-                        // It's our custom HTTPExcetion, so details is just a string
-                        errorMessage = data.detail;
-                    }
-                }
-                throw new Error(errorMessage);
-            }
+            // NEW: Call our declarative service function
+            const data = await updateUserProfile({ hrga: hrga });
 
             // Tell the parent component that onboarding is done
             onOnboardingComplete(data); // Pass the updated user data up

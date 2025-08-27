@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import authFetch from '../utils/authFetch';
+import { createFocusBlock } from '../services/api';
 
 function CreateFocusBlockForm({ token, onBlockCreated }) {
   const [intention, setIntention] = useState('');
@@ -11,23 +11,11 @@ function CreateFocusBlockForm({ token, onBlockCreated }) {
     setError(null);
 
     try {
-      const response = await authFetch('/api/focus-blocks', {
-        method: 'POST',
-        body: JSON.stringify({
-          focus_block_intention: intention,
-          duration_minutes: parseInt(duration, 10),
-        }),
-      });
-
-      const data = await response.json();
-        if (!response.ok) {
-            let errorMessage = 'Failed to create Focus Block.';
-            if (data.detail) {
-            errorMessage = Array.isArray(data.detail) ? data.detail[0].msg : data.detail;
-            }
-            throw new Error(errorMessage);
-        }
-      onBlockCreated(); // Tell the parent to re-fetch data
+      // Call our declarative service function
+      await createFocusBlock(intention, duration); 
+      
+      // On success, tell the parent to re-fetch data
+      onBlockCreated();
     } catch (err) {
       setError(err.message);
     }

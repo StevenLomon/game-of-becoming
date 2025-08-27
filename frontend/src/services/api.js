@@ -86,12 +86,12 @@ export async function getUserProfile() {
 }
 
 /**
- * Updates the user's profile (e.g., to set the HRGA during onboarding).
- * @param {object} updateData - Data to update the user with.
+ * Updates the user's profile, specifically their HRGA, during onboarding.
+ * @param {object} updateData - The data to update the user with (e.g., { hrga: '...' }).
  * @returns {Promise<object>} - The updated user's data.
  */
 export async function updateUserProfile(updateData) {
-  const endpoint = "/api/users/me"; 
+  const endpoint = "/api/users/me";
   const url = `${API_BASE_URL}${endpoint}`;
 
   const response = await authFetch(url, {
