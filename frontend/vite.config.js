@@ -11,7 +11,7 @@ export default defineConfig({
         target: 'http://127.0.0.1:8000',
         changeOrigin: true,
         // Optional but recommended: remove /api prefix before sending to backend
-        rewrite: (path) => path.replace(/^\/api/, ''),
+        // rewrite: (path) => path.replace(/^\/api/, ''), No longer needed with api.js!
       },
     }
   }

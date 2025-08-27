@@ -178,7 +178,7 @@ def health_check():
         "version": "1.0.0"
     }
 
-@app.post("/login", response_model=schemas.TokenResponse)
+@app.post("/api/login", response_model=schemas.TokenResponse)
 def login_for_access_token(
     # This is the "magic" part. FastAPI will automatically handle getting the 
     # 'username' and 'password' from the form body and put them into this 'form_data' object.
@@ -214,7 +214,7 @@ def login_for_access_token(
 # --- USER & ONBOARDING ENDPOINTS ---
 
 # Simplified using create_user in crud.py
-@app.post("/register", response_model=schemas.UserResponse, status_code=status.HTTP_201_CREATED)
+@app.post("/api/register", response_model=schemas.UserResponse, status_code=status.HTTP_201_CREATED)
 def register_user(user_data: schemas.UserCreate, db: Session = Depends(database.get_db)):
     """
     Register a new user and their associated records. 
@@ -247,7 +247,7 @@ def register_user(user_data: schemas.UserCreate, db: Session = Depends(database.
             detail=f"Failed to create user account: {str(e)}"
         )
     
-@app.put("/users/me", response_model=schemas.UserResponse)
+@app.put("/api/users/me", response_model=schemas.UserResponse)
 def update_user_me(
     user_data: schemas.UserUpdate,
     current_user: Annotated[models.User, Depends(security.get_current_user)],
@@ -277,7 +277,7 @@ def update_user_me(
             detail=f"Failed to update user profile: {str(e)}"
         )
 
-@app.get("/users/me", response_model=schemas.UserResponse)
+@app.get("/api/users/me", response_model=schemas.UserResponse)
 def get_user_me(current_user: Annotated[models.User, Depends(security.get_current_user)]):
     """Get the profile for the currently logged-in user for the frontend to display user informaiton."""
     # The 'get_current_user' dependency has already done all the work:
@@ -288,7 +288,7 @@ def get_user_me(current_user: Annotated[models.User, Depends(security.get_curren
     
     return current_user
 
-@app.get("/users/me/stats", response_model=schemas.CharacterStatsResponse)
+@app.get("/api/users/me/stats", response_model=schemas.CharacterStatsResponse)
 def get_my_character_stats(
     current_user: Annotated[models.User, Depends(security.get_current_user)]
     ):
@@ -315,7 +315,7 @@ def get_my_character_stats(
 # --- DAILY INTENTION ENDPOINTS ---
 
 # Updated for Smart Detection! And now async!
-@app.post("/intentions", response_model=schemas.DailyIntentionCreateResponse, status_code=status.HTTP_201_CREATED)
+@app.post("/api/intentions", response_model=schemas.DailyIntentionCreateResponse, status_code=status.HTTP_201_CREATED)
 async def create_daily_intention(
     intention_data: schemas.DailyIntentionCreate,
     current_user: Annotated[models.User, Depends(security.get_current_user)],
@@ -371,7 +371,7 @@ async def create_daily_intention(
         # This is a manual construction because the object doesn't exist in the DB.
         return schemas.DailyIntentionRefinementResponse(ai_feedback=analysis_result.get("ai_feedback"))
         
-@app.get("/intentions/today/me", response_model=schemas.DailyIntentionResponse)
+@app.get("/api/intentions/today/me", response_model=schemas.DailyIntentionResponse)
 def get_my_daily_intention(
     intention: Annotated[models.DailyIntention, Depends(get_current_user_daily_intention)]
     ):
@@ -405,7 +405,7 @@ def get_my_daily_intention(
         daily_result=intention.daily_result
     )
 
-@app.patch("/intentions/today/progress", response_model=schemas.DailyIntentionResponse)
+@app.patch("/api/intentions/today/progress", response_model=schemas.DailyIntentionResponse)
 def update_daily_intention_progress(
     progress_data: schemas.DailyIntentionUpdate,
     intention: Annotated[models.DailyIntention, Depends(get_current_user_daily_intention)],
@@ -463,7 +463,7 @@ def update_daily_intention_progress(
             detail=f"Failed to update Daily Intention progress: {str(e)}"
         )
 
-@app.post("/intentions/today/complete", response_model=schemas.DailyResultCompletionResponse)
+@app.post("/api/intentions/today/complete", response_model=schemas.DailyResultCompletionResponse)
 async def complete_daily_intention(
     daily_intention: Annotated[models.DailyIntention, Depends(get_current_user_daily_intention)],
     stats: Annotated[models.CharacterStats, Depends(get_current_user_stats)],
@@ -552,7 +552,7 @@ async def complete_daily_intention(
             detail=f"Failed to complete Daily Intention: {str(e)}"
         )
     
-@app.post("/intentions/today/fail", response_model=schemas.DailyResultCompletionResponse)
+@app.post("/api/intentions/today/fail", response_model=schemas.DailyResultCompletionResponse)
 async def fail_daily_intention(
     daily_intention: Annotated[models.DailyIntention, Depends(get_current_user_daily_intention)],
     stats: Annotated[models.CharacterStats, Depends(get_current_user_stats)],
@@ -632,7 +632,7 @@ async def fail_daily_intention(
 
 # --- FOCUS BLOCK ENDPOINTS ---
 
-@app.post("/focus-blocks", response_model=schemas.FocusBlockResponse, status_code=status.HTTP_201_CREATED)
+@app.post("/api/focus-blocks", response_model=schemas.FocusBlockResponse, status_code=status.HTTP_201_CREATED)
 def create_focus_block(
     block_data: schemas.FocusBlockCreate, 
     daily_intention: Annotated[models.DailyIntention, Depends(get_current_user_daily_intention)],
@@ -677,7 +677,7 @@ def create_focus_block(
             detail=f"Failed to create Focus Block: {str(e)}"
         )
 
-@app.patch("/focus-blocks/{block_id}", response_model=schemas.FocusBlockCompletionResponse)
+@app.patch("/api/focus-blocks/{block_id}", response_model=schemas.FocusBlockCompletionResponse)
 def update_focus_block(
     update_data: schemas.FocusBlockUpdate, 
     block: Annotated[models.FocusBlock, Depends(get_owned_focus_block)],
@@ -750,7 +750,7 @@ def update_focus_block(
 # The old POST Daily Result creation endpoint /daily-results is no longer needed; 
 # it is all taken care of by the /complete and /fail endpoints!
 
-@app.get("/daily-results/{intention_id}", response_model=schemas.DailyResultResponse)
+@app.get("/api/daily-results/{intention_id}", response_model=schemas.DailyResultResponse)
 def get_daily_result(
     # The dependency does all the work: finds the result AND verifies ownership.
     result: Annotated[models.DailyResult, Depends(get_owned_daily_result_by_intention_id)]
@@ -762,7 +762,7 @@ def get_daily_result(
     # The 'result' object is guaranteed to be the correct, owned DailyResult.
     return result
 
-@app.post("/daily-results/{result_id}/recovery-quest", response_model=schemas.RecoveryQuestResponse)
+@app.post("/api/daily-results/{result_id}/recovery-quest", response_model=schemas.RecoveryQuestResponse)
 async def respond_to_recovery_quest(
     quest_response: schemas.RecoveryQuestInput,
     result: Annotated[models.DailyResult, Depends(get_owned_daily_result_by_result_id)],

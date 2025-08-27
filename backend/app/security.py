@@ -11,7 +11,7 @@ from . import database # Import our db session generator
 from . import schemas # Import our token payload schema
 
 # This object is what FastAPI uses to extract the token from the request header.
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/login")
 
 # --- JWT (Token) Handling ---
 # In production, load this from an env variable
