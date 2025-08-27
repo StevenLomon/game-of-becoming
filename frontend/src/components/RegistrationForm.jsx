@@ -14,7 +14,7 @@ function RegistrationForm({ onRegisterSuccess }) {
         setError(null);
 
         try {
-            const registerData = await registerUser({ email, password });
+            const registerData = await registerUser({ name, email, password });
 
             // If registration is successful, call the function passed in from the parent
             onRegisterSuccess();
