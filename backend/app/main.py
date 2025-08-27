@@ -2,6 +2,7 @@ from __future__ import annotations  # keep ForwardRef happy with annotation-hand
 
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
+from fastapi.middleware.cors import CORSMiddleware # NEW: Import the CORS middleware
 from sqlalchemy.orm import Session
 from datetime import datetime, timezone
 from typing import Annotated
@@ -26,6 +27,23 @@ app = FastAPI(
     description="Gamify your business growth with AI-driven daily intentions and feedback.",
     version="1.0.0",
     docs_url="/docs"
+)
+
+# NEW: Configure CORS middleware
+origins = [
+    "https://game-of-becoming-mvp-frontend-v1.onrender.com",
+    # Add other origins as needed (e.g., your local development URL)
+    "http://localhost",
+    "http://localhost:8000",
+    "http://localhost:5173", # This is Vite's default dev server port
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"], # Allows all methods (GET, POST, etc.)
+    allow_headers=["*"], # Allows all headers
 )
 
 # --- UTILITY FUNCTIONS ---
