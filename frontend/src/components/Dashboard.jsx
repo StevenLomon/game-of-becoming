@@ -60,29 +60,21 @@ function MainApp({ user, token, stats, setStats }) { // stats now included as a 
   const refreshGameState = async () => {
     // We only set the state to 'loading' on boot up
     try {
-      const intentionPromise = authFetch('/api/intentions/today/me'); // Daily Intention and Focus Blocks is fetched in one endpoint
-      const statsPromise = authFetch('/api/users/me/stats');
-      
-      const [intentionResponse, statsResponse] = await Promise.all([intentionPromise, statsPromise]);
+      // The new, elegant, and declarative way of calling the API:
+      // We use our two new service functions in parallel.
+      const [intentionData, statsData] = await Promise.all([
+          getTodaysIntention(),
+          getCharacterStats()
+      ]);
 
-      if (intentionResponse.status == 404) {
-        setIntention(null);
-      } else if (intentionResponse.ok) {
-        setIntention(await intentionResponse.json());
-      } else {
-        throw new Error('Failed to fetch Daily Intention Data.')
-      }
+      // The service layer already handled the 404 for us!
+      setIntention(intentionData);
+      setStats(statsData);
 
-      // Update the stats state
-      if (statsResponse.ok) {
-        setStats(await statsResponse.json());
-      } else {
-        throw new Error('Failed to fetch stats data.');
-      }
-
-    } catch (error) {
-      console.error('Failed to fetch game state:', error);
-    } finally {
+      } catch (err) {
+          // All other errors are caught here.
+          setError(err.message);
+      } finally {
       // We only set loading to false on the initial load
       setIsLoading(false);
     }
@@ -117,19 +109,11 @@ function MainApp({ user, token, stats, setStats }) { // stats now included as a 
   const confirmFailIntention = async () => {
     setIsFailConfirmVisible(false); // Close the modal first
     try {
-      const response = await authFetch('api/intentions/today/fail', {
-        method: 'POST',
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to mark Daily Intention as failed.')
-      }
-
-      // On success, simply refresh the game state. The declarative UI will do the rest
-      await refreshGameState();
-
+        // NEW: Call our declarative service function
+        await failDailyIntention();
+        await refreshGameState();
     } catch (err) {
-      setError(err.message);
+        setError(err.message);
     }
   };
 
@@ -137,19 +121,11 @@ function MainApp({ user, token, stats, setStats }) { // stats now included as a 
   const handleCompleteIntention = async () => {
     setError(null);
     try {
-      const response = await authFetch('/api/intentions/today/complete', {
-        method: 'POST',
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to complete the intention.');
-      }
-
-      // On success, refresh and let the declarative UI work its magic
-      await refreshGameState();
-
+        // NEW: Call our declarative service function
+        await completeDailyIntention();
+        await refreshGameState();
     } catch (err) {
-      setError(err.message);
+        setError(err.message);
     }
   };
 

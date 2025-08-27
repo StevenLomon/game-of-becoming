@@ -116,6 +116,99 @@ export async function getCharacterStats() {
 }
 
 /**
+ * Creates a new Daily Intention.
+ * @param {object} intentionData - The intention data, including text, target, and block count.
+ * @returns {Promise<object>} - The newly created Daily Intention object from the backend.
+ */
+export async function createDailyIntention(intentionData) {
+    const endpoint = '/api/intentions';
+    const url = `${API_BASE_URL}${endpoint}`;
+
+    const response = await authFetch(url, {
+        method: 'POST',
+        body: JSON.stringify(intentionData),
+    });
+
+    return handleErrors(response).then(res => res.json());
+}
+
+/**
+ * Fetches the current user's Daily Intention for today.
+ * Handles the special case where no intention exists for the day (404),
+ * returning null instead of throwing an error.
+ * @returns {Promise<object | null>} - The Daily Intention object or null if not found.
+ */
+export async function getTodaysIntention() {
+    const endpoint = '/api/intentions/today/me';
+    const url = `${API_BASE_URL}${endpoint}`;
+    
+    const response = await authFetch(url);
+
+    // If the intention doesn't exist yet, we return null.
+    if (response.status === 404) {
+        return null;
+    }
+
+    // For any other non-OK status, we throw a generic error.
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ detail: 'An unknown error occurred.' }));
+        throw new Error(errorData.detail || 'Failed to fetch Daily Intention Data.');
+    }
+    
+    // If successful, return the parsed JSON.
+    return response.json();
+}
+
+/**
+ * Updates the completed quantity for the current day's Daily Intention.
+ * @param {number} quantity - The new completed quantity.
+ * @returns {Promise<object>} - The updated Daily Intention object.
+ */
+export async function updateDailyIntentionProgress(quantity) {
+  const endpoint = "/api/intentions/today/progress";
+  const url = `${API_BASE_URL}${endpoint}`;
+
+  const response = await authFetch(url, {
+    method: "PATCH",
+    body: JSON.stringify({
+      completed_quantity: parseInt(quantity, 10),
+    }),
+  });
+
+  return handleErrors(response).then((res) => res.json());
+}
+
+/**
+ * Marks the current day's Daily Intention as completed.
+ * @returns {Promise<object>} - The Daily Result for the completed intention.
+ */
+export async function completeDailyIntention() {
+    const endpoint = '/api/intentions/today/complete';
+    const url = `${API_BASE_URL}${endpoint}`;
+
+    const response = await authFetch(url, {
+        method: 'POST',
+    });
+
+    return handleErrors(response).then(res => res.json());
+}
+
+/**
+ * Marks the current day's Daily Intention as failed.
+ * @returns {Promise<object>} - The Daily Result for the failed intention, including a recovery quest.
+ */
+export async function failDailyIntention() {
+    const endpoint = '/api/intentions/today/fail';
+    const url = `${API_BASE_URL}${endpoint}`;
+
+    const response = await authFetch(url, {
+        method: 'POST',
+    });
+
+    return handleErrors(response).then(res => res.json());
+}
+
+/**
  * Creates a new Focus Block for the current day's Daily Intention.
  * @param {string} intention - The specific intention for this block.
  * @param {number} duration - The duration of the block in minutes.

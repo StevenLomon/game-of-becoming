@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import authFetch from '../utils/authFetch';
+import { updateDailyIntentionProgress } from '../services/api';
 
 function UpdateProgressForm({ token, onProgressUpdated, currentProgress }) {
     // The form starrts with the current progress
@@ -11,22 +11,11 @@ function UpdateProgressForm({ token, onProgressUpdated, currentProgress }) {
         setError(null);
 
         try {
-            const response = await authFetch('api/intentions/today/progress', {
-                method: 'PATCH',
-                body: JSON.stringify({
-                    completed_quantity: parseInt(quantity, 10),
-                }),
-            });
-
-            const data = await response.json();
-            if (!response.ok) {
-                let errorMessage = 'Failed to update Daily Intention progress.';
-                if (data.detail) {
-                errorMessage = Array.isArray(data.detail) ? data.detail[0].msg : data.detail;
-                }
-                throw new Error(errorMessage);
-            }
-            onProgressUpdated(); // Tell the parent component to re-fetch all data
+            // Call our declarative service function
+            await updateDailyIntentionProgress(quantity);
+            
+            // Tell the parent component to re-fetch all data
+            onProgressUpdated(); 
         } catch(err) {
             setError(err.message);
         }

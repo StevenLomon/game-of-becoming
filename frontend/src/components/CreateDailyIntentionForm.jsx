@@ -13,26 +13,14 @@ function CreateIntentionForm({ token, onDailyIntentionCreated }) {
     setError(null);
 
     try {
-      const response = await authFetch('/api/intentions', {
-        method: 'POST',
-        body: JSON.stringify({
-          daily_intention_text: text,
-          target_quantity: parseInt(target, 10),
-          focus_block_count: parseInt(blocks, 10),
-          is_refined: true, // We'll assume the first version is refined for the MVP
-        }),
+      // NEW: Call our declarative service function
+      const data = await createDailyIntention({
+        daily_intention_text: text,
+        target_quantity: parseInt(target, 10),
+        focus_block_count: parseInt(blocks, 10),
+        is_refined: true, // As requested, we'll assume this is always true for now
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        let errorMessage = 'Failed to create Daily Intention.';
-        if (data.detail) {
-          errorMessage = Array.isArray(data.detail) ? data.detail[0].msg : data.detail;
-        }
-        throw new Error(errorMessage);
-      }
-      
       // On success, call the function from the parent to pass the new intention up
       onDailyIntentionCreated(data);
 
