@@ -67,7 +67,8 @@ def update_user_streak(user: models.User, today: date = date.today()):
     # because the guard clause at the top already handled it.
 
     # Update the longest streak if the current one has surpassed it
-    if user.current_streak > user.longest_streak:
+    # This now handles the edge case where longest_streak might not be initialized on a new object
+    if user.longest_streak is None or user.current_streak > user.longest_streak:
         user.longest_streak = user.current_streak
 
     # Mark today as the date of the latest successful action
