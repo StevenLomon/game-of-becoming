@@ -11,7 +11,7 @@ const API_BASE_URL = import.meta.env.VITE_API_URL;
  * @returns {Promise<object>} - The successful response data from the login endpoint.
  */
 export async function loginUser(credentials) {
-    const endpoint = "/api/login";
+    const endpoint = "/login";
     const url = `${API_BASE_URL}${endpoint}`;
 
     // FastAPI's OAuth2PasswordRequestForm expects data in this format
@@ -47,7 +47,7 @@ export async function loginUser(credentials) {
  * @returns {Promise<object>} - The new user's data.
  */
 export async function registerUser(userData) {
-  const endpoint = "/api/register";
+  const endpoint = "/register";
   const url = `${API_BASE_URL}${endpoint}`;
 
   const response = await fetch(url, {
@@ -77,7 +77,7 @@ export async function registerUser(userData) {
  * @returns {Promise<object>} - The user's profile data.
  */
 export async function getUserProfile() {
-  const endpoint = "/api/users/me"; 
+  const endpoint = "/users/me"; 
   const url = `${API_BASE_URL}${endpoint}`;
 
   const response = await authFetch(url);
@@ -95,7 +95,7 @@ export async function getUserProfile() {
  * @returns {Promise<object>} - The updated user's data.
  */
 export async function updateUserProfile(updateData) {
-  const endpoint = "/api/users/me"; 
+  const endpoint = "/users/me"; 
   const url = `${API_BASE_URL}${endpoint}`;
 
   const response = await authFetch(url, {
@@ -120,7 +120,7 @@ export async function updateUserProfile(updateData) {
  * @returns {Promise<object>} - The character stats data.
  */
 export async function getCharacterStats() {
-    const endpoint = "/api/users/me/stats"; 
+    const endpoint = "/users/me/stats"; 
     const url = `${API_BASE_URL}${endpoint}`;
 
     const response = await authFetch(url);
