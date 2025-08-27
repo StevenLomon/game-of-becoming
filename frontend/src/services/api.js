@@ -133,6 +133,37 @@ export async function getCharacterStats() {
 }
 
 /**
+ * Creates a new Focus Block for the current day's Daily Intention.
+ * @param {string} intention - The specific intention for this block.
+ * @param {number} duration - The duration of the block in minutes.
+ * @returns {Promise<object>} - The new Focus Block object created on the backend.
+ */
+export async function createFocusBlock(intention, duration) {
+    const endpoint = '/api/focus-blocks';
+    const url = `${API_BASE_URL}${endpoint}`;
+
+    const response = await authFetch(url, {
+        method: 'POST',
+        body: JSON.stringify({
+          focus_block_intention: intention,
+          duration_minutes: parseInt(duration, 10),
+        }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+        let errorMessage = 'Failed to create Focus Block.';
+        if (data.detail) {
+            errorMessage = Array.isArray(data.detail) ? data.detail[0].msg : data.detail;
+        }
+        throw new Error(errorMessage);
+    }
+    
+    return data;
+}
+
+/**
  * Updates a specific Focus Block, typically to mark it as completed.
  * @param {number} blockId - The ID of the block to update.
  * @param {object} updateData - The data to patch the block with (e.g., { status: 'completed' }).
