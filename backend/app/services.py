@@ -1,7 +1,7 @@
 from typing import Any
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field
-from datetime import datetime, date, timedelta, timezone
+from datetime import datetime, date, timezone
 import os
 
 # Import modules
@@ -76,7 +76,7 @@ def update_user_streak(user: models.User, today: date = date.today()):
 
     return True
 
-def create_and_process_intention(db: Session, user: models.User, intention_data: schemas.DailyIntentionCreate) -> dict[str, Any]:
+async def create_and_process_intention(db: Session, user: models.User, intention_data: schemas.DailyIntentionCreate) -> dict[str, Any]:
     """
     Analyzes a daily intention using the AI Coach's "Clarity Enforcer" role.
     This replaces analyze_daily_intention from main.py.
@@ -125,7 +125,7 @@ def create_and_process_intention(db: Session, user: models.User, intention_data:
     Now, analyze the user's data and provide your JSON response.
     """
     
-    analysis = llm_provider.generate_structured_response(
+    analysis = await llm_provider.generate_structured_response(
         system_prompt=system_prompt, user_prompt=user_prompt, response_model=IntentionAnalysisResponse
     )
 
@@ -149,7 +149,7 @@ def complete_focus_block(
     xp_to_award = XP_REWARDS.get('focus_block_completed', 0) # UPDATED: Rather than "magic numbers", refer to XP_REWARDS
     return {"xp_awarded": xp_to_award}
 
-def create_daily_reflection(db: Session, user: models.User, daily_intention: models.DailyIntention) -> dict[str, Any]:
+async def create_daily_reflection(db: Session, user: models.User, daily_intention: models.DailyIntention) -> dict[str, Any]:
     """
     Generates the end-of-day reflection, celebrating success or creating a recovery quest for failure.
     This combines generate_success_feedback and generate_recovery_quest from main.py.
@@ -209,7 +209,7 @@ def create_daily_reflection(db: Session, user: models.User, daily_intention: mod
     - Example: {{"ai_feedback": "You achieved 40% of your intention. Let's turn this into learning...", "recovery_quest": "What specific distraction pulled you away when you were in the middle of making progress?", "discipline_stat_gain": 0}}
     """
     
-    reflection = llm_provider.generate_structured_response(
+    reflection = await llm_provider.generate_structured_response(
         system_prompt=system_prompt, user_prompt=user_prompt, response_model=DailyReflectionResponse
     )
     
@@ -220,7 +220,7 @@ def create_daily_reflection(db: Session, user: models.User, daily_intention: mod
     reflection["xp_awarded"] = xp_to_award # XP gain now included
     return reflection
 
-def process_recovery_quest_response(db: Session, user: models.User, result: models.DailyResult, response_text: str) -> dict[str, Any]:
+async def process_recovery_quest_response(db: Session, user: models.User, result: models.DailyResult, response_text: str) -> dict[str, Any]:
     """
     Provides personalized coaching based on a user's reflection on failure.
     This replaces generate_coaching_response from main.py.
@@ -259,7 +259,7 @@ def process_recovery_quest_response(db: Session, user: models.User, result: mode
     - Your Response: {{"ai_coaching_feedback": "That's a powerful insight. Recognizing that social media is a trigger is the first step to managing it. Tomorrow, you can build a plan to proactively avoid it during your focus blocks!", "resilience_stat_gain": 1}}
     """
     
-    coaching = llm_provider.generate_structured_response(
+    coaching = await llm_provider.generate_structured_response(
         system_prompt=system_prompt, user_prompt=user_prompt, response_model=RecoveryQuestCoachingResponse
     )
     
