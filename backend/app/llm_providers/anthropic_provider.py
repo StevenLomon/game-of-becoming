@@ -5,12 +5,13 @@ from .base import BaseLLMProvider
 
 class AnthropicProvider(BaseLLMProvider):
     def __init__(self, api_key: str):
-        self.client = anthropic.Anthropic(api_key=api_key)
+        self.client = anthropic.AsyncAnthropic(api_key=api_key) # Now using AsyncAnthropic!
         self.model = "claude-3-5-sonnet-20241022"
         self.max_tokens = 2048
         self.temperature = 0.3
 
-    def generate_structured_response(
+    # This method now becomes an async function
+    async def generate_structured_response(
         self, system_prompt: str, user_prompt: str, response_model: BaseModel
     ) -> Dict[str, Any]:
         tool_definition = {
@@ -19,7 +20,8 @@ class AnthropicProvider(BaseLLMProvider):
             "input_schema": response_model.model_json_schema(),
         }
         try:
-            message = self.client.messages.create(
+            # The API call is now "awaited"
+            message = await self.client.messages.create(
                 model=self.model,
                 max_tokens=self.max_tokens,
                 temperature=self.temperature,
