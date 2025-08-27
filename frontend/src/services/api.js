@@ -131,3 +131,31 @@ export async function getCharacterStats() {
 
     return response.json();
 }
+
+/**
+ * Updates a specific Focus Block, typically to mark it as completed.
+ * @param {number} blockId - The ID of the block to update.
+ * @param {object} updateData - The data to patch the block with (e.g., { status: 'completed' }).
+ * @returns {Promise<object>} - The updated Focus Block, including XP awarded.
+ */
+export async function updateFocusBlock(blockId, updateData) {
+    const endpoint = `/api/focus-blocks/${blockId}`;
+    const url = `${API_BASE_URL}${endpoint}`;
+
+    const response = await authFetch(url, {
+        method: 'PATCH',
+        body: JSON.stringify(updateData),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+        let errorMessage = 'Failed to update Focus Block.';
+        if (data.detail) {
+            errorMessage = Array.isArray(data.detail) ? data.detail[0].msg : data.detail;
+        }
+        throw new Error(errorMessage);
+    }
+    
+    return data;
+}

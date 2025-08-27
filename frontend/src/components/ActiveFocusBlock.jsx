@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
-import authFetch from '../utils/authFetch';
+import { updateFocusBlock } from '../services/api';
 
 function ActiveFocusBlock({ block, token, onBlockCompleted }) {
     // --- START OF TIMER LOGIC ---
 
-    // A helper functino to calculate time left based on the server's timestamp
+    // A helper function to calculate time left based on the server's timestamp
     const calculateRemainingTime = () => {
         // Get the start time from the database record (and convert it to milliseconds)
         const startTimeMs = new Date(block.created_at + 'Z').getTime();
@@ -51,20 +51,8 @@ function ActiveFocusBlock({ block, token, onBlockCompleted }) {
     // This tells React that `handleComplete` itself won't change unless its own dependencies change
     const handleComplete = useCallback(async () => {
         try {
-            const response = await authFetch(`/api/focus-blocks/${block.id}`, {
-                method: 'PATCH',
-                body: JSON.stringify({ status: 'completed' }),
-            });
+            const completionData = await updateFocusBlock(block.id, { status: 'completed' }); // Get the full response
 
-            const completionData = await response.json(); // Get the full response
-
-            if (!response.ok) {
-                let errorMessage = 'Failed to complete Focus Block.';
-                if (data.detail) {
-                errorMessage = Array.isArray(data.detail) ? data.detail[0].msg : data.detail;
-                }
-                throw new Error(errorMessage);
-            }
             onBlockCompleted(completionData); // UPDATED: Tell parent to re-fetch AND pass the full data object up!
         } catch(error) {
             console.error("Failed to complete Focus Block:", error);
