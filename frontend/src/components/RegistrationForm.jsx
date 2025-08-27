@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { registerUser } from '../services/api';
 
 // We receive a function 'onRegisterSuccess' as a prop
 function RegistrationForm({ onRegisterSuccess }) {
@@ -13,34 +14,7 @@ function RegistrationForm({ onRegisterSuccess }) {
         setError(null);
 
         try {
-            const response = await fetch('api/register', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    name: name,
-                    email: email,
-                    password: password,
-                }),
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                let errorMessage = 'An unknown error occurred.';
-                if (data.detail) {
-                    // Check if detail is an array (Pydantic error) or a string
-                    if (Array.isArray(data.detail)) {
-                        // It's a Pydantic error, so we pull the 'msg' from the first error object.
-                        errorMessage = data.detail[0].msg;
-                    } else {
-                        // It's our custom HTTPExcetion, so details is just a string
-                        errorMessage = data.detail;
-                    }
-                }
-                throw new Error(errorMessage);
-            }
+            const registerData = await registerUser({ email, password });
 
             // If registration is successful, call the function passed in from the parent
             onRegisterSuccess();
