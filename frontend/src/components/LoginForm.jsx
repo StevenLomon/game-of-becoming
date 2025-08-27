@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { loginUser } from '../services/api';
 
 // Now receives a prop: onLoginSuccess
 function loginForm({ onLoginSuccess }) {
@@ -14,28 +15,11 @@ function loginForm({ onLoginSuccess }) {
         setError(null); // Reset any previous errors
 
         try {
-            const response = await fetch('/api/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                // We need to format the data as form data for the backend
-                body: new URLSearchParams({
-                    username: email,
-                    password: password
-                }),
-            });
+            const loginData = await loginUser({ email, password }); 
 
-            const data = await response.json();
-
-            if (!response.ok) {
-                // Handle errors from the API (e.g., 401 Unauthorized)
-                throw new Error(data.detail || 'Failed to log in.');
-            }
-
-            // Fixing Login race conditions: Manually save the token to localStorage right here, right now
-            localStorage.setItem('authToken', data.access_token);
-            
-            // NOW, tell React to update its state
-            onLoginSuccess(data.access_token);
+            // We no longer need to save the token here; the loginUser function handles it.
+            // All we need to do is tell the parent component that login was successful.
+            onLoginSuccess(loginData.access_token);
         } catch (err) {
             setError(err.message);
         }
