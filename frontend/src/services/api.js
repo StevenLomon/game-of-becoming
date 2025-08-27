@@ -159,3 +159,26 @@ export async function updateFocusBlock(blockId, updateData) {
     
     return data;
 }
+
+/**
+ * Submits the user's response to a Recovery Quest for a specific Daily Result.
+ * @param {number} resultId - The ID of the Daily Result to respond to.
+ * @param {object} responseText - The user's reflection text.
+ * @returns {Promise<object>} - The full server response.
+ */
+export async function submitRecoveryQuestResponse(resultId, responseText) {
+    const endpoint = `/api/daily-results/${resultId}/recovery-quest`;
+    const url = `${API_BASE_URL}${endpoint}`;
+  
+    const response = await authFetch(url, {
+        method: 'POST',
+        body: JSON.stringify({ recovery_quest_response: responseText }),
+      });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ detail: 'An unknown error occurred.' }));
+      throw new Error(errorData.detail || 'Failed to submit reflection.');
+    }
+
+    return response.json();
+}

@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import authFetch from '../utils/authFetch';
+import { submitRecoveryQuestResponse } from '../services/api';
 
-function AnswerRecoveryQuestForm({ token, resultId, onReflectionSubmitted }) {
+function AnswerRecoveryQuestForm({ resultId, onReflectionSubmitted }) {
   const [responseText, setResponseText] = useState('');
   const [error, setError] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -12,19 +12,10 @@ function AnswerRecoveryQuestForm({ token, resultId, onReflectionSubmitted }) {
     setIsSubmitting(true);
 
     try {
-      const response = await authFetch(`/api/daily-results/${resultId}/recovery-quest`, {
-        method: 'POST',
-        body: JSON.stringify({ recovery_quest_response: responseText }),
-      });
+      // Call our declarative service function
+      const submissionResult = await submitRecoveryQuestResponse(resultId, responseText);
 
-      // 1. Get the completion report (the JSON) from the response
-      const submissionResult = await response.json();
-
-      if (!response.ok) {
-        throw new Error(submissionResult.detail || 'Failed to submit reflection.');
-      }
-
-      // 2. Hand the report over to the parent when the call is made
+      // Hand the report over to the parent when the call is made
       onReflectionSubmitted(submissionResult);
 
     } catch (err) {
