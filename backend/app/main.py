@@ -296,9 +296,9 @@ def get_my_character_stats(
 
 # --- DAILY INTENTION ENDPOINTS ---
 
-# Updated for Smart Detection!
+# Updated for Smart Detection! And now async!
 @app.post("/intentions", response_model=schemas.DailyIntentionCreateResponse, status_code=status.HTTP_201_CREATED)
-def create_daily_intention(
+async def create_daily_intention(
     intention_data: schemas.DailyIntentionCreate,
     current_user: Annotated[models.User, Depends(security.get_current_user)],
     stats: Annotated[models.CharacterStats, Depends(get_current_user_stats)],
@@ -315,8 +315,8 @@ def create_daily_intention(
             detail="Daily Intention already exists for today! Get going making progress on it!"
         )
     
-    # 2. Delegate AI prompts and logic to the service layer
-    analysis_result = services.create_and_process_intention(db, current_user, intention_data)
+    # 2. Delegate AI prompts and logic to the service layer. Now awaited!
+    analysis_result = await services.create_and_process_intention(db, current_user, intention_data)
 
     # 3. Handle the result using our precise business logic
     if intention_data.is_refined or not analysis_result.get("needs_refinement"):
@@ -446,7 +446,7 @@ def update_daily_intention_progress(
         )
 
 @app.post("/intentions/today/complete", response_model=schemas.DailyResultCompletionResponse)
-def complete_daily_intention(
+async def complete_daily_intention(
     daily_intention: Annotated[models.DailyIntention, Depends(get_current_user_daily_intention)],
     stats: Annotated[models.CharacterStats, Depends(get_current_user_stats)],
     db: Session = Depends(database.get_db)
@@ -480,7 +480,7 @@ def complete_daily_intention(
         daily_intention.status = 'completed'
 
         # Call the service to get the reflection logic, Discipline stat gain and XP gain
-        reflection_data = services.create_daily_reflection(db=db, user=stats.user, daily_intention=daily_intention)
+        reflection_data = await services.create_daily_reflection(db=db, user=stats.user, daily_intention=daily_intention)
         discipline_gain = reflection_data.get("discipline_stat_gain", 0)
         xp_gain = reflection_data.get("xp_awarded", 0)
 
@@ -535,7 +535,7 @@ def complete_daily_intention(
         )
     
 @app.post("/intentions/today/fail", response_model=schemas.DailyResultCompletionResponse)
-def fail_daily_intention(
+async def fail_daily_intention(
     daily_intention: Annotated[models.DailyIntention, Depends(get_current_user_daily_intention)],
     stats: Annotated[models.CharacterStats, Depends(get_current_user_stats)],
     db: Session = Depends(database.get_db)
@@ -563,7 +563,7 @@ def fail_daily_intention(
         # --- Start of new, integrated logic ---
 
         # 1. Call the service to get the reflection logic
-        reflection_data = services.create_daily_reflection(db=db, user=stats.user, daily_intention=daily_intention)
+        reflection_data = await services.create_daily_reflection(db=db, user=stats.user, daily_intention=daily_intention)
         discipline_gain = reflection_data.get("discipline_stat_gain", 0) # Should be 0 for failure
         xp_gain = reflection_data.get("xp_awarded", 0) # Should also be 0 for failure
 
@@ -745,7 +745,7 @@ def get_daily_result(
     return result
 
 @app.post("/daily-results/{result_id}/recovery-quest", response_model=schemas.RecoveryQuestResponse)
-def respond_to_recovery_quest(
+async def respond_to_recovery_quest(
     quest_response: schemas.RecoveryQuestInput,
     result: Annotated[models.DailyResult, Depends(get_owned_daily_result_by_result_id)],
     stats: Annotated[models.CharacterStats, Depends(get_current_user_stats)],
@@ -770,7 +770,7 @@ def respond_to_recovery_quest(
         
     try:
         # Call the service to get the simulated AI coaching and stat gains
-        coaching_data = services.process_recovery_quest_response(
+        coaching_data = await services.process_recovery_quest_response(
             db=db,
             user=stats.user,
             result=result,
