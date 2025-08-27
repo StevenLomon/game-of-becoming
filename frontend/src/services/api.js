@@ -1,8 +1,23 @@
+// frontend/src/services/api.js
+
 // Our secure transport utility
 import authFetch from "../utils/authFetch";
 
 // This remains our single source of truth for the backend's address
 const API_BASE_URL = import.meta.env.VITE_API_URL;
+
+// A helper function to handle common error parsing
+async function handleErrors(response) {
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ detail: 'An unknown error occurred.' }));
+    let errorMessage = 'An unknown error occurred.';
+    if (errorData.detail) {
+      errorMessage = Array.isArray(errorData.detail) ? errorData.detail[0].msg : errorData.detail;
+    }
+    throw new Error(errorMessage);
+  }
+  return response;
+}
 
 /**
  * Handles the login process, which uses a non-JSON, public endpoint.
@@ -11,34 +26,29 @@ const API_BASE_URL = import.meta.env.VITE_API_URL;
  * @returns {Promise<object>} - The successful response data from the login endpoint.
  */
 export async function loginUser(credentials) {
-    const endpoint = "/api/login";
-    const url = `${API_BASE_URL}${endpoint}`;
+  const endpoint = "/api/login";
+  const url = `${API_BASE_URL}${endpoint}`;
 
-    // FastAPI's OAuth2PasswordRequestForm expects data in this format
-    const formData = new URLSearchParams();
-    formData.append("username", credentials.email);
-    formData.append("password", credentials.password);
+  const formData = new URLSearchParams();
+  formData.append("username", credentials.email);
+  formData.append("password", credentials.password);
 
-    const response = await fetch(url, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: formData
-    });
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: formData
+  });
 
-    const data = await response.json();
+  const data = await handleErrors(response).then(res => res.json());
 
-    if (!response.ok) {
-        throw new Error(data.detail || "Login failed");
-    }
+  // Save the token to local storage for authFetch to use
+  if (data.access_token) {
+    localStorage.setItem("authToken", data.access_token);
+  }
 
-    // Save the token to local storage for authFetch to use
-    if (data.access_token) {
-        localStorage.setItem("authToken", data.access_token);
-    }
-
-    return data;
+  return data;
 }
 
 /**
@@ -58,17 +68,7 @@ export async function registerUser(userData) {
     body: JSON.stringify(userData),
   });
 
-  const data = await response.json();
-
-  if (!response.ok) {
-    let errorMessage = "An unknown error occurred.";
-    if (data.detail) {
-      errorMessage = Array.isArray(data.detail) ? data.detail[0].msg : data.detail;
-    }
-    throw new Error(errorMessage);
-  }
-
-  return data;
+  return handleErrors(response).then(res => res.json());
 }
 
 /**
@@ -82,11 +82,7 @@ export async function getUserProfile() {
 
   const response = await authFetch(url);
 
-  if (!response.ok) {
-    throw new Error("Failed to fetch user profile.");
-  }
-
-  return response.json();
+  return handleErrors(response).then(res => res.json());
 }
 
 /**
@@ -103,16 +99,7 @@ export async function updateUserProfile(updateData) {
     body: JSON.stringify(updateData),
   });
 
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({ detail: "An unknown error occurred." }));
-    let errorMessage = "An unknown error occurred.";
-    if (errorData.detail) {
-        errorMessage = Array.isArray(errorData.detail) ? errorData.detail[0].msg : errorData.detail;
-    }
-    throw new Error(errorMessage);
-  }
-
-  return response.json();
+  return handleErrors(response).then(res => res.json());
 }
 
 /**
@@ -125,11 +112,7 @@ export async function getCharacterStats() {
 
     const response = await authFetch(url);
 
-    if (!response.ok) {
-        throw new Error("Failed to fetch character stats.");
-    }
-
-    return response.json();
+    return handleErrors(response).then(res => res.json());
 }
 
 /**
@@ -150,17 +133,7 @@ export async function createFocusBlock(intention, duration) {
         }),
     });
 
-    const data = await response.json();
-
-    if (!response.ok) {
-        let errorMessage = 'Failed to create Focus Block.';
-        if (data.detail) {
-            errorMessage = Array.isArray(data.detail) ? data.detail[0].msg : data.detail;
-        }
-        throw new Error(errorMessage);
-    }
-    
-    return data;
+    return handleErrors(response).then(res => res.json());
 }
 
 /**
@@ -178,17 +151,7 @@ export async function updateFocusBlock(blockId, updateData) {
         body: JSON.stringify(updateData),
     });
 
-    const data = await response.json();
-
-    if (!response.ok) {
-        let errorMessage = 'Failed to update Focus Block.';
-        if (data.detail) {
-            errorMessage = Array.isArray(data.detail) ? data.detail[0].msg : data.detail;
-        }
-        throw new Error(errorMessage);
-    }
-    
-    return data;
+    return handleErrors(response).then(res => res.json());
 }
 
 /**
@@ -206,10 +169,5 @@ export async function submitRecoveryQuestResponse(resultId, responseText) {
         body: JSON.stringify({ recovery_quest_response: responseText }),
       });
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ detail: 'An unknown error occurred.' }));
-      throw new Error(errorData.detail || 'Failed to submit reflection.');
-    }
-
-    return response.json();
+    return handleErrors(response).then(res => res.json());
 }
