@@ -341,7 +341,8 @@ def create_daily_intention(
             if clarity_gain > 0:
                 db.refresh(stats)
 
-            return db_intention
+            # Explicitly construct the response object
+            return schemas.DailyIntentionResponse.model_validate(db_intention)
         
         except Exception as e:
             db.rollback()
