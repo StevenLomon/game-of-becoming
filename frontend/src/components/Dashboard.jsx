@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import authFetch from '../utils/authFetch';
+import { getUserProfile, getCharacterStats } from '../services/api';
 import Onboarding from './Onboarding';
 import CreateDailyIntentionForm from './CreateDailyIntentionForm';
 import CreateFocusBlockForm from './CreateFocusBlockForm';
@@ -254,26 +254,12 @@ function Dashboard({ token, onLogout }) {
     useEffect(() => {
         const fetchInitialData = async () => {
             try {
-                // We create two promises, one for each API call
-                const userPromise = authFetch('api/users/me');
-                const statsPromise = authFetch('api/users/me/stats')
-
-                // Promise.all lets us run these two in parallel for efficiency
-                const [userResponse, statsResponse] = await Promise.all([userPromise, statsPromise]);
-
-                // Handle potential 401 Unauthorized for either request
-                if (userResponse.status === 401 || statsResponse.status === 401) {
-                  // The token is invalid or expired. Call the onLogout function passed down
-                  // from the App component
-                  onLogout();
-                  return;
-                }
-
-                if (!userResponse.ok) throw new Error('Failed to fetch user profile.');
-                if (!statsResponse.ok) throw new Error('Failed to fetch character stats.');
-                
-                const userData = await userResponse.json();
-                const statsData = await statsResponse.json();
+                // The API service handles the token, URL, and error checking for us now!
+                // This is much cleaner and more declarative.
+                const [userData, statsData] = await Promise.all([
+                    getUserProfile(),
+                    getCharacterStats()
+                ]);
                 
                 setUser(userData);
                 setStats(statsData);
