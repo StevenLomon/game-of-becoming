@@ -49,5 +49,8 @@ jobs:
     # If any test fails, pytest will exit with a non-zero status code,
     # which will cause this step (and the entire job) to fail.
     - name: Run tests with pytest
+      env:
+        # This injects the GitHub Secret into the test environment
+        DISABLE_AI_CALLS: ${{ secrets.DISABLE_AI_CALLS }}
       run: |
         pytest -vv
