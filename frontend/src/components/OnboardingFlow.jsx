@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { submitOnboardingStep } from "../services/api";
 
-function OnboardingFlow({ onOnboardingCompelte }) {
+function OnboardingFlow({ onOnboardingComplete }) {
     // State to manage to manage the entire conversation flow
     const [step, setStep] = useState('vision');
     const [prompt, setPrompt] = useState("Let's start with your North Star. In the next 1-3 years, what is the single most important vision you have for your business?");
@@ -24,7 +24,7 @@ function OnboardingFlow({ onOnboardingCompelte }) {
                 setUserInput(''); // Clear the input for the next step
             } else {
                 // If next_step is null, onboarding is complete!
-                onOnboardingCompelte();
+                onOnboardingComplete();
             }
 
         } catch (err) {
