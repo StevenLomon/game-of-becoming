@@ -341,6 +341,34 @@ def get_game_state(
         unresolved_intention=unresolved_intention
     )
 
+@app.post("/api/onboarding/step", response_model=schemas.OnboardingStepResponse)
+async def handle_onboarding_step(
+    step_data: schemas.OnboardingStepInput,
+    current_user: Annotated[models.User, Depends(security.get_current_user)],
+    db: Session = Depends(database.get_db)
+):
+    """
+    Handles one step of the AI-driven conversational onboarding flow.
+    """
+    try:
+        response_data = await services.process_onboarding_step(db, current_user, step_data)
+        
+        # If this is the final step, start the user's streak.
+        if response_data.get("next_step") is None:
+            services.update_user_streak(user=current_user)
+            db.commit()
+
+        return response_data
+
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"An error occurred during the onboarding process: {str(e)}"
+        )
+    
 
 # --- DAILY INTENTION ENDPOINTS ---
 
