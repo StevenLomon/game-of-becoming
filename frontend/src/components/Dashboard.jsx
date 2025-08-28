@@ -252,8 +252,8 @@ function Dashboard({ token, onLogout }) {
     }, [token]); // Re-run this effect if the token changes. onLogout not used anymore and therefore removed
 
     const handleOnboardingComplete = (updatedUser) => {
-        // When onboarding is done, update the user state with the new data
-        setUser(updatedUser);
+        // Its only job is to refresh the game state after the final step.
+        refreshGameState();
     };
 
     // --- CONDITIONAL RENDER LOGIC
