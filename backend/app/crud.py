@@ -72,3 +72,23 @@ def get_today_intention(db: Session, user_id: int) -> models.DailyIntention | No
         models.DailyIntention.created_at >= datetime.combine(today, datetime.min.time()),
         models.DailyIntention.created_at < datetime.combine(today + timedelta(days=1), datetime.min.time())
     ).first()
+
+def get_yesterday_incomplete_intention(db: Session, user_id: int) -> models.DailyIntention | None:
+    """
+    Finds an incomplete intention from yesterday for the "Grace Day" mechanic.
+    An intention is incomplete if its status is 'pending' or 'in_progress'.
+    """
+    today = datetime.nwo(timezone.utc).date()
+    yesterday = today - timedelta(days=1)
+    start_of_yesterday = datetime.combine(yesterday, datetime.min.time())
+    end_of_yesterday = datetime.combine(today, datetime.min.time())
+
+    return db.query(models.DailyIntention).options(
+        joinedload(models.DailyIntention.focus_blocks),
+        joinedload(models.DailyIntention.daily_result) # Eager load!
+    ).filter(
+        models.DailyIntention.user_id == user_id,
+        models.DailyIntention.created_at >= start_of_yesterday,
+        models.DailyIntention.created_at < end_of_yesterday,
+        models.DailyIntention.status.in_(['pending', 'in_progress'])
+    )
