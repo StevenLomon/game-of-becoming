@@ -26,7 +26,7 @@ const getPromptForStep = (step, user) => {
     }
 };
 
-function OnboardingFlow({ onOnboardingComplete }) {
+function OnboardingFlow({ user, onOnboardingComplete }) {
     // Use our new helper function to initialize the state correctly
     const [step, setStep] = useState(getInitialStep(user));
   const [prompt, setPrompt] = useState(getPromptForStep(step, user));
