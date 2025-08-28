@@ -10,6 +10,7 @@ import DailyResultDisplay from './DailyResultDisplay';
 import ConfirmationModal from './ConfirmationModal';
 import RewardDisplay from './RewardDisplay';
 import StreakCounter from './StreakCounter';
+import UnresolvedQuest from './UnresolvedQuest'; 
 
 function DisplayIntention({ intention, onComplete }) { // New onComplete prop for conditional rendering of "Complete Quest" button
   // Derive the count of completed Focus Blocks from the intention's props
@@ -47,32 +48,15 @@ function DisplayIntention({ intention, onComplete }) { // New onComplete prop fo
   )
 }
 
-function MainApp({ user, token, stats, setStats }) { // stats now included as a prop! And now setStats too; we not to not only show stats but also *update* them
-  // State to hold the user's Daily Intention for the day and Focus Blocks
-  const [intention, setIntention] = useState(null); // Now also includes Focus Blocks
-  const [isLoading, setIsLoading] = useState(true);
+function MainApp({ user, token, stats, intention, refreshGameState }) { // Include our net refreshGameState as a prop
+  // The intention and isLoading pieces of state are now managed by Dashboard, not MainApp
+  // These pieces of state that are left are specific to MainApp's UI logic
   const [view, setView] = useState('focus'); // // Manage the UI view after a Focus Block is completed; 'focus' or 'progress'
   const [error, setError] = useState(null);
   const [isFailConfirmVisible, setIsFailConfirmVisible] = useState(false);
   const [lastReward, setLastReward] = useState(null);
 
-  // Renamed from fetchAllData to reflect its broader role
-  const refreshGameState = async () => {
-    // We only set the state to 'loading' on boot up
-    try {
-      // Using our new definitive game state endpoint rather than serveral API calls and Promise.all
-      const gameState = await getGameState();
-
-      setIntention(gameState.todays_intention);
-      setStats(gameState.stats);
-
-      } catch (err) {
-          setError(err.message);
-      } finally {
-      // We only set loading to false on the initial load
-      setIsLoading(false);
-    }
-  };
+  // const refreshGameState is now also managed by the Dashboard!
 
   // Fetch all data when the component is mounted
   useEffect(() => {
@@ -219,10 +203,34 @@ function Dashboard({ token, onLogout }) {
     const [user, setUser] = useState(null);
     const [stats, setStats] = useState(null);
     const [error, setError] = useState(null);
+    // New state to hold the unresoved intention from the grace day
+    const [unresolvedIntention, setUnresolvedIntention] = useState(null);
+    // This state now lives in the Dashboard, not MainApp
+    const [isLoading, setIsLoading] = useState(true);
 
-    // Modified to fetch both user and stats data
+    // This is our "Control Panel"
+    const refreshGameState = async () => {
+      // We don't set loading to true here, since this is for *updates*,
+      // not the initial screen-blocking load
+      try {
+        const gameState = await getGameState();
+        setUser(gameState.user);
+        setStats(gameState.stats);
+        // We now explicitly set both types of intentions
+        setIntention(gameState.todays_intention);
+        setUnresolvedIntention(gameState.unresolved_intention);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    // This is our "Embassy"
     useEffect(() => {
-        const fetchInitialData = async () => {
+        // Renamed for clarity
+        const fetchInitialGameState = async () => {
+            setIsLoading(true); // This is the initial load
             try {
                 // The API service handles the token, URL, and error checking for us now!
                 // Using our new definitive endpoint for the game state
@@ -230,13 +238,17 @@ function Dashboard({ token, onLogout }) {
                 
                 setUser(gameState.user);
                 setStats(gameState.stats);
+                setIntention(gameState.todays_intention);
+                setUnresolvedIntention(gameState.unresolved_intention);
 
             } catch (err) {
                 setError(err.message);
+            } finally {
+              setIsLoading(false); // Set loading false at the end
             }
         };
-        fetchInitialData();
-    }, [token, onLogout]); // Re-run this effect if the token changes. onLogout also added since it's used inside the effect
+        fetchInitialGameState();
+    }, [token]); // Re-run this effect if the token changes. onLogout not used anymore and therefore removed
 
     const handleOnboardingComplete = (updatedUser) => {
         // When onboarding is done, update the user state with the new data
@@ -244,28 +256,50 @@ function Dashboard({ token, onLogout }) {
     };
 
     // --- CONDITIONAL RENDER LOGIC
+    if (isLoading) { // Use the new loading state
+        return <div className="text-gray-400">Loading your quest...</div>;
+    }
     if (error) {
     return <div className="text-red-400">Error: {error}</div>;
     }
     // Update the loading condition to wait for BOTH user and stats
     if (!user || !stats) {
+        // This can happen briefly before the first fetch completes
         return <div className="text-gray-400">Loading profile...</div>;
     }
 
-    // Conditional Rendering: Show Onboarding or the Main App
   return (
     <div className="bg-gray-800 p-8 rounded-lg shadow-lg w-full max-w-2xl">
-      {user.hrga ? (
-        <MainApp user={user} token={token} stats={stats} setStats={setStats} />
-      ) : (
-        <Onboarding token={token} onOnboardingComplete={handleOnboardingComplete} />
-      )}
+      {/* The Logout button is always available */}
       <button
         onClick={onLogout}
         className="absolute top-4 right-4 py-1 px-3 border border-gray-600 rounded-md text-sm text-gray-400 hover:bg-gray-700"
       >
         Log Out
       </button>
+
+      {/* THE CORE RENDER LOGIC: A clear order of priority.
+                1. Onboarding must be completed first.
+                2. Unresolved quests must be handled next.
+                3. Finally, show the main app.
+      */}
+      {!user.hrga ? (
+                <Onboarding token={token} onOnboardingComplete={handleOnboardingComplete} />
+            ) : unresolvedIntention ? (
+                <UnresolvedQuest 
+                    intention={unresolvedIntention} 
+                    token={token} 
+                    onQuestResolved={refreshGameState} // Pass the refresh function
+                />
+            ) : (
+                <MainApp 
+                    user={user} 
+                    token={token} 
+                    stats={stats} // Pass the pieces...
+                    intention={intention} // ... of state down
+                    refreshGameState={refreshGameState} // Pass the control panel button down
+                />
+            )}
     </div>
   );
 }
