@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { submitOnboardingStep } from "../services/api";
 
 // This function will determine the starting point of the conversation
@@ -29,10 +29,22 @@ const getPromptForStep = (step, user) => {
 function OnboardingFlow({ user, onFlowStepComplete }) {
     // Use our new helper function to initialize the state correctly
     const [step, setStep] = useState(getInitialStep(user));
-  const [prompt, setPrompt] = useState(getPromptForStep(step, user));
+    const [prompt, setPrompt] = useState(getPromptForStep(step, user));
     const [userInput, setUserInput] = useState('');
     const [isLoading, setIsLoading] = useState(null);
     const [error, setError] = useState(null);
+
+    // We now use "The Embassy" to listen for changes and synchronize the 
+    // component's internal state with the props from its parents
+    useEffect(() => {
+        // When the user prop changes, we recalculate our "GPS position"
+        const newStep = getInitialStep(user);
+        const newPrompt = getPromptForStep(newStep, user);
+
+        // And update our internal state to reflect the new reality
+        setStep(newStep);
+        setPrompt(newPrompt);
+    }, [user]); // Only re-run when the 'user' prop changes
 
     const handleSubmit = async (event) => {
         event.preventDefault();
@@ -40,7 +52,8 @@ function OnboardingFlow({ user, onFlowStepComplete }) {
         setError(null);
 
         try {
-            const response = await submitOnboardingStep(step, userInput);
+            // We don't need the response data here anymore
+            await submitOnboardingStep(step, userInput);
 
             // After every successful step, we tell the parent to refresh.
             onFlowStepComplete();
