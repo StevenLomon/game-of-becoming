@@ -57,7 +57,7 @@ def test_complete_intention_updates_stats_and_streak(client, long_lived_user_tok
     # --- Day 1 ---
     with freeze_time("2025-08-26"):
         # 1. Onboard the user to start their streak at 1
-        client.put("/users/me", headers=headers, json={"hrga": "Test HRGA"})
+        client.put("/users/me", headers=headers, json={"hla": "Test HLA"})
 
         # 2. Create and complete the Daily Intention for Day 1
         client.post("/intentions", headers=headers, json={"daily_intention_text": "First day", "target_quantity": 1, "focus_block_count": 1, "is_refined": True})
@@ -93,7 +93,7 @@ def test_full_fail_forward_recovery_quest_loop(client, user_token, monkeypatch):
     headers = {"Authorization": f"Bearer {user_token}"}
 
     # 1. Create intention and check starting stats
-    client.put("/users/me", headers=headers, json={"hrga": "Test HRGA"}) # Onboard to ensure user exists for stats check
+    client.put("/users/me", headers=headers, json={"hla": "Test HLA"}) # Onboard to ensure user exists for stats check
     start_stats = client.get("/users/me/stats", headers=headers).json()
     client.post("/intentions", headers=headers, json={"daily_intention_text": "stuff", "target_quantity": 5, "focus_block_count": 3, "is_refined": True})
 

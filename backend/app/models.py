@@ -25,7 +25,7 @@ class User(Base):
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     name: Mapped[str] = mapped_column(String(100)) # Nullable is False by default
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
-    hrga: Mapped[Optional[str]] = mapped_column(Text) # Highest Revenue Generated Activity. Unlimited text field - let users be as comprehensive as they wish
+    hla: Mapped[Optional[str]] = mapped_column(Text) # Highest Leverage Activity. Unlimited text field - let users be as comprehensive as they wish
     default_focus_block_duration: Mapped[int] = mapped_column(default=50) # In minutes
     registered_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now(timezone.utc))
 

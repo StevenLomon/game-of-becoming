@@ -86,8 +86,8 @@ export async function getUserProfile() {
 }
 
 /**
- * Updates the user's profile, specifically their HRGA, during onboarding.
- * @param {object} updateData - The data to update the user with (e.g., { hrga: '...' }).
+ * Updates the user's profile, specifically their HLA, during onboarding.
+ * @param {object} updateData - The data to update the user with (e.g., { hla: '...' }).
  * @returns {Promise<object>} - The updated user's data.
  */
 export async function updateUserProfile(updateData) {

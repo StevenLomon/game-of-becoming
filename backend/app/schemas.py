@@ -30,9 +30,9 @@ class UserBase(BaseModel):
     """Base schema for User"""
     name: str = Field(..., min_length=1, max_length=100)
     email: EmailStr
-    hrga: Optional[str] = Field(None, min_length=1, max_length=8000) # Reasonable cap. Can be None at registration, not after onboarding!
+    hla: Optional[str] = Field(None, min_length=1, max_length=8000) # Reasonable cap. Can be None at registration, not after onboarding!
 
-    @field_validator('name') # Validator doesn't validate hrga anymore
+    @field_validator('name') # Validator doesn't validate hla anymore
     def validate_text_fields(cls, v):
         v = v.strip()
         if not v:
@@ -53,14 +53,14 @@ class UserCreate(UserBase):
     
 class UserUpdate(BaseModel):
     """Schema for updating a user's profile, e.g., during onboarding."""
-    # We only allow updating the hrga for now, but could add name, etc., later.
-    hrga: str = Field(..., min_length=10, max_length=8000)
+    # We only allow updating the hla for now, but could add name, etc., later.
+    hla: str = Field(..., min_length=10, max_length=8000)
 
-    @field_validator('hrga')
-    def validate_hrga(cls, v):
+    @field_validator('hla')
+    def validate_hla(cls, v):
         v = v.strip()
         if not v:
-            raise ValueError("HRGA cannot be empty.")
+            raise ValueError("HLA cannot be empty.")
         return v
     
 
@@ -69,7 +69,7 @@ class UserResponse(BaseModel):
     id: int
     name: str
     email: str
-    hrga: Optional[str]
+    hla: Optional[str]
     current_streak: int # NEW
     longest_streak: int # NEW
     registered_at: datetime

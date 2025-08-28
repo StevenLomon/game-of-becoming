@@ -6,7 +6,7 @@ function RegistrationForm({ onRegisterSuccess }) {
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    // HRGA state is removed
+    // HLA state is removed
     const [error, setError] = useState(null);
 
     const handleSubmit = async (event) => {
@@ -54,7 +54,7 @@ function RegistrationForm({ onRegisterSuccess }) {
                     className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white focus:outline-none focus:ring-teal-500 focus:border-teal-500"
                 />
             </div>
-            {/* HRGA Input has been removed */}
+            {/* HLA Input has been removed */}
 
             {error && (
                 <div className="bg-red-900 border border-red-700 text-red-300 px-4 py-3 rounded-md">

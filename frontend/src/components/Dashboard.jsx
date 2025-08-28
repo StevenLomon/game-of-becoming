@@ -120,7 +120,7 @@ function MainApp({ user, token, stats, intention, refreshGameState }) { // Inclu
     <div>
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-white">Welcome, {user.name}</h1>
-        <p className="text-gray-400">Your HRGA: "{user.hrga}"</p>
+        <p className="text-gray-400">Your HLA: "{user.hla}"</p>
         {/* Render the StreakCounter and pass the streak from the user object */}
         <StreakCounter currentStreak={user.current_streak} />
       </div>
@@ -283,7 +283,7 @@ function Dashboard({ token, onLogout }) {
                 2. Unresolved quests must be handled next.
                 3. Finally, show the main app.
       */}
-      {!user.hrga ? (
+      {!user.hla ? (
                 <Onboarding token={token} onOnboardingComplete={handleOnboardingComplete} />
             ) : unresolvedIntention ? (
                 <UnresolvedQuest 

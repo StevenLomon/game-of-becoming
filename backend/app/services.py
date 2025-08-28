@@ -105,17 +105,17 @@ async def create_and_process_intention(db: Session, user: models.User, intention
 
     user_prompt = f"""
     Here is the user's data:
-    - User's Highest Revenue Generating Activity (HRGA): "{user.hrga}"
+    - User's Highest Leverage Activity (HLA): "{user.hla}"
     - Today's Daily Intention: "{intention_data.daily_intention_text}"
     - Target Quantity: {intention_data.target_quantity}
     - Planned Focus Block Count: {intention_data.focus_block_count}
 
-    Analyze this intention. Is it specific, measurable, actionable, and aligned with their HRGA?
+    Analyze this intention. Is it specific, measurable, actionable, and aligned with their HLA?
 
     Example of a strong intention:
     - Intention: "Send 5 personalized LinkedIn connection requests to potential clients in the SaaS industry."
-    - Analysis: This is strong. It's specific (LinkedIn requests), measurable (5), actionable, and likely aligns with a sales HRGA.
-    - Your Response: {{"is_strong_intention": true, "feedback": "Your intention to send 5 LinkedIn outreaches is clear, specific, and directly aligned with your HRGA! With your planned focus blocks, you're well-equipped to succeed.", "clarity_stat_gain": 1}}
+    - Analysis: This is strong. It's specific (LinkedIn requests), measurable (5), actionable, and likely aligns with a sales HLA.
+    - Your Response: {{"is_strong_intention": true, "feedback": "Your intention to send 5 LinkedIn outreaches is clear, specific, and directly aligned with your HLA! With your planned focus blocks, you're well-equipped to succeed.", "clarity_stat_gain": 1}}
 
     Example of an intention needing refinement:
     - Intention: "Work on my business."
@@ -188,7 +188,7 @@ async def create_daily_reflection(db: Session, user: models.User, daily_intentio
     user_prompt = f"""
     User Data:
     - User's Name: {user.name}
-    - User's HRGA: "{user.hrga}"
+    - User's HLA: "{user.hla}"
     - Daily Intention: "{daily_intention.daily_intention_text}"
     - Target: {daily_intention.target_quantity}
     - Achieved: {daily_intention.completed_quantity}
@@ -198,7 +198,7 @@ async def create_daily_reflection(db: Session, user: models.User, daily_intentio
 
     If the outcome was SUCCEEDED:
     - Acknowledge the specific achievement and connect it to their goals.
-    - Example: {{"ai_feedback": "Outstanding execution! Completing all {daily_intention.target_quantity} units directly fuels your HRGA. This is how momentum builds!", "recovery_quest": null, "discipline_stat_gain": 1}}
+    - Example: {{"ai_feedback": "Outstanding execution! Completing all {daily_intention.target_quantity} units directly fuels your HLA. This is how momentum builds!", "recovery_quest": null, "discipline_stat_gain": 1}}
 
     If the outcome was FAILED:
     - Set 'ai_feedback' to: "You achieved {completion_rate:.0f}% of your intention. Let's turn this into learning..."

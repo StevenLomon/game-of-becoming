@@ -49,7 +49,7 @@ def test_complete_intention_updates_stats_and_streak(client, long_lived_user_tok
 
     # Day 1
     with freeze_time("2025-08-26"):
-        client.put("/users/me", headers=headers, json={"hrga": "Test HRGA"})
+        client.put("/users/me", headers=headers, json={"hla": "Test HLA"})
         client.post("/intentions", headers=headers, json={"daily_intention_text": "First day", "target_quantity": 1, "focus_block_count": 1, "is_refined": True})
         client.patch("/intentions/today/progress", headers=headers, json={"completed_quantity": 1})
         client.post("/intentions/today/complete", headers=headers)

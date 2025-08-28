@@ -35,7 +35,7 @@ function CreateIntentionForm({ token, onDailyIntentionCreated }) {
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label htmlFor="intention-text" className="block text-sm font-medium text-gray-300">
-            Describe your single, measurable outcome for the day that is in alignment with your HRGA.
+            Describe your single, measurable outcome for the day that is in alignment with your HLA.
           </label>
           <textarea
             id="intention-text"

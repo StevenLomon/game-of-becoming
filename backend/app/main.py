@@ -255,11 +255,11 @@ def update_user_me(
 ):
     """
     Updates the profile for the currently authenticated user.
-    Used for the onboarding flow to set the user's HRGA.
+    Used for the onboarding flow to set the user's HLA.
     """
     try:
         # Update the user model with the new data
-        current_user.hrga = user_data.hrga
+        current_user.hla = user_data.hla
 
         # The "ignition". By completing the onboarding, the user performs their first
         # successful action. We call the Streak Guardian to officially start their streak at 1

@@ -8,12 +8,12 @@ from . import utils
 def create_user(db: Session, user_data: schemas.UserCreate) -> models.User:
     """
     Creates a new user and all associated records in a single transaction.
-    NOTE: Does not include HRGA, as that is set during onboarding in the MVP.
+    NOTE: Does not include HLA, as that is set during onboarding in the MVP.
     """
     new_user = models.User(
         name=user_data.name.strip(),
         email=user_data.email.strip()
-        # We intentionally omit 'hrga' here, as it's nullable in the MVP schema
+        # We intentionally omit 'hla' here, as it's nullable in the MVP schema
     )
     db.add(new_user)
     db.flush() # Assigns ID without committing
