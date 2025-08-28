@@ -74,6 +74,11 @@ class UserResponse(BaseModel):
     longest_streak: int # NEW
     registered_at: datetime
 
+    # New Onboarding fields
+    vision: Optional[str]
+    milestone: Optional[str]
+    constraint: Optional[str]
+
     model_config = ConfigDict(from_attributes=True)
 
 class CharacterStatsResponse(BaseModel):
@@ -103,7 +108,7 @@ class OnboardingStepResponse(BaseModel):
     next_step: Optional[str] = Field(None, description="The name of the next step, e.g., 'milestone'. Null if onboarding is complete.")
     # This will hold the final, AI-refined HLA at the end of the process
     final_hla: Optional[str] = None
-    
+
 
 # =============================================================================
 # DAILY INTENTIONS SCHEMAS (Updated for Smart Detection)
