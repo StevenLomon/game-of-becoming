@@ -9,7 +9,7 @@ from . import models
 from . import schemas
 from .llm_providers.factory import get_llm_provider
 
-# --- NEW: A central, single source of truth for game rules ---
+# --- Our central, single source of truth for game rules ---
 XP_REWARDS = {
     'focus_block_completed': 10,
     'daily_intention_completed': 20,
@@ -75,6 +75,94 @@ def update_user_streak(user: models.User, today: date = date.today()):
     user.last_streak_update = datetime.now(timezone.utc)
 
     return True
+
+async def process_onboarding_step(db: Session, user: models.User, step_data: schemas.OnboardingStepInput) -> dict[str, Any]:
+    """
+    Processes a single step in the conversational onboarding flow, using the AI
+    to generate a mirrored + smart response and guide the user.
+    """
+    llm_provider = get_llm_provider()
+    step = step_data.step
+    user_input = step_data.text
+
+    # --- System Prompt: The AI's Core Identity ---
+    system_prompt = """
+    You are the AI Clarity Coach for "The Game of Becoming". Your persona is "Mirrored + Smart."
+    - **Mirrored:** You always start your response by acknowledging and repeating the core of what the user just told you.
+    - **Smart:** You then ask a single, sharp, clarifying question to guide them ot the next step of defining their Highest Leverage Activity (HLA).
+    - **Tone:** You are encouraging, game-oriented, and focused. You use terms like "North Star" (for vision), "Quest" (for milestone), "Boss" (for constraint), and "First Move" (for the HLA).
+    """
+
+    # --- Dynamic User Prompt based on the current step ---
+    if step == "vision":
+        user.vision = user_input # Save the input to the user model
+        user_prompt = f"""
+        The user has just defined their Vision (North Star).
+        User's Vision: "{user_input}"
+
+        Your Task:
+        1. Mirror their vision back to them.
+        2. Ask them to define a 90-day milestone that moves them toward that vision.
+
+        Example Response: "Wonderful. Your North Star is: {user_input}. What's ONE milestone you can hit in the next 90 days that moves you in the direction of that North Star?
+        """
+        next_step = "milestone"
+
+    elif step == "milestone":
+        user.milestone = user_input
+        user_prompt = f"""
+        The user has just defined their 90-Day Milestone based on their North Star.
+        User's 90-Day Milestone: "{user_input}"
+
+        Your Task:
+        1. Mirror their milestone back to them.
+        2. Ask them to identify the single biggest obstacle holding them back.
+
+        Example Response: "Locked in. Your 90-Day Milestone is to: {user_input}. What's the #1 obstacle, the 'Boss', holding you back from hitting this milestone?
+        """
+        next_step = "constraint"
+
+    elif step == "constraint":
+        user.constraint = user_input
+        user_prompt = f"""
+        The user has identified the 'Boss' blocking them from hitting their milestone.
+        The Boss: "{user_input}"
+
+        Your Task:
+        1. Acknowledge the Boss.
+        2. Ask the identity-driven "ONE Thing" question to uncover their First Move (their HLA).
+
+        Example Response: "Got it. The Boss blocking your milestone is: {user_input}. Now for the clarity question: What's the ONE commitment your future self would act on today to become the kind of person who defeats this Boss?"
+        """
+        next_step = "hla"
+
+    elif step == "hla":
+        user.hla = user_input # This is the final piece
+        user_prompt = f"""
+        The user has defined their First Move (their HLA).
+        User's First Move: "{user_input}"
+
+        Your Task:
+        1. Mirror their First Move back to them.
+        2. ASk for their final commitment to begin their streak. This is the final step, so you don't need to ask another question.
+
+        Example Response: "Perfect. Your First Move is: {user_input}. Every streak starts with a commitment. Are you ready to show up daily for this First Move until the 90-Day Milestone is hit?
+        """
+        next_step = None # Signifies the end of the Onboarding
+    else:
+        raise ValueError("Invalid onboarding step provided.")
+    
+    # --- Call the LLM ---
+    # For now, we'll just use a simple, non-structured response since we only need a single string.
+    response_text = "This is a placeholder AI response." # Placeholder for brevity
+
+    db.commit()
+
+    return {
+        "ai_response": response_text,
+        "next_step": next_step,
+        "final_hla": user.hla if not next_step else None
+    }
 
 async def create_and_process_intention(db: Session, user: models.User, intention_data: schemas.DailyIntentionCreate) -> dict[str, Any]:
     """
