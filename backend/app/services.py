@@ -153,13 +153,15 @@ async def process_onboarding_step(db: Session, user: models.User, step_data: sch
         raise ValueError("Invalid onboarding step provided.")
     
     # --- Call the LLM ---
-    # For now, we'll just use a simple, non-structured response since we only need a single string.
-    response_text = "This is a placeholder AI response." # Placeholder for brevity
+    # We now use our new, simpler method to get a plain text response
+    ai_response_text = await llm_provider.generate_text_response(
+        system_prompt=system_prompt, user_prompt=user_prompt
+    )
 
     db.commit()
 
     return {
-        "ai_response": response_text,
+        "ai_response": ai_response_text,
         "next_step": next_step,
         "final_hla": user.hla if not next_step else None
     }
