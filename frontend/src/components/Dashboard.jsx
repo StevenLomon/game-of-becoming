@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getUserProfile, getCharacterStats, getGameState } from '../services/api';
+import { getGameState } from '../services/api';
 import Onboarding from './Onboarding';
 import CreateDailyIntentionForm from './CreateDailyIntentionForm';
 import CreateFocusBlockForm from './CreateFocusBlockForm';
