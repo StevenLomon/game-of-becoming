@@ -312,6 +312,36 @@ def get_my_character_stats(
         commitment=stats.commitment
     )
 
+@app.get("/api/users/me/game-state", response_model=schemas.GameStateResponse)
+def get_game_state(
+    current_user: Annotated[models.User, Depends(security.get_current_user)],
+    db: Session = Depends(database.get_db)
+):
+    """
+    The primary endpoint for the frontend to get all necessary data
+    to render the user's current game state upon loading the app.
+    """
+    stats = crud.get_or_create_user_stats(db, current_user.id)
+    todays_intention = crud.get_today_intention(db, current_user.id)
+    unresolved_intention = crud.get_yesterday_incomplete_intention(db, current_user.id)
+
+    # Manually construct the response object
+    return schemas.GameStateResponse(
+        user=current_user,
+        stats=schemas.CharacterStatsResponse(
+            user_id=stats.user_id,
+            level=calculate_level(stats.xp),
+            xp=stats.xp,
+            resilience=stats.resilience,
+            clarity=stats.clarity,
+            discipline=stats.discipline,
+            commitment=stats.commitment
+        ),
+        todays_intention=todays_intention,
+        unresolved_intention=unresolved_intention
+    )
+
+
 # --- DAILY INTENTION ENDPOINTS ---
 
 # Updated for Smart Detection! And now async!
