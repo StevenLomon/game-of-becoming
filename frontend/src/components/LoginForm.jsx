@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { loginUser } from '../services/api';
 
 // Now receives a prop: onLoginSuccess
-function loginForm({ onLoginSuccess }) {
+function LoginForm({ onLoginSuccess }) {
     // 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -77,4 +77,4 @@ function loginForm({ onLoginSuccess }) {
     );
 }
 
-export default loginForm;
+export default LoginForm;
