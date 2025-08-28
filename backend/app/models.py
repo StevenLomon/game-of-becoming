@@ -29,7 +29,12 @@ class User(Base):
     default_focus_block_duration: Mapped[int] = mapped_column(default=50) # In minutes
     registered_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now(timezone.utc))
 
-    # --- NEW: Streak-related fields --- 
+    # --- NEW: Onboarding fields ---
+    vision: Mapped[Optional[str]] = mapped_column(Text) # The North Star
+    milestone: Mapped[Optional[str]] = mapped_column(Text) # The 90-day milestone
+    constraint: Mapped[Optional[str]] = mapped_column(Text) # The "Boss" obstacle
+
+    # --- Streak-related fields --- 
     current_streak: Mapped[int] = mapped_column(default=0, server_default='0', nullable=False)
     longest_streak: Mapped[int] = mapped_column(default=0, server_default='0', nullable=False)
     last_streak_update: Mapped[Optional[datetime]] = mapped_column()
