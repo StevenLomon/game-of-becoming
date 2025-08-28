@@ -259,3 +259,20 @@ class DailyIntentionResponse(BaseModel):
 
 # Tells the creation endpoint what its possible responses are
 DailyIntentionCreateResponse = Union[DailyIntentionRefinementResponse, DailyIntentionResponse]
+
+
+# =============================================================================
+# GAME STATE SCHEMA
+# =============================================================================
+
+class GameStateResponse(BaseModel):
+    """
+    The comprehensive state of the user's game, returned on login
+    or app start. The single source of truth for the frontend
+    """
+    user: UserResponse
+    stats: CharacterStatsResponse
+    todays_intention: Optional[DailyIntentionResponse] = None
+    unresolved_intention: Optional[DailyIntentionResponse] = None
+
+    model_config = ConfigDict(from_attributes=True)
