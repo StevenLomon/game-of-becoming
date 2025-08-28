@@ -2,7 +2,7 @@ import { useState } from 'react';
 import authFetch from '../utils/authFetch';
 
 // It receives the token for the API call and a function to call on success
-function CreateIntentionForm({ token, onDailyIntentionCreated }) {
+function CreateDailyIntentionForm({ token, onDailyIntentionCreated }) {
   const [text, setText] = useState('');
   const [target, setTarget] = useState(3);
   const [blocks, setBlocks] = useState(3);
@@ -86,4 +86,4 @@ function CreateIntentionForm({ token, onDailyIntentionCreated }) {
   );
 }
 
-export default CreateIntentionForm;
+export default CreateDailyIntentionForm;
