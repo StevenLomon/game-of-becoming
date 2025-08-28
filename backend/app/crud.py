@@ -78,7 +78,7 @@ def get_yesterday_incomplete_intention(db: Session, user_id: int) -> models.Dail
     Finds an incomplete intention from yesterday for the "Grace Day" mechanic.
     An intention is incomplete if its status is 'pending' or 'in_progress'.
     """
-    today = datetime.nwo(timezone.utc).date()
+    today = datetime.now(timezone.utc).date()
     yesterday = today - timedelta(days=1)
     start_of_yesterday = datetime.combine(yesterday, datetime.min.time())
     end_of_yesterday = datetime.combine(today, datetime.min.time())
