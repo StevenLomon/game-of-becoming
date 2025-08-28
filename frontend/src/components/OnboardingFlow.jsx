@@ -26,7 +26,7 @@ const getPromptForStep = (step, user) => {
     }
 };
 
-function OnboardingFlow({ user, onOnboardingComplete }) {
+function OnboardingFlow({ user, onFlowStepComplete }) {
     // Use our new helper function to initialize the state correctly
     const [step, setStep] = useState(getInitialStep(user));
   const [prompt, setPrompt] = useState(getPromptForStep(step, user));
@@ -42,15 +42,11 @@ function OnboardingFlow({ user, onOnboardingComplete }) {
         try {
             const response = await submitOnboardingStep(step, userInput);
 
-            if (response.nextStep) {
-                // If there is a next step, update and continue the conversation
-                setStep(response.nextStep);
-                setPrompt(response.ai_response);
-                setUserInput(''); // Clear the input for the next step
-            } else {
-                // If next_step is null, onboarding is complete!
-                onOnboardingComplete();
-            }
+            // After every successful step, we tell the parent to refresh.
+            onFlowStepComplete();
+
+            // The original logic for handling the *final* step is now implicitly
+            // handled by the Dashboard's re-render
 
         } catch (err) {
             setError(err.message);

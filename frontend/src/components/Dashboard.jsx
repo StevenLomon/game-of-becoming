@@ -285,7 +285,7 @@ function Dashboard({ token, onLogout }) {
                 3. Finally, show the main app.
       */}
       {!user.hla ? (
-                <Onboarding user={user} onOnboardingComplete={handleOnboardingComplete} />
+                <Onboarding user={user} onFlowStepComplete={refreshGameState} /> // onOnboardingComplete renamed to onFlowStepComplete for clarity
             ) : unresolvedIntention ? (
                 <UnresolvedQuest 
                     intention={unresolvedIntention} 
