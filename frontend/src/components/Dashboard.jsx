@@ -202,6 +202,7 @@ function Dashboard({ token, onLogout }) {
     // State to hold the full user profile
     const [user, setUser] = useState(null);
     const [stats, setStats] = useState(null);
+    const [intention, setIntention] = useState(null);
     const [error, setError] = useState(null);
     // New state to hold the unresoved intention from the grace day
     const [unresolvedIntention, setUnresolvedIntention] = useState(null);
