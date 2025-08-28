@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
-import { submitOnboardingStep } from "../services/api";
+// We no longer need useEffect
+import { useState } from 'react';
+import { submitOnboardingStep } from '../services/api';
 
 // This function will determine the starting point of the conversation
 const getInitialStep = (user) => {
@@ -7,7 +8,7 @@ const getInitialStep = (user) => {
   if (!user.milestone) return 'milestone';
   if (!user.constraint) return 'constraint';
   if (!user.hla) return 'hla';
-  return 'complete'; // Should not happen if Dashboard logic is correct
+  return 'complete';
 };
 
 // This function provides the correct prompt for each step
@@ -22,38 +23,36 @@ const getPromptForStep = (step, user) => {
         case 'hla':
             return `Got it. The Boss blocking your milestone is: ${user.constraint}. Now for the clarity question: What's the ONE commitment your future self would act on today to become the kind of person who defeats this Boss?`;
         default:
-            return "Welcome! Let's get started.";
+            return "Loading your next step...";
     }
 };
 
 function OnboardingFlow({ user, onFlowStepComplete }) {
-    // Use our new helper function to initialize the state correctly
-    const [step, setStep] = useState(getInitialStep(user));
-    const [prompt, setPrompt] = useState(getPromptForStep(step, user));
+    // REMOVED: We no longer store step or prompt in state.
+    // const [step, setStep] = useState(getInitialStep(user));
+    // const [prompt, setPrompt] = useState(getPromptForStep(step, user));
+    
+    // CALCULATE them on every render from the single source of truth: the user prop.
+    const step = getInitialStep(user);
+    const prompt = getPromptForStep(step, user);
+
+    // The only state this component now owns is the input field's value.
     const [userInput, setUserInput] = useState('');
-    const [isLoading, setIsLoading] = useState(null);
+    const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState(null);
-
-    // We now use "The Embassy" to listen for changes and synchronize the 
-    // component's internal state with the props from its parents
-    useEffect(() => {
-        // When the user prop changes, we recalculate our "GPS position"
-        const newStep = getInitialStep(user);
-        const newPrompt = getPromptForStep(newStep, user);
-
-        // And update our internal state to reflect the new reality
-        setStep(newStep);
-        setPrompt(newPrompt);
-    }, [user]); // Only re-run when the 'user' prop changes
 
     const handleSubmit = async (event) => {
         event.preventDefault();
+        if (!userInput.trim()) return; // Prevent submitting empty input
         setIsLoading(true);
         setError(null);
 
         try {
             // We don't need the response data here anymore
             await submitOnboardingStep(step, userInput);
+
+            // Clear the input field for the next step
+            setUserInput(''); 
 
             // After every successful step, we tell the parent to refresh.
             onFlowStepComplete();
