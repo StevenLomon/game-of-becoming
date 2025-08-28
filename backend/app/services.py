@@ -81,6 +81,33 @@ async def process_onboarding_step(db: Session, user: models.User, step_data: sch
     Processes a single step in the conversational onboarding flow, using the AI
     to generate a mirrored + smart response and guide the user.
     """
+    # The "off switch"
+    if os.getenv("DISABLE_AI_CALLS") == "True":
+        print(f"--- AI CALL DISABLED: Returning mock response for onboarding step: {step_data.step} ---")
+        
+        # We can simulate the AI's "Mirrored + Smart" response
+        mock_ai_response = f"Mock response for {step_data.step}: Acknowledged '{step_data.text}'. Now, what is the next step?"
+        next_step_map = {
+            "vision": "milestone",
+            "milestone": "constraint",
+            "constraint": "hla",
+            "hla": None
+        }
+        next_step = next_step_map.get(step_data.step)
+        
+        # Save the user's input, which is a key part of the real function
+        if step_data.step == "vision": user.vision = step_data.text
+        elif step_data.step == "milestone": user.milestone = step_data.text
+        elif step_data.step == "constraint": user.constraint = step_data.text
+        elif step_data.step == "hla": user.hla = step_data.text
+        db.commit()
+
+        return {
+            "ai_response": mock_ai_response,
+            "next_step": next_step,
+            "final_hla": user.hla if not next_step else None,
+        }
+    
     llm_provider = get_llm_provider()
     step = step_data.step
     user_input = step_data.text
