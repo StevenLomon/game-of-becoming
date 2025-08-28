@@ -116,6 +116,24 @@ export async function getCharacterStats() {
 }
 
 /**
+ * Submits one step of the conversational onboarding process.
+ * @param {string} step - The name of the current step (e.g., 'vision').
+ * @param {string} text - The user's text input for that step.
+ * @returns {Promise<object>} - The AI's response and the next step in the flow.
+ */
+export async function submitOnboardingStep(step, text) {
+  const endpoint = "/api/onboarding/step";
+  const url = `${API_BASE_URL}${endpoint}`;
+
+  const response = await authFetch(url, {
+    method: "POST",
+    body: JSON.stringify({ step, text }),
+  });
+
+  return handleErrors(response).then((res) => res.json());
+}
+
+/**
  * Fetches the entire game state in a single call.
  * @returns {Promise<object>} - The comprehensive game state object.
  */
