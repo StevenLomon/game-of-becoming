@@ -234,7 +234,7 @@ function Dashboard({ token, onLogout }) {
             try {
                 // The API service handles the token, URL, and error checking for us now!
                 // Using our new definitive endpoint for the game state
-                const gameState = await gameState();
+                const gameState = await getGameState();
                 
                 setUser(gameState.user);
                 setStats(gameState.stats);
