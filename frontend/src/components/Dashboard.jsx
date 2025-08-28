@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getUserProfile, getCharacterStats } from '../services/api';
+import { getUserProfile, getCharacterStats, getGameState } from '../services/api';
 import Onboarding from './Onboarding';
 import CreateDailyIntentionForm from './CreateDailyIntentionForm';
 import CreateFocusBlockForm from './CreateFocusBlockForm';
@@ -60,19 +60,13 @@ function MainApp({ user, token, stats, setStats }) { // stats now included as a 
   const refreshGameState = async () => {
     // We only set the state to 'loading' on boot up
     try {
-      // The new, elegant, and declarative way of calling the API:
-      // We use our two new service functions in parallel.
-      const [intentionData, statsData] = await Promise.all([
-          getTodaysIntention(),
-          getCharacterStats()
-      ]);
+      // Using our new definitive game state endpoint rather than serveral API calls and Promise.all
+      const gameState = await getGameState();
 
-      // The service layer already handled the 404 for us!
-      setIntention(intentionData);
-      setStats(statsData);
+      setIntention(gameState.todays_intention);
+      setStats(gameState.stats);
 
       } catch (err) {
-          // All other errors are caught here.
           setError(err.message);
       } finally {
       // We only set loading to false on the initial load
@@ -85,7 +79,7 @@ function MainApp({ user, token, stats, setStats }) { // stats now included as a 
     refreshGameState();
   }, [token]);
 
-  // UPDATED: Switch the view to the Daily Intention progress update form and include XP gain
+  // Switch the view to the Daily Intention progress update form and include XP gain
   const handleFocusBlockCompleted = (completionData) => {
     // We received the full response, which includes xp_awarded
     setLastReward( { XP: completionData.xp_awarded });
@@ -109,7 +103,7 @@ function MainApp({ user, token, stats, setStats }) { // stats now included as a 
   const confirmFailIntention = async () => {
     setIsFailConfirmVisible(false); // Close the modal first
     try {
-        // NEW: Call our declarative service function
+        // Call our declarative service function
         await failDailyIntention();
         await refreshGameState();
     } catch (err) {
@@ -121,7 +115,7 @@ function MainApp({ user, token, stats, setStats }) { // stats now included as a 
   const handleCompleteIntention = async () => {
     setError(null);
     try {
-        // NEW: Call our declarative service function
+        // Call our declarative service function
         await completeDailyIntention();
         await refreshGameState();
     } catch (err) {
@@ -231,14 +225,11 @@ function Dashboard({ token, onLogout }) {
         const fetchInitialData = async () => {
             try {
                 // The API service handles the token, URL, and error checking for us now!
-                // This is much cleaner and more declarative.
-                const [userData, statsData] = await Promise.all([
-                    getUserProfile(),
-                    getCharacterStats()
-                ]);
+                // Using our new definitive endpoint for the game state
+                const gameState = await gameState();
                 
-                setUser(userData);
-                setStats(statsData);
+                setUser(gameState.user);
+                setStats(gameState.stats);
 
             } catch (err) {
                 setError(err.message);
