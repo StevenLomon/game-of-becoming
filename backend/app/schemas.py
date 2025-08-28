@@ -89,6 +89,23 @@ class CharacterStatsResponse(BaseModel):
 
 
 # =============================================================================
+# ONBOARDING SCHEMAS
+# =============================================================================
+
+class OnboardingStepInput(BaseModel):
+    """Input from the user for a given onboarding step."""
+    step: str = Field(..., description="The current step being completed, e.g., 'vision', 'milestone', 'constraint', 'hla'")
+    text: str = Field(..., min_length=5, max_length=2000)
+
+class OnboardingStepResponse(BaseModel):
+    """The AI Coach's response, guiding the user to the next step."""
+    ai_response: str
+    next_step: Optional[str] = Field(None, description="The name of the next step, e.g., 'milestone'. Null if onboarding is complete.")
+    # This will hold the final, AI-refined HLA at the end of the process
+    final_hla: Optional[str] = None
+    
+
+# =============================================================================
 # DAILY INTENTIONS SCHEMAS (Updated for Smart Detection)
 # =============================================================================
 
