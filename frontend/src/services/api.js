@@ -4,7 +4,8 @@
 import authFetch from "../utils/authFetch";
 
 // This remains our single source of truth for the backend's address
-const API_BASE_URL = import.meta.env.VITE_API_URL;
+// ADD a fallback to an empty string to handle the undefined case in local dev.
+const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 
 // A helper function to handle common error parsing
 async function handleErrors(response) {
