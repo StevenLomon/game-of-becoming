@@ -91,4 +91,4 @@ def get_yesterday_incomplete_intention(db: Session, user_id: int) -> models.Dail
         models.DailyIntention.created_at >= start_of_yesterday,
         models.DailyIntention.created_at < end_of_yesterday,
         models.DailyIntention.status.in_(['pending', 'in_progress'])
-    )
+    ).first()
