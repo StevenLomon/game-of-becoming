@@ -116,6 +116,19 @@ export async function getCharacterStats() {
 }
 
 /**
+ * Fetches the entire game state in a single call.
+ * @returns {Promise<object>} - The comprehensive game state object.
+ */
+export async function getGameState() {
+    const endpoint = "/api/users/me/game-state";
+    const url = `${API_BASE_URL}${endpoint}`;
+
+    const response = await authFetch(url);
+
+    return handleErrors(response).then(res => res.json());
+}
+
+/**
  * Creates a new Daily Intention.
  * @param {object} intentionData - The intention data, including text, target, and block count.
  * @returns {Promise<object>} - The newly created Daily Intention object from the backend.
