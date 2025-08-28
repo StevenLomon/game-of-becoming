@@ -27,7 +27,7 @@ const getPromptForStep = (step, user) => {
     }
 };
 
-function OnboardingFlow({ user, onFlowStepComplete }) {
+function OnboardingFlow({ user, token, onFlowStepComplete }) {
     // REMOVED: We no longer store step or prompt in state.
     // const [step, setStep] = useState(getInitialStep(user));
     // const [prompt, setPrompt] = useState(getPromptForStep(step, user));
