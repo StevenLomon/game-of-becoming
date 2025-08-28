@@ -1,10 +1,35 @@
 import { useState } from "react";
 import { submitOnboardingStep } from "../services/api";
 
+// This function will determine the starting point of the conversation
+const getInitialStep = (user) => {
+  if (!user.vision) return 'vision';
+  if (!user.milestone) return 'milestone';
+  if (!user.constraint) return 'constraint';
+  if (!user.hla) return 'hla';
+  return 'complete'; // Should not happen if Dashboard logic is correct
+};
+
+// This function provides the correct prompt for each step
+const getPromptForStep = (step, user) => {
+    switch (step) {
+        case 'vision':
+            return "Let's start with your North Star. In the next 1-3 years, what is the single most important vision you have for your business?";
+        case 'milestone':
+            return `Wonderful. Your North Star is: ${user.vision}. What's ONE milestone you can hit in the next 90 days that moves you in the direction of that North Star?`;
+        case 'constraint':
+            return `Locked in. Your 90-Day Milestone is to: ${user.milestone}. What's the #1 obstacle, the 'Boss', holding you back from hitting this milestone?`;
+        case 'hla':
+            return `Got it. The Boss blocking your milestone is: ${user.constraint}. Now for the clarity question: What's the ONE commitment your future self would act on today to become the kind of person who defeats this Boss?`;
+        default:
+            return "Welcome! Let's get started.";
+    }
+};
+
 function OnboardingFlow({ onOnboardingComplete }) {
-    // State to manage to manage the entire conversation flow
-    const [step, setStep] = useState('vision');
-    const [prompt, setPrompt] = useState("Let's start with your North Star. In the next 1-3 years, what is the single most important vision you have for your business?");
+    // Use our new helper function to initialize the state correctly
+    const [step, setStep] = useState(getInitialStep(user));
+  const [prompt, setPrompt] = useState(getPromptForStep(step, user));
     const [userInput, setUserInput] = useState('');
     const [isLoading, setIsLoading] = useState(null);
     const [error, setError] = useState(null);
