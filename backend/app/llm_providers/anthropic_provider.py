@@ -37,3 +37,21 @@ class AnthropicProvider(BaseLLMProvider):
                 return {"error": "AI did not use the requested tool."}
         except Exception as e:
             return {"error": str(e)}
+        
+    # NEW: Implementation for our new text generation method
+    async def generate_text_respone(
+            self, system_prompt: str, user_prompt: str
+    ) -> str:
+        try:
+            message = await self.client.messages.create(
+                model=self.model,
+                max_tokens=self.max_tokens,
+                temperature=self.temperature,
+                system=system_prompt,
+                messages=[{"role": "user", "content": user_prompt}],
+            )
+            # The response is simpler, we just get the text from the first content block
+            return message.content[0].text
+        except Exception as e:
+            # Return to a simple fallback if the AI call fails
+            return "Let's move on to the next step"
