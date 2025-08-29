@@ -48,7 +48,7 @@ function DisplayIntention({ intention, onComplete }) { // New onComplete prop fo
   )
 }
 
-function MainApp({ user, token, stats, intention, refreshGameState }) { // Include our net refreshGameState as a prop
+function MainApp({ user, token, isLoading, stats, intention, refreshGameState }) { // Include our net refreshGameState as a prop
   // The intention and isLoading pieces of state are now managed by Dashboard, not MainApp
   // These pieces of state that are left are specific to MainApp's UI logic
   const [view, setView] = useState('focus'); // // Manage the UI view after a Focus Block is completed; 'focus' or 'progress'
@@ -300,6 +300,7 @@ function Dashboard({ token, onLogout }) {
                 <MainApp 
                     user={user} 
                     token={token} 
+                    isLoading={isLoading}
                     stats={stats} // Pass the pieces...
                     intention={intention} // ... of state down
                     refreshGameState={refreshGameState} // Pass the control panel button down
