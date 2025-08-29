@@ -21,7 +21,7 @@ const getPromptForStep = (step, user) => {
         case 'constraint':
             return `Locked in. Your 90-Day Milestone is to: ${user.milestone}. What's the #1 obstacle, the 'Boss', holding you back from hitting this milestone?`;
         case 'hla':
-            return `Got it. The Boss blocking your milestone is: ${user.constraint}. Now for the clarity question: What's the ONE commitment your future self would act on today to become the kind of person who defeats this Boss?`;
+            return `Got it. Now for the clarity question: What is the ONE action you can take daily that resolves the constraint ${user.constraint} and moves you closer to your milestone?`;
         default:
             return "Loading your next step...";
     }
