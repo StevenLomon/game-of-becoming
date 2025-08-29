@@ -28,7 +28,7 @@ function LoginForm({ onLoginSuccess }) {
     // The success message is removed, as the parent will handle showing the dashboard.
     return (
         <form onSubmit={handleSubmit} className="space-y-6 w-full max-w-sm">
-            <h2 className="text-3xl font-bold text-center text-white">Game of Becoming Log In</h2>
+            <h2 className="text-3xl font-bold text-center text-white">Log In</h2>
             <div>
                 <label htmlFor="email" className="block text-sm front-medium text-gray-300">
                     Email

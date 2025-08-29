@@ -23,8 +23,8 @@ load_dotenv()
 
 # FastAPI app setup
 app = FastAPI(
-    title="Game of Becoming API",
-    description="Gamify your business growth with AI-driven daily intentions and feedback.",
+    title="xecute.app API",
+    description="Gamify your business growth with AI-driven daily intentions and execution loops.",
     version="1.0.0",
     docs_url="/docs"
 )
@@ -171,7 +171,7 @@ def get_owned_daily_result_by_result_id(
 def read_root():
     """Welcome root endpoint - the beginning of the transformational journey!"""
     return {
-        "message": "Welcome to The Game of Becoming API!",
+        "message": "Welcome to the xecute.app API",
         "description": "Ready to turn your exectution blockers into breakthrough momentum?",
         "docs": "Visit /docs for interactive API documentation.",
     }
@@ -182,7 +182,7 @@ def health_check():
     return {
         "status": "healthy",
         "timestamp": datetime.now(timezone.utc),
-        "service": "Game of Becoming API",
+        "service": "xecute.app API",
         "version": "1.0.0"
     }
 
@@ -228,7 +228,7 @@ def register_user(user_data: schemas.UserCreate, db: Session = Depends(database.
     Register a new user and their associated records. 
     Also now creates their initial character stats
 
-    The user starts their Game of Becoming journey here!
+    The user starts their xecute.app journey here
     """
 
     # Check if user already exists
