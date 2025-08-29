@@ -15,7 +15,7 @@ const getInitialStep = (user) => {
 const getPromptForStep = (step, user) => {
     switch (step) {
         case 'vision':
-            return "Let's start with your North Star. In the next 1-3 years, what is the single most important vision you have for your business?";
+            return "Let's start with your North Star. In the next 5+ years, what is the single most important vision you have for your business?";
         case 'milestone':
             return `Wonderful. Your North Star is: ${user.vision}. What's ONE milestone you can hit in the next 90 days that moves you in the direction of that North Star?`;
         case 'constraint':
