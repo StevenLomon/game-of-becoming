@@ -333,6 +333,11 @@ def get_game_state(
     todays_intention = crud.get_today_intention(db, current_user.id)
     unresolved_intention = crud.get_yesterday_incomplete_intention(db, current_user.id)
 
+    # NEW: Calculate level and XP progression
+    current_level = calculate_level(stats.xp)
+    xp_for_next_level = calculate_xp_for_level(current_level + 1)
+    xp_needed_to_level = xp_for_next_level - stats.xp
+
     # Manually construct the response object
     return schemas.GameStateResponse(
         user=current_user,
@@ -340,6 +345,8 @@ def get_game_state(
             user_id=stats.user_id,
             level=calculate_level(stats.xp),
             xp=stats.xp,
+            xp_for_next_level=xp_for_next_level, # New XP field
+            xp_needed_to_level=xp_needed_to_level, # New XP field
             resilience=stats.resilience,
             clarity=stats.clarity,
             discipline=stats.discipline,
