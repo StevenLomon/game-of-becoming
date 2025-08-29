@@ -147,7 +147,7 @@ function Dashboard({ token, onLogout }) {
         <Sidebar user={user} stats={stats} />
 
         {/* Main content area */}
-        <div className="flex-grow p-8">
+        <div className="flex-grow min-h-[90vh] p-8">
           {/* Conditional rendering logic remains here in the orchestrator */}
           {isLoading ? (
             <p className="text-gray-400">Loading your quest...</p>
