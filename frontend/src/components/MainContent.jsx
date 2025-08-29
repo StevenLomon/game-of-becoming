@@ -1,0 +1,128 @@
+import { useState } from 'react';
+import CreateDailyIntentionForm from './CreateDailyIntentionForm';
+import DisplayIntention from './DisplayIntention';
+import ActiveFocusBlock from './ActiveFocusBlock';
+import CreateFocusBlockForm from './CreateFocusBlockForm';
+import UpdateProgressForm from './UpdateProgressForm';
+import RewardDisplay from './RewardDisplay';
+import ConfirmationModal from './ConfirmationModal';
+import { completeDailyIntention, failDailyIntention } from '../services/api';
+
+// This component now contains all the logic and UI for the main application area.
+function MainContent({ user, token, intention, refreshGameState }) {
+  // These states are specific to the UI flow within the main content area.
+  const [view, setView] = useState('focus');
+  const [error, setError] = useState(null);
+  const [isFailConfirmVisible, setIsFailConfirmVisible] = useState(false);
+  const [lastReward, setLastReward] = useState(null);
+
+  // All the handler functions from the old MainApp are moved here.
+  const handleFocusBlockCompleted = (completionData) => {
+    setLastReward({ XP: completionData.xp_awarded });
+    setView('progress');
+  };
+
+  const handleProgressUpdated = () => {
+    setLastReward(null);
+    refreshGameState();
+    setView('focus');
+  };
+
+  const handleFailIntentionClick = () => {
+    setError(null);
+    setIsFailConfirmVisible(true);
+  };
+
+  const confirmFailIntention = async () => {
+    setIsFailConfirmVisible(false);
+    try {
+      await failDailyIntention();
+      await refreshGameState();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const handleCompleteIntention = async () => {
+    setError(null);
+    try {
+      await completeDailyIntention();
+      await refreshGameState();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const activeBlock = intention ? intention.focus_blocks.find(b => b.status === 'pending' || b.status === 'in_progress') : null;
+
+  return (
+    <div>
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-white">Welcome, {user.name}</h1>
+        <p className="text-gray-400">Your HLA: "{user.hla}"</p>
+      </div>
+      
+      {error && (
+        <div className="bg-red-900 border-red-700 text-red-300 px-4 py-3 rounded-md mb-4">
+          {error}
+        </div>
+      )}
+
+      {intention ? (
+        intention.daily_result ? (
+          <DailyResultDisplay 
+            result={intention.daily_result} 
+            token={token}
+            refreshGameState={refreshGameState}
+          />
+        ) : (
+          <div>
+            <DisplayIntention intention={intention} onComplete={handleCompleteIntention} />
+            
+            {view === 'progress' && <RewardDisplay rewards={lastReward} />}
+            
+            <div className="mt-8">
+              {view === 'focus' && (
+                activeBlock ? (
+                  <ActiveFocusBlock block={activeBlock} token={token} onBlockCompleted={handleFocusBlockCompleted} />
+                ) : (
+                  <CreateFocusBlockForm token={token} onBlockCreated={refreshGameState} />
+                )
+              )}
+
+              {view === 'progress' && (
+                <UpdateProgressForm 
+                  token={token} 
+                  onProgressUpdated={handleProgressUpdated}
+                  currentProgress={intention.completed_quantity}
+                />
+              )}
+            </div>
+
+            <div className="mt-6 pt-6 border-t border-gray-700 text-center">
+              <button
+                onClick={handleFailIntentionClick}
+                className="text-gray-400 hover:text-white hover:bg-gray-700 py-2 px-4 rounded-md text-sm"
+              >
+                I can't finish my quest today.
+              </button>
+            </div>
+          </div>
+        )
+      ) : (
+        <CreateDailyIntentionForm token={token} onDailyIntentionCreated={refreshGameState} />
+      )}
+
+      <ConfirmationModal
+        isOpen={isFailConfirmVisible}
+        onClose={() => setIsFailConfirmVisible(false)}
+        onConfirm={confirmFailIntention}
+        title="End Today's Quest?"
+      >
+        <p>Are you sure you want to end today's quest? This will move you to your evening reflection.</p>
+      </ConfirmationModal>
+    </div>
+  );
+}
+
+export default MainContent;
