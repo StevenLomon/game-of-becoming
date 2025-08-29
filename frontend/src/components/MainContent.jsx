@@ -59,7 +59,7 @@ function MainContent({ user, token, intention, refreshGameState }) {
     <div>
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-white">Welcome, {user.name}</h1>
-        <p className="text-gray-400">Your HLA: "{user.hla}"</p>
+        <p className="text-gray-400">Your Highest Leverage Activity: "{user.hla}"</p>
       </div>
       
       {error && (
