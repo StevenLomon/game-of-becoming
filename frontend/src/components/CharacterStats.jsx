@@ -1,10 +1,13 @@
 // Helper component to keep the JSX clean and avoid repetition
 // Can be thought of as a "label maker" for our stats display
-function StatItem({ label, value }) {
+
+// Modified to accept a 'displayValue' prop for custom text
+function StatItem({ label, value, displayValue }) {
     return (
     <div className="text-center">
       <p className="text-sm font-medium text-gray-400">{label}</p>
-      <p className="text-2xl font-bold text-teal-400">{value}</p>
+      {/* If a custom displayValue is provided, use it. Otherwise, just show the value. */}
+      <p className="text-2xl font-bold text-teal-400">{displayValue || value}</p>
     </div>
   );
 }
