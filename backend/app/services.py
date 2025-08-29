@@ -16,6 +16,19 @@ XP_REWARDS = {
     'recovery_quest_completed': 15,
 }
 
+# --- NEW: Centralized XP Calculation Utility ---
+def _calculate_xp_with_streak_bonus(base_xp: int, current_streak: int) -> int:
+    """
+    Calculates the final XP to be awarded by applying a streak bonus.
+    This is the single source of truth for the streak multiplier formula.
+    """
+    if current_streak <= 0:
+        return base_xp
+    
+    streak_bonus_multiplier = 1 + (current_streak * 0.01)
+    xp_to_award = round(base_xp * streak_bonus_multiplier)
+    return xp_to_award
+
 # --- Our Secret Sauce: Pydantic Models for Structured AI Responses ensuring reliable AI output ---
 
 class IntentionAnalysisResponse(BaseModel):
@@ -260,10 +273,14 @@ def complete_focus_block(
         user: models.User, 
         block: models.FocusBlock # Future-proofing: kept for future, more complex XP rules
 ) -> dict[str, Any]:
-    """Awards XP for a completed Focus Block using the central rulebook. Returns data for the endpoint to commit."""
+    """Awards XP for a completed Focus Block using the central rulebook and streak multiplier."""
     # In the future, the logic here could inspect the 'block' object's properties
     # (e.g., duration, intention text) to award variable XP.
-    xp_to_award = XP_REWARDS.get('focus_block_completed', 0) # UPDATED: Rather than "magic numbers", refer to XP_REWARDS
+    base_xp = XP_REWARDS.get('focus_block_completed', 0)
+
+    # NEW: Calculate the XP using streak multiplier
+    xp_to_award = _calculate_xp_with_streak_bonus(base_xp, user.current_streak)
+
     return {"xp_awarded": xp_to_award}
 
 async def create_daily_reflection(db: Session, user: models.User, daily_intention: models.DailyIntention) -> dict[str, Any]:
@@ -275,7 +292,10 @@ async def create_daily_reflection(db: Session, user: models.User, daily_intentio
     succeeded = daily_intention.status == "completed"
     xp_to_award = 0
     if succeeded:
-        xp_to_award = XP_REWARDS.get('daily_intention_completed', 0) # Refer to our single source of truth
+        base_xp = XP_REWARDS.get('daily_intention_completed', 0)
+        
+        # NEW: Apply the streak multiplier
+        xp_to_award = _calculate_xp_with_streak_bonus(base_xp, user.current_streak)
 
     if os.getenv("DISABLE_AI_CALLS") == "True":
         print("--- AI CALL DISABLED: Returning mock reflection. ---")
@@ -343,7 +363,10 @@ async def process_recovery_quest_response(db: Session, user: models.User, result
     This replaces generate_coaching_response from main.py.
     UPDATE: Now including XP gain calculations!
     """
-    xp_to_award = XP_REWARDS.get('recovery_quest_completed', 0) # Refer to our single source of truth
+    base_xp = XP_REWARDS.get('recovery_quest_completed', 0)
+
+    # NEW: Apply the streak multiplier
+    xp_to_award = _calculate_xp_with_streak_bonus(base_xp, user.current_streak)
 
     if os.getenv("DISABLE_AI_CALLS") == "True":
         print("--- AI CALL DISABLED: Returning mock coaching. ---")
