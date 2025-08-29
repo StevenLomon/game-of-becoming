@@ -53,6 +53,14 @@ def calculate_level(xp: int) -> int:
     if xp < 0: return 1
     return math.floor((xp / 100) ** 0.5) + 1
 
+# NEW: A helper function for the next level's XP threshold
+def calculate_xp_for_level(level: int) -> int:
+    """Calculates the total XP required to reach a given level."""
+    if level <= 1:
+        return 0
+    # The formula for total XP to reach a level is 100 * (L-1)^2
+    return 100 * (level - 1) ** 2
+
 # --- ENDPOINT DEPENDENCIES ---
 
 def get_current_user_daily_intention(
