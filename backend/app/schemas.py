@@ -85,6 +85,8 @@ class CharacterStatsResponse(BaseModel):
     user_id: int
     level: int # The calculated level
     xp: int
+    xp_for_next_level: int # New field for the XP progression bar
+    xp_needed_to_level: int # New field for the XP progression bar
     resilience: int
     clarity: int
     discipline: int
