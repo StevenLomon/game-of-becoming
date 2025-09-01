@@ -320,11 +320,11 @@ def get_my_character_stats(
 
     # Include calculated value using __dict__ + model_validate
     response_data = stats.__dict__
-    response_data.update={
+    response_data.update({
             'level': current_level,
             'xp_for_next_level': xp_for_next_level,
             'xp_needed_to_level': xp_for_next_level - stats.xp
-        }
+        })
 
     return schemas.CharacterStatsResponse.model_validate(response_data)
 
@@ -592,10 +592,10 @@ async def complete_daily_intention(
 
         # Include calculated value using __dict__ + model_validate
         response_data = daily_intention.__dict__
-        response_data.update={
+        response_data.update({
                 'discipline_stat_gain': discipline_gain,
                 'xp_awarded': xp_gain,
-            }
+            })
 
         return schemas.DailyResultCompletionResponse.model_validate(response_data)
     
@@ -664,10 +664,10 @@ async def fail_daily_intention(
 
         # Include calculated value using __dict__ + model_validate
         response_data = daily_intention.__dict__
-        response_data.update={
+        response_data.update({
                 'discipline_stat_gain': discipline_gain, 
                 'xp_awarded': xp_gain,
-            }
+            })
 
         return schemas.DailyResultCompletionResponse.model_validate(response_data)
     
