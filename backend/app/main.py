@@ -53,13 +53,20 @@ def calculate_level(xp: int) -> int:
     if xp < 0: return 1
     return math.floor((xp / 100) ** 0.5) + 1
 
-# NEW: A helper function for the next level's XP threshold
+# A helper function for the next level's XP threshold
 def calculate_xp_for_level(level: int) -> int:
     """Calculates the total XP required to reach a given level."""
     if level <= 1:
         return 0
     # The formula for total XP to reach a level is 100 * (L-1)^2
     return 100 * (level - 1) ** 2
+
+# NEW: A helper function for calculating completion percentage
+def calculate_completion_percentage(intention: models.DailyIntention) -> float:
+    """Calculates the completion percentage for a given intention."""
+    if not intention or intention.target_quantity == 0:
+        return 0.0
+    return (intention.completed_quantity / intention.target_quantity) * 100
 
 # --- ENDPOINT DEPENDENCIES ---
 
@@ -311,16 +318,15 @@ def get_my_character_stats(
     current_level = calculate_level(stats.xp)
     xp_for_next_level = calculate_xp_for_level(current_level + 1)
 
-    # Use model_validate on the raw stats object and pass in the calculated
-    # values in a clean 'update' dictionary
-    return schemas.CharacterStatsResponse.model_validate(
-        stats,
-        update={
+    # Include calculated value using __dict__ + model_validate
+    response_data = stats.__dict__
+    response_data.update={
             'level': current_level,
             'xp_for_next_level': xp_for_next_level,
             'xp_needed_to_level': xp_for_next_level - stats.xp
         }
-    )
+
+    return schemas.CharacterStatsResponse.model_validate(response_data)
 
 @app.get("/api/users/me/game-state", response_model=schemas.GameStateResponse)
 def get_game_state(
@@ -333,40 +339,31 @@ def get_game_state(
     """
     stats = crud.get_or_create_user_stats(db, current_user.id)
     unresolved_intention = crud.get_yesterday_incomplete_intention(db, current_user.id)
+    todays_intention_model = crud.get_today_intention(db, current_user.id)
 
     # Manually construct Daily Intention response
-    todays_intention_model = crud.get_today_intention(db, current_user.id)
     todays_intention_response = None
     if todays_intention_model:
-        completion_percentage = (
-                (todays_intention_model.completed_quantity / todays_intention_model.target_quantity) * 100
-                if todays_intention_model.target_quantity > 0 else 0.0
-            )
-        # Create response using model_validate and passing an update dictionary
-        todays_intention_response = schemas.DailyIntentionResponse.model_validate(
-            todays_intention_model,
-            update={'completion_percentage': completion_percentage}
-        )
+        intention_data = todays_intention_model.__dict__
+        intention_data["completion_percentage"] = calculate_completion_percentage(todays_intention_model)
+        todays_intention_response = schemas.DailyIntentionResponse.model_validate(intention_data)
 
-    # NEW: Calculate level and XP progression
+    # Prepare the stats repsonse by calculating level and XP progression
     current_level = calculate_level(stats.xp)
     xp_for_next_level = calculate_xp_for_level(current_level + 1)
-    xp_needed_to_level = xp_for_next_level - stats.xp
+
+    stats_data = stats.__dict__
+    stats_data.update({
+        'level': current_level,
+        'xp_for_next_level': xp_for_next_level,
+        'xp_needed_to_level': xp_for_next_level
+        })
+    stats_response = schemas.CharacterStatsResponse.model_validate(stats_data)
 
     # Manually construct the response object
     return schemas.GameStateResponse(
         user=current_user,
-        stats=schemas.CharacterStatsResponse(
-            user_id=stats.user_id,
-            level=calculate_level(stats.xp),
-            xp=stats.xp,
-            xp_for_next_level=xp_for_next_level, # New XP field
-            xp_needed_to_level=xp_needed_to_level, # New XP field
-            resilience=stats.resilience,
-            clarity=stats.clarity,
-            discipline=stats.discipline,
-            commitment=stats.commitment
-        ),
+        stats=stats_response,
         todays_intention=todays_intention_response,
         unresolved_intention=unresolved_intention
     )
@@ -447,11 +444,11 @@ async def create_daily_intention(
             if clarity_gain > 0:
                 db.refresh(stats)
 
-            # model_validate on the raw intention_data object and pass in the calculate value
-            return schemas.DailyIntentionResponse.model_validate(
-                intention_data,
-                update={'completion_percentage': 0.0} # A new intention always starts at 0%
-            )
+            # Include calculated value using __dict__ + model_validate
+            response_data = db_intention.__dict__
+            response_data["completion_percentage"] = 0.0 # A new intention always starts at 0%
+
+            return schemas.DailyIntentionResponse.model_validate(response_data)
         
         except Exception as e:
             db.rollback()
@@ -472,19 +469,13 @@ def get_my_daily_intention(
     UPDATE: Now includes all associated Focus Blocks
     UPDATE: Now also potentially includes a Daily Result
     """
-    # Calculate completion percentage
-    completion_percentage = (
-        (intention.completed_quantity / intention.target_quantity) * 100
-        if intention.target_quantity > 0 else 0.0
-    )
+    # Include calculated value using __dict__ + model_validate
+    response_data = intention.__dict__
+    response_data["completion_percentage"] = calculate_completion_percentage(intention)
 
-    # Use model_validate on the raw intention object and pass in the calculate value using 'update'
     # Now includes focus_blocks list. The 'intention.focus_blocks' attribute is already populated thanks
     # to our eager loading in crud.py. No extra database query is needed here
-    return schemas.DailyIntentionResponse.model_validate(
-        intention,
-        update={'completion_percentage': completion_percentage}
-    )
+    return schemas.DailyIntentionResponse.model_validate(response_data)
 
 @app.patch("/api/intentions/today/progress", response_model=schemas.DailyIntentionResponse)
 def update_daily_intention_progress(
@@ -518,17 +509,11 @@ def update_daily_intention_progress(
         db.commit()
         db.refresh(intention)
 
-        # Calculate completion percentage
-        completion_percentage = (
-            (intention.completed_quantity / intention.target_quantity) * 100
-            if intention.target_quantity > 0 else 0.0
-        )
-
-        # Use model_validate on the raw intention object and pass in the calculate value using 'update'
-        return schemas.DailyIntentionResponse.model_validate(
-            intention,
-            update={'completion_percentage': completion_percentage}
-    )
+        # Include calculated value using __dict__ + model_validate
+        response_data = intention.__dict__
+        response_data["completion_percentage"] = calculate_completion_percentage(intention)
+        
+        return schemas.DailyIntentionResponse.model_validate(response_data)
     
     except Exception as e:
         print(f"Database error: {e}") 
@@ -605,15 +590,14 @@ async def complete_daily_intention(
         db.refresh(db_result)
         db.refresh(stats)
 
-        # Use model_validate on the raw daily_intention object and pass in the calculated
-        # values using 'update'
-        return schemas.DailyResultCompletionResponse.model_validate(
-            daily_intention,
-            update={
+        # Include calculated value using __dict__ + model_validate
+        response_data = daily_intention.__dict__
+        response_data.update={
                 'discipline_stat_gain': discipline_gain,
                 'xp_awarded': xp_gain,
             }
-        )
+
+        return schemas.DailyResultCompletionResponse.model_validate(response_data)
     
     except Exception as e:
         print(f"Database error: {e}") 
@@ -678,15 +662,14 @@ async def fail_daily_intention(
         db.refresh(db_result)
         db.refresh(stats)
 
-        # # Use model_validate on the raw daily_intention object and pass in the calculated
-        # values using 'update', despite them both being 0 in this specific case
-        return schemas.DailyResultCompletionResponse.model_validate(
-            daily_intention,
-            update={
+        # Include calculated value using __dict__ + model_validate
+        response_data = daily_intention.__dict__
+        response_data.update={
                 'discipline_stat_gain': discipline_gain, 
                 'xp_awarded': xp_gain,
             }
-        )
+
+        return schemas.DailyResultCompletionResponse.model_validate(response_data)
     
     except Exception as e:
         print(f"Database error: {e}") 
@@ -792,11 +775,12 @@ def update_focus_block(
         db.refresh(block)
         if xp_awarded > 0:
             db.refresh(stats)
+
+        # Include calculated value using __dict__ + model_validate
+        response_data = block.__dict__
+        response_data["xp_awarded"] = xp_awarded
             
-        return schemas.FocusBlockCompletionResponse.model_validate(
-            block,
-            update={'xp_awarded': xp_awarded} # Include our calculated field
-        )
+        return schemas.FocusBlockCompletionResponse.model_validate(response_data)
 
     except Exception as e:
         db.rollback()
