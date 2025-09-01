@@ -308,16 +308,18 @@ def get_my_character_stats(
     if not stats:
         raise HTTPException(status_code=404, detail="Character stats not found for your account.")
 
-    # Because 'level' is a calculated value and doesn't exist on the 'stats' object,
-    # we must manually construct the response to include it. This is the correct pattern.
-    return schemas.CharacterStatsResponse(
-        user_id=stats.user_id,
-        level=calculate_level(stats.xp),  # Use the calculated level value
-        xp=stats.xp,
-        resilience=stats.resilience,
-        clarity=stats.clarity,
-        discipline=stats.discipline,
-        commitment=stats.commitment
+    current_level = calculate_level(stats.xp)
+    xp_for_next_level = calculate_xp_for_level(current_level + 1)
+
+    # Use model_validate on the raw stats object and pass in the calculated
+    # values in a clean 'update' dictionary
+    return schemas.CharacterStatsResponse.model_validate(
+        stats,
+        update={
+            'level': current_level,
+            'xp_for_next_level': xp_for_next_level,
+            'xp_needed_to_level': xp_for_next_level - stats.xp
+        }
     )
 
 @app.get("/api/users/me/game-state", response_model=schemas.GameStateResponse)
@@ -445,21 +447,10 @@ async def create_daily_intention(
             if clarity_gain > 0:
                 db.refresh(stats)
 
-            # We can't just return db_intention. We must manually construct the response
-            # to include our calculated 'completion_percentage'.
-            return schemas.DailyIntentionResponse(
-                id=db_intention.id,
-                user_id=db_intention.user_id,
-                daily_intention_text=db_intention.daily_intention_text,
-                target_quantity=db_intention.target_quantity,
-                completed_quantity=db_intention.completed_quantity,
-                focus_block_count=db_intention.focus_block_count,
-                completion_percentage=0.0, # A new intention always starts at 0%
-                status=db_intention.status,
-                created_at=db_intention.created_at,
-                ai_feedback=db_intention.ai_feedback,
-                focus_blocks=db_intention.focus_blocks,
-                daily_result=db_intention.daily_result
+            # model_validate on the raw intention_data object and pass in the calculate value
+            return schemas.DailyIntentionResponse.model_validate(
+                intention_data,
+                update={'completion_percentage': 0.0} # A new intention always starts at 0%
             )
         
         except Exception as e:
@@ -481,28 +472,18 @@ def get_my_daily_intention(
     UPDATE: Now includes all associated Focus Blocks
     UPDATE: Now also potentially includes a Daily Result
     """
-    # 1. Calculate the value that doesn't exist in the database model.
+    # Calculate completion percentage
     completion_percentage = (
         (intention.completed_quantity / intention.target_quantity) * 100
         if intention.target_quantity > 0 else 0.0
     )
 
-    # 2. Because we have a calculated value, we MUST manually construct the Pydantic response model. 
+    # Use model_validate on the raw intention object and pass in the calculate value using 'update'
     # Now includes focus_blocks list. The 'intention.focus_blocks' attribute is already populated thanks
     # to our eager loading in crud.py. No extra database query is needed here
-    return schemas.DailyIntentionResponse(
-        id=intention.id,
-        user_id=intention.user_id,
-        daily_intention_text=intention.daily_intention_text,
-        target_quantity=intention.target_quantity,
-        completed_quantity=intention.completed_quantity,
-        focus_block_count=intention.focus_block_count,
-        completion_percentage=completion_percentage, # Use the calculated value
-        status=intention.status,
-        created_at=intention.created_at,
-        ai_feedback=intention.ai_feedback,
-        focus_blocks=intention.focus_blocks,
-        daily_result=intention.daily_result
+    return schemas.DailyIntentionResponse.model_validate(
+        intention,
+        update={'completion_percentage': completion_percentage}
     )
 
 @app.patch("/api/intentions/today/progress", response_model=schemas.DailyIntentionResponse)
@@ -543,17 +524,11 @@ def update_daily_intention_progress(
             if intention.target_quantity > 0 else 0.0
         )
 
-        return schemas.DailyIntentionResponse(
-            id=intention.id,
-            user_id=intention.user_id,
-            daily_intention_text=intention.daily_intention_text,
-            target_quantity=intention.target_quantity,
-            completed_quantity=intention.completed_quantity,
-            focus_block_count=intention.focus_block_count,
-            completion_percentage=completion_percentage, # Use the calculated value
-            status=intention.status,
-            created_at=intention.created_at
-        )
+        # Use model_validate on the raw intention object and pass in the calculate value using 'update'
+        return schemas.DailyIntentionResponse.model_validate(
+            intention,
+            update={'completion_percentage': completion_percentage}
+    )
     
     except Exception as e:
         print(f"Database error: {e}") 
@@ -630,18 +605,14 @@ async def complete_daily_intention(
         db.refresh(db_result)
         db.refresh(stats)
 
-        # Manually construct the final, rich response object
-        return schemas.DailyResultCompletionResponse(
-            id=db_result.id,
-            daily_intention_id=db_result.daily_intention_id,
-            succeeded_failed=db_result.succeeded_failed,
-            ai_feedback=db_result.ai_feedback,
-            recovery_quest=db_result.recovery_quest,
-            recovery_quest_response=db_result.recovery_quest_response,
-            user_confirmation_correction=db_result.user_confirmation_correction,
-            created_at=db_result.created_at,
-            discipline_stat_gain=discipline_gain, # Use the calculated value
-            xp_awarded=xp_gain # Use the calculated value
+        # Use model_validate on the raw daily_intention object and pass in the calculated
+        # values using 'update'
+        return schemas.DailyResultCompletionResponse.model_validate(
+            daily_intention,
+            update={
+                'discipline_stat_gain': discipline_gain,
+                'xp_awarded': xp_gain,
+            }
         )
     
     except Exception as e:
@@ -707,18 +678,14 @@ async def fail_daily_intention(
         db.refresh(db_result)
         db.refresh(stats)
 
-        # Manually construct the final, rich response object
-        return schemas.DailyResultCompletionResponse(
-            id=db_result.id,
-            daily_intention_id=db_result.daily_intention_id,
-            succeeded_failed=db_result.succeeded_failed,
-            ai_feedback=db_result.ai_feedback,
-            recovery_quest=db_result.recovery_quest,
-            recovery_quest_response=db_result.recovery_quest_response,
-            user_confirmation_correction=db_result.user_confirmation_correction,
-            created_at=db_result.created_at,
-            discipline_stat_gain=discipline_gain, # Use the calculated value, despite it being 0
-            xp_awarded=0 # Use the calculated value, despite it being 0
+        # # Use model_validate on the raw daily_intention object and pass in the calculated
+        # values using 'update', despite them both being 0 in this specific case
+        return schemas.DailyResultCompletionResponse.model_validate(
+            daily_intention,
+            update={
+                'discipline_stat_gain': discipline_gain, 
+                'xp_awarded': xp_gain,
+            }
         )
     
     except Exception as e:
@@ -826,16 +793,9 @@ def update_focus_block(
         if xp_awarded > 0:
             db.refresh(stats)
             
-        return schemas.FocusBlockCompletionResponse(
-            id=block.id,
-            daily_intention_id=block.daily_intention_id,
-            status=block.status,
-            pre_block_video_url=block.pre_block_video_url,
-            post_block_video_url=block.post_block_video_url,
-            created_at=block.created_at,
-            focus_block_intention=block.focus_block_intention,
-            duration_minutes=block.duration_minutes,
-            xp_awarded=xp_awarded # Include our calculated field
+        return schemas.FocusBlockCompletionResponse.model_validate(
+            block,
+            update={'xp_awarded': xp_awarded} # Include our calculated field
         )
 
     except Exception as e:
