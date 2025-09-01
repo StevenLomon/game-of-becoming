@@ -6,6 +6,7 @@ import CreateFocusBlockForm from './CreateFocusBlockForm';
 import UpdateProgressForm from './UpdateProgressForm';
 import RewardDisplay from './RewardDisplay';
 import ConfirmationModal from './ConfirmationModal';
+import DailyResultDisplay from './DailyResultDisplay';
 import { completeDailyIntention, failDailyIntention } from '../services/api';
 
 // This component now contains all the logic and UI for the main application area.
