@@ -330,8 +330,21 @@ def get_game_state(
     to render the user's current game state upon loading the app.
     """
     stats = crud.get_or_create_user_stats(db, current_user.id)
-    todays_intention = crud.get_today_intention(db, current_user.id)
     unresolved_intention = crud.get_yesterday_incomplete_intention(db, current_user.id)
+
+    # Manually construct Daily Intention response
+    todays_intention_model = crud.get_today_intention(db, current_user.id)
+    todays_intention_response = None
+    if todays_intention_model:
+        completion_percentage = (
+                (todays_intention_model.completed_quantity / todays_intention_model.target_quantity) * 100
+                if todays_intention_model.target_quantity > 0 else 0.0
+            )
+        # Create response using model_validate and passing an update dictionary
+        todays_intention_response = schemas.DailyIntentionResponse.model_validate(
+            todays_intention_model,
+            update={'completion_percentage': completion_percentage}
+        )
 
     # NEW: Calculate level and XP progression
     current_level = calculate_level(stats.xp)
@@ -352,7 +365,7 @@ def get_game_state(
             discipline=stats.discipline,
             commitment=stats.commitment
         ),
-        todays_intention=todays_intention,
+        todays_intention=todays_intention_response,
         unresolved_intention=unresolved_intention
     )
 
