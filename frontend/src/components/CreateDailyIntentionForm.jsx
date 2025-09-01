@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import authFetch from '../utils/authFetch';
+import { createDailyIntention } from '../services/api';
 
 // It receives the token for the API call and a function to call on success
 function CreateDailyIntentionForm({ token, onDailyIntentionCreated }) {
