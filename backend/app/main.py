@@ -432,8 +432,22 @@ async def create_daily_intention(
             if clarity_gain > 0:
                 db.refresh(stats)
 
-            # Explicitly construct the response object
-            return schemas.DailyIntentionResponse.model_validate(db_intention)
+            # We can't just return db_intention. We must manually construct the response
+            # to include our calculated 'completion_percentage'.
+            return schemas.DailyIntentionResponse(
+                id=db_intention.id,
+                user_id=db_intention.user_id,
+                daily_intention_text=db_intention.daily_intention_text,
+                target_quantity=db_intention.target_quantity,
+                completed_quantity=db_intention.completed_quantity,
+                focus_block_count=db_intention.focus_block_count,
+                completion_percentage=0.0, # A new intention always starts at 0%
+                status=db_intention.status,
+                created_at=db_intention.created_at,
+                ai_feedback=db_intention.ai_feedback,
+                focus_blocks=db_intention.focus_blocks,
+                daily_result=db_intention.daily_result
+            )
         
         except Exception as e:
             db.rollback()
