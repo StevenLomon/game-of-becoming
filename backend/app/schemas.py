@@ -254,7 +254,10 @@ class DailyResultResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 class DailyResultCompletionResponse(DailyResultResponse):
-    """Specific response for when a Daily Intention is completed or failed, including the XP awarded and stat gain."""
+    """
+    Specific response for when a Daily Intention is completed or failed, including the XP 
+    awarded and stat gain.
+    """
     xp_awarded: int = 0
     discipline_stat_gain: int = 0
 

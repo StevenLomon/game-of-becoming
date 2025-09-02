@@ -392,11 +392,8 @@ async def create_daily_intention(
             if clarity_gain > 0:
                 db.refresh(stats)
 
-            # Include calculated value using __dict__ + model_validate
-            response_data = db_intention.__dict__
-            response_data["completion_percentage"] = 0.0 # A new intention always starts at 0%
-
-            return schemas.DailyIntentionResponse.model_validate(response_data)
+            # completion_percentage now automatically added thanks to schemas.py computed fields
+            return db_intention
         
         except Exception as e:
             db.rollback()
@@ -534,12 +531,11 @@ async def complete_daily_intention(
         db.refresh(db_result)
         db.refresh(stats)
 
-        # Include calculated value using __dict__ + model_validate
+        # We can't use schemas computed fields here since we've called the service layer
+        # We manually construct the response with the calculated field using __dict__ and model_validate 
         response_data = daily_intention.__dict__
-        response_data.update({
-                'discipline_stat_gain': discipline_gain,
-                'xp_awarded': xp_gain,
-            })
+        response_data["xp_awarded"] = xp_gain
+        response_data["discipline_stat_gain"] = discipline_gain
 
         return schemas.DailyResultCompletionResponse.model_validate(response_data)
     
@@ -606,12 +602,11 @@ async def fail_daily_intention(
         db.refresh(db_result)
         db.refresh(stats)
 
-        # Include calculated value using __dict__ + model_validate
+        # We can't use schemas computed fields here since we've called the service layer
+        # We manually construct the response with the calculated field using __dict__ and model_validate 
         response_data = daily_intention.__dict__
-        response_data.update({
-                'discipline_stat_gain': discipline_gain, 
-                'xp_awarded': xp_gain,
-            })
+        response_data["xp_awarded"] = xp_gain
+        response_data["discipline_stat_gain"] = discipline_gain
 
         return schemas.DailyResultCompletionResponse.model_validate(response_data)
     
@@ -720,10 +715,11 @@ def update_focus_block(
         if xp_awarded > 0:
             db.refresh(stats)
 
-        # Include calculated value using __dict__ + model_validate
+        # We can't use schemas computed fields here since we've called the service layer
+        # We manually construct the response with the calculated field using __dict__ and model_validate 
         response_data = block.__dict__
         response_data["xp_awarded"] = xp_awarded
-            
+
         return schemas.FocusBlockCompletionResponse.model_validate(response_data)
 
     except Exception as e:
