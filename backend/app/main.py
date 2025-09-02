@@ -338,15 +338,21 @@ def get_game_state(
     to render the user's current game state upon loading the app.
     """
     stats = crud.get_or_create_user_stats(db, current_user.id)
-    unresolved_intention = crud.get_yesterday_incomplete_intention(db, current_user.id)
     todays_intention_model = crud.get_today_intention(db, current_user.id)
+    unresolved_intention_model = crud.get_yesterday_incomplete_intention(db, current_user.id)
 
-    # Manually construct Daily Intention response
+    # Manually construct both Daily Intention responses; today's one and 
+    # yesterdays' potentially unresolved one
     todays_intention_response = None
+    unresolved_intention_response = None
     if todays_intention_model:
         intention_data = todays_intention_model.__dict__
         intention_data["completion_percentage"] = calculate_completion_percentage(todays_intention_model)
         todays_intention_response = schemas.DailyIntentionResponse.model_validate(intention_data)
+    if unresolved_intention_model:
+        intention_data = unresolved_intention_model.__dict__
+        intention_data["completion_percentage"] = calculate_completion_percentage(unresolved_intention_model)
+        unresolved_intention_response = schemas.DailyIntentionResponse.model_validate(intention_data)
 
     # Prepare the stats repsonse by calculating level and XP progression
     current_level = calculate_level(stats.xp)
@@ -365,7 +371,7 @@ def get_game_state(
         user=current_user,
         stats=stats_response,
         todays_intention=todays_intention_response,
-        unresolved_intention=unresolved_intention
+        unresolved_intention=unresolved_intention_response
     )
 
 @app.post("/api/onboarding/step", response_model=schemas.OnboardingStepResponse)
