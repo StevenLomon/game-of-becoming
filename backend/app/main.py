@@ -2,12 +2,11 @@ from __future__ import annotations  # keep ForwardRef happy with annotation-hand
 
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
-from fastapi.middleware.cors import CORSMiddleware # NEW: Import the CORS middleware
+from fastapi.middleware.cors import CORSMiddleware # Import the CORS middleware
 from sqlalchemy.orm import Session
 from datetime import datetime, timezone
 from typing import Annotated
 from dotenv import load_dotenv
-import math 
 
 # ---- Internal package imports (namespaced) ----
 from . import crud
@@ -45,28 +44,6 @@ app.add_middleware(
     allow_methods=["*"], # Allows all methods (GET, POST, etc.)
     allow_headers=["*"], # Allows all headers
 )
-
-# --- UTILITY FUNCTIONS ---
-
-def calculate_level(xp: int) -> int:
-    """Calculates user level based on total XP."""
-    if xp < 0: return 1
-    return math.floor((xp / 100) ** 0.5) + 1
-
-# A helper function for the next level's XP threshold
-def calculate_xp_for_level(level: int) -> int:
-    """Calculates the total XP required to reach a given level."""
-    if level <= 1:
-        return 0
-    # The formula for total XP to reach a level is 100 * (L-1)^2
-    return 100 * (level - 1) ** 2
-
-# NEW: A helper function for calculating completion percentage
-def calculate_completion_percentage(intention: models.DailyIntention) -> float:
-    """Calculates the completion percentage for a given intention."""
-    if not intention or intention.target_quantity == 0:
-        return 0.0
-    return (intention.completed_quantity / intention.target_quantity) * 100
 
 # --- ENDPOINT DEPENDENCIES ---
 
@@ -315,18 +292,8 @@ def get_my_character_stats(
     if not stats:
         raise HTTPException(status_code=404, detail="Character stats not found for your account.")
 
-    current_level = calculate_level(stats.xp)
-    xp_for_next_level = calculate_xp_for_level(current_level + 1)
-
-    # Include calculated value using __dict__ + model_validate
-    response_data = stats.__dict__
-    response_data.update({
-            'level': current_level,
-            'xp_for_next_level': xp_for_next_level,
-            'xp_needed_to_level': xp_for_next_level - stats.xp
-        })
-
-    return schemas.CharacterStatsResponse.model_validate(response_data)
+    # Pydantic now handles everything automatically thanks to our schema changes using computed_field
+    return stats
 
 @app.get("/api/users/me/game-state", response_model=schemas.GameStateResponse)
 def get_game_state(
@@ -338,33 +305,14 @@ def get_game_state(
     to render the user's current game state upon loading the app.
     """
     stats = crud.get_or_create_user_stats(db, current_user.id)
+    todays_intention = crud.get_today_intention(db, current_user.id)
     unresolved_intention = crud.get_yesterday_incomplete_intention(db, current_user.id)
-    todays_intention_model = crud.get_today_intention(db, current_user.id)
 
-    # Manually construct Daily Intention response
-    todays_intention_response = None
-    if todays_intention_model:
-        intention_data = todays_intention_model.__dict__
-        intention_data["completion_percentage"] = calculate_completion_percentage(todays_intention_model)
-        todays_intention_response = schemas.DailyIntentionResponse.model_validate(intention_data)
-
-    # Prepare the stats repsonse by calculating level and XP progression
-    current_level = calculate_level(stats.xp)
-    xp_for_next_level = calculate_xp_for_level(current_level + 1)
-
-    stats_data = stats.__dict__
-    stats_data.update({
-        'level': current_level,
-        'xp_for_next_level': xp_for_next_level,
-        'xp_needed_to_level': xp_for_next_level
-        })
-    stats_response = schemas.CharacterStatsResponse.model_validate(stats_data)
-
-    # Manually construct the response object
+    # Pydantic now handles everything automatically thanks to our schema changes using computed_field
     return schemas.GameStateResponse(
         user=current_user,
-        stats=stats_response,
-        todays_intention=todays_intention_response,
+        stats=stats,
+        todays_intention=todays_intention,
         unresolved_intention=unresolved_intention
     )
 
@@ -444,11 +392,8 @@ async def create_daily_intention(
             if clarity_gain > 0:
                 db.refresh(stats)
 
-            # Include calculated value using __dict__ + model_validate
-            response_data = db_intention.__dict__
-            response_data["completion_percentage"] = 0.0 # A new intention always starts at 0%
-
-            return schemas.DailyIntentionResponse.model_validate(response_data)
+            # completion_percentage now automatically added thanks to schemas.py computed fields
+            return db_intention
         
         except Exception as e:
             db.rollback()
@@ -461,7 +406,7 @@ async def create_daily_intention(
         
 @app.get("/api/intentions/today/me", response_model=schemas.DailyIntentionResponse)
 def get_my_daily_intention(
-    intention: Annotated[models.DailyIntention, Depends(get_current_user_daily_intention)]
+    daily_intention: Annotated[models.DailyIntention, Depends(get_current_user_daily_intention)]
     ):
     """
     Get today's Daily Intention for the currently logged in user.
@@ -469,18 +414,17 @@ def get_my_daily_intention(
     UPDATE: Now includes all associated Focus Blocks
     UPDATE: Now also potentially includes a Daily Result
     """
-    # Include calculated value using __dict__ + model_validate
-    response_data = intention.__dict__
-    response_data["completion_percentage"] = calculate_completion_percentage(intention)
 
     # Now includes focus_blocks list. The 'intention.focus_blocks' attribute is already populated thanks
     # to our eager loading in crud.py. No extra database query is needed here
-    return schemas.DailyIntentionResponse.model_validate(response_data)
+    # completion_percentage added automatically now thanks to our schema changes using computed_field
+    # All we do is to simply return the Daily Intention from the dependency
+    return daily_intention
 
 @app.patch("/api/intentions/today/progress", response_model=schemas.DailyIntentionResponse)
 def update_daily_intention_progress(
     progress_data: schemas.DailyIntentionUpdate,
-    intention: Annotated[models.DailyIntention, Depends(get_current_user_daily_intention)],
+    daily_intention: Annotated[models.DailyIntention, Depends(get_current_user_daily_intention)],
     db: Session = Depends(database.get_db),
 ):
     """
@@ -490,7 +434,7 @@ def update_daily_intention_progress(
     - Determines if intention is completed, in progress or failed
     """
     # Strict Forward Progress: Users should not be able to report less progress than already recorded
-    if progress_data.completed_quantity < intention.completed_quantity:
+    if progress_data.completed_quantity < daily_intention.completed_quantity:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="You cannot report less progress than you have already recorded."
@@ -498,22 +442,19 @@ def update_daily_intention_progress(
 
     try:
         # Update progress: absolute, not incremental! Simpler mental model - "Where am I vs my goal?"
-        intention.completed_quantity = min(progress_data.completed_quantity, intention.target_quantity)
-        if intention.completed_quantity >= intention.target_quantity:
-            intention.status = 'completed'
-        elif intention.completed_quantity > 0:
-            intention.status = 'in_progress'
+        daily_intention.completed_quantity = min(progress_data.completed_quantity, daily_intention.target_quantity)
+        if daily_intention.completed_quantity >= daily_intention.target_quantity:
+            daily_intention.status = 'completed'
+        elif daily_intention.completed_quantity > 0:
+            daily_intention.status = 'in_progress'
         else:
-            intention.status = 'pending'
+            daily_intention.status = 'pending'
 
         db.commit()
-        db.refresh(intention)
+        db.refresh(daily_intention)
 
-        # Include calculated value using __dict__ + model_validate
-        response_data = intention.__dict__
-        response_data["completion_percentage"] = calculate_completion_percentage(intention)
-        
-        return schemas.DailyIntentionResponse.model_validate(response_data)
+        # completion_percentage added automatically now thanks to our schema changes using computed_field
+        return daily_intention
     
     except Exception as e:
         print(f"Database error: {e}") 
@@ -590,12 +531,11 @@ async def complete_daily_intention(
         db.refresh(db_result)
         db.refresh(stats)
 
-        # Include calculated value using __dict__ + model_validate
-        response_data = daily_intention.__dict__
-        response_data.update({
-                'discipline_stat_gain': discipline_gain,
-                'xp_awarded': xp_gain,
-            })
+        # We can't use schemas computed fields here since we've called the service layer
+        # We manually construct the response with the calculated field using __dict__ and model_validate 
+        response_data = db_result.__dict__
+        response_data["xp_awarded"] = xp_gain
+        response_data["discipline_stat_gain"] = discipline_gain
 
         return schemas.DailyResultCompletionResponse.model_validate(response_data)
     
@@ -662,12 +602,11 @@ async def fail_daily_intention(
         db.refresh(db_result)
         db.refresh(stats)
 
-        # Include calculated value using __dict__ + model_validate
-        response_data = daily_intention.__dict__
-        response_data.update({
-                'discipline_stat_gain': discipline_gain, 
-                'xp_awarded': xp_gain,
-            })
+        # We can't use schemas computed fields here since we've called the service layer
+        # We manually construct the response with the calculated field using __dict__ and model_validate 
+        response_data = db_result.__dict__
+        response_data["xp_awarded"] = xp_gain
+        response_data["discipline_stat_gain"] = discipline_gain
 
         return schemas.DailyResultCompletionResponse.model_validate(response_data)
     
@@ -776,10 +715,11 @@ def update_focus_block(
         if xp_awarded > 0:
             db.refresh(stats)
 
-        # Include calculated value using __dict__ + model_validate
+        # We can't use schemas computed fields here since we've called the service layer
+        # We manually construct the response with the calculated field using __dict__ and model_validate 
         response_data = block.__dict__
         response_data["xp_awarded"] = xp_awarded
-            
+
         return schemas.FocusBlockCompletionResponse.model_validate(response_data)
 
     except Exception as e:
