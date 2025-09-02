@@ -1,6 +1,7 @@
-from pydantic import BaseModel, field_validator, Field, EmailStr, ConfigDict
+from pydantic import BaseModel, field_validator, Field, EmailStr, ConfigDict, computed_field
 from typing import Optional, Union
 from datetime import datetime
+import math
 
 
 # =============================================================================
@@ -70,8 +71,8 @@ class UserResponse(BaseModel):
     name: str
     email: str
     hla: Optional[str]
-    current_streak: int # NEW
-    longest_streak: int # NEW
+    current_streak: int
+    longest_streak: int
     registered_at: datetime
 
     # New Onboarding fields
@@ -83,16 +84,36 @@ class UserResponse(BaseModel):
 
 class CharacterStatsResponse(BaseModel):
     user_id: int
-    level: int # The calculated level
+    # level: int, xp_for_next_level: int, and xp_needed_to_level: int are now all computed fields!
     xp: int
-    xp_for_next_level: int # New field for the XP progression bar
-    xp_needed_to_level: int # New field for the XP progression bar
     resilience: int
     clarity: int
     discipline: int
     commitment: int
 
     model_config = ConfigDict(from_attributes=True)
+
+    @computed_field
+    @property
+    def level(self) -> int:
+        """Calculate the user level based on total XP"""
+        if self.xp < 0: return 1
+        # The formula for level is the inverse of the XP formula: L = floor(sqrt(XP/100)) + 1
+        return math.floor((self.xp / 100) ** 0.5) + 1
+    
+    @computed_field
+    @property
+    def xp_for_next_level(self) -> int:
+        """Calculates the total XP required to reach the next level."""
+        # The formula for total XP to reach a level is 100 * (L-1)^2
+        next_level = self.level + 1
+        return 100 * (next_level - 1) ** 2
+
+    @computed_field
+    @property
+    def xp_needed_to_level(self) -> int:
+        """Calculates the XP needed to get to the next level."""
+        return self.xp_for_next_level - self.xp
 
 
 # =============================================================================
@@ -270,7 +291,7 @@ class DailyIntentionResponse(BaseModel):
     target_quantity: int
     completed_quantity: int
     focus_block_count: int
-    completion_percentage: float
+    # completion_percentage: float is removed and replaced with a computed_field!
     status: str # 'pending', 'in_progress', 'completed', 'failed'
     created_at: datetime
     ai_feedback: Optional[str] = None # AI coach's immediate feedback. Can be null if Claude API fails
@@ -280,6 +301,14 @@ class DailyIntentionResponse(BaseModel):
     daily_result: Optional[DailyResultCompletionResponse] = None
 
     model_config = ConfigDict(from_attributes=True) # Allows model to be created from ORM attributes
+
+    @computed_field
+    @property
+    def completion_percentage(self) -> float:
+        """Calculates the completion percentage for the intention."""
+        if self.target_quantity == 0:
+            return 0.0
+        return (self.completed_quantity / self.target_quantity) * 100
 
 # Tells the creation endpoint what its possible responses are
 DailyIntentionCreateResponse = Union[DailyIntentionRefinementResponse, DailyIntentionResponse]
