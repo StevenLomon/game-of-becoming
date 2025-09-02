@@ -533,7 +533,7 @@ async def complete_daily_intention(
 
         # We can't use schemas computed fields here since we've called the service layer
         # We manually construct the response with the calculated field using __dict__ and model_validate 
-        response_data = daily_intention.__dict__
+        response_data = db_result.__dict__
         response_data["xp_awarded"] = xp_gain
         response_data["discipline_stat_gain"] = discipline_gain
 
@@ -604,7 +604,7 @@ async def fail_daily_intention(
 
         # We can't use schemas computed fields here since we've called the service layer
         # We manually construct the response with the calculated field using __dict__ and model_validate 
-        response_data = daily_intention.__dict__
+        response_data = db_result.__dict__
         response_data["xp_awarded"] = xp_gain
         response_data["discipline_stat_gain"] = discipline_gain
 
