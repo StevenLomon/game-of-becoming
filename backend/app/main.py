@@ -296,7 +296,7 @@ def get_my_character_stats(
     return stats
 
 @app.get("/api/users/me/game-state", response_model=schemas.GameStateResponse)
-def get_game_state(
+async def get_game_state(
     current_user: Annotated[models.User, Depends(security.get_current_user)],
     db: Session = Depends(database.get_db)
 ):
@@ -307,6 +307,27 @@ def get_game_state(
     stats = crud.get_or_create_user_stats(db, current_user.id)
     todays_intention = crud.get_today_intention(db, current_user.id)
     unresolved_intention = crud.get_yesterday_incomplete_intention(db, current_user.id)
+
+    # The "passive failure" path; user did nothing with yesterday's Daily Intention
+    if unresolved_intention and not unresolved_intention.daily_result:
+        unresolved_intention.status = 'failed' # Mark it as failed
+
+        # Call existing service to generate the result and Recovery Quest
+        reflection_data = await services.create_daily_reflection(
+            db=db, user=current_user, daily_intention=unresolved_intention
+        )
+
+        new_result = models.DailyResult(
+            daily_intention_id=unresolved_intention.id,
+            succeeded_failed=False,
+            ai_feedback=reflection_data["ai_feedback"],
+            recovery_quest=reflection_data["recovery_quest"],
+            xp_awarded=0,
+            discipline_stat_gain=0
+        )
+        db.add(new_result)
+        db.commit()
+        db.refresh(unresolved_intention) # Refresh to load the new relationship
 
     # Pydantic now handles everything automatically thanks to our schema changes using computed_field
     return schemas.GameStateResponse(
