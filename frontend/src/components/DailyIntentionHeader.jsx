@@ -9,8 +9,8 @@ function DailyIntentionHeader({ intention, onComplete }) {
   const completedBlocksCount = intention.focus_blocks.filter(b => b.status === 'completed').length;
 
   return (
-    // The main container for the header. A flexbox to align items horizontally.
-    <div className="flex items-center justify-between bg-gray-900 p-4 rounded-lg shadow-md mb-8">
+    // The main container for the header. A flexbox, now with items-start and relative to position the button
+    <div className="flex items-start justify-between bg-gray-900 p-4 rounded-lg shadow-md mb-8 relative">
       
       {/* Left side of the header */}
       <div>
@@ -33,7 +33,8 @@ function DailyIntentionHeader({ intention, onComplete }) {
       </div>
       
       {/* Right side of the header */}
-      <div>
+      {/* Position the button at the bottom-right corner using absolute positioning */}
+      <div className="absolute bottom-4 right-4">
         <button
           onClick={onComplete}
           disabled={!isCompletable}
