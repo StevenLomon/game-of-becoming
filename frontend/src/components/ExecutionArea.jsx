@@ -1,15 +1,27 @@
 // Decides whether to show the active timer or the "Start Focus Block" button
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import ActiveFocusBlock from './ActiveFocusBlock';
 import CreateFocusBlockModal from './CreateFocusBlockModal';
 import { createFocusBlock } from '../services/api'; 
 
-function ExecutionArea({ intention, onBlockCreated, onBlockCompleted }) {
+function ExecutionArea({ user, intention, onBlockCreated, onBlockCompleted }) { //'user' prop added in order to display "Welcome, NAME"
     // Find if there's a block that is started out but not yet completed
     const activeBlock = intention ? intention.focus_blocks.find(b => b.status === 'in progress') : null;
 
-    // State to control our "Start Focus Block" modal
-    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isModalOpen, setIsModalOpen] = useState(false); // State to control our "Start Focus Block" modal
+    const [currentTime, setCurrentTime] = useState(new Date());
+
+    // Our "Embassy's" subscription to the browser's clock
+    useEffect(() => {
+        // Set an interval to update the time every second (?) (1000ms)
+        const timerId = setInterval(() => {
+            setCurrentTime(new Date());
+        }, 1000);
+
+        // The cleanup function: When the component unmounts, we clear the interval
+        // to prevent memory leaks
+        return () => clearInterval(timerId);
+    }, []); // The empty dependency array ensures the effect only runs once on mount
 
     // This function will be passed to the modal to handle form submission
     const handleCreateBlock = async (blockData) => {
@@ -29,6 +41,12 @@ function ExecutionArea({ intention, onBlockCreated, onBlockCompleted }) {
         }
     };
 
+    // Format the time for display using toLocaleTimeString for clean AM/PM format
+    const formattedTime = currentTime.toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+    });
+
     return (
     <div className="flex flex-col items-center justify-center h-full text-center">
       {activeBlock ? (
@@ -37,19 +55,24 @@ function ExecutionArea({ intention, onBlockCreated, onBlockCompleted }) {
       ) : (
         // If no block is active, show our beautiful "Start Sprint" button
         <>
-          <h3 className="text-2xl font-bold text-gray-400 mb-4">Focus Block: 0 / {intention?.focus_block_count || 1}</h3>
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="w-48 h-48 bg-gray-700 rounded-full flex items-center justify-center text-xl font-bold text-teal-400 border-4 border-gray-600 hover:bg-teal-800 hover:border-teal-600 transition-colors duration-300"
-          >
-            Start Focus Block
-          </button>
+            {/* Welcome message */}
+            <h3 className="text-2xl font-bold text-gray-400 mb-4">Welcome, {user.name}</h3>
           
-          <CreateFocusBlockModal 
-            isOpen={isModalOpen}
-            onClose={() => setIsModalOpen(false)}
-            onSubmit={handleCreateBlock}
-          />
+            {/* Current time formatted as AM/PM */}
+            <h3 className="text-4xl font-mono font-bold text-white mb-6">{formattedTime}</h3>
+
+            <button
+                onClick={() => setIsModalOpen(true)}
+                className="w-48 h-48 bg-gray-700 rounded-full flex items-center justify-center text-xl font-bold text-teal-400 border-4 border-gray-600 hover:bg-teal-800 hover:border-teal-600 transition-colors duration-300"
+            >
+                Start Focus Block
+            </button>
+            
+            <CreateFocusBlockModal 
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                onSubmit={handleCreateBlock}
+            />
         </>
       )}
     </div>

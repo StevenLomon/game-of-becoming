@@ -84,7 +84,7 @@ function MainContent({ user, token, intention, refreshGameState }) {
                 activeBlock ? (
                   <ActiveFocusBlock block={activeBlock} token={token} onBlockCompleted={handleFocusBlockCompleted} />
                 ) : (
-                  <ExecutionArea intention={intention} onBlockCreated={refreshGameState} onBlockCompleted={handleFocusBlockCompleted} />
+                  <ExecutionArea user={user} intention={intention} onBlockCreated={refreshGameState} onBlockCompleted={handleFocusBlockCompleted} />
                 )
               )}
 
