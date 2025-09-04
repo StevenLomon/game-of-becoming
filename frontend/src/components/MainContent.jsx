@@ -6,9 +6,10 @@ import ActiveFocusBlock from './ActiveFocusBlock'; // Updated to use circular UI
 // import CreateFocusBlockForm from './CreateFocusBlockForm'; No longer used
 import UpdateProgressForm from './UpdateProgressForm';
 import RewardDisplay from './RewardDisplay';
-import ConfirmationModal from './ConfirmationModal';
+// import ConfirmationModal from './ConfirmationModal'; The button that triggered this is no longer used
 import DailyResultDisplay from './DailyResultDisplay';
 import ExecutionArea from './ExecutionArea';
+import AIChatBox from './AIChatBox';
 import { completeDailyIntention, failDailyIntention } from '../services/api';
 
 // This component now contains all the logic and UI for the main application area.
@@ -59,7 +60,7 @@ function MainContent({ user, token, intention, refreshGameState }) {
   const activeBlock = intention ? intention.focus_blocks.find(b => b.status === 'pending' || b.status === 'in_progress') : null;
 
   return (
-    <div>
+    <div className="flex flex-col h-full">
       {error && (
         <div className="bg-red-900 border-red-700 text-red-300 px-4 py-3 rounded-md mb-4">
           {error}
@@ -74,7 +75,7 @@ function MainContent({ user, token, intention, refreshGameState }) {
             refreshGameState={refreshGameState}
           />
         ) : (
-          <div>
+          <div className="flex flex-col h-full">
             <DailyIntentionHeader intention={intention} onComplete={handleCompleteIntention} />
             
             {view === 'progress' && <RewardDisplay rewards={lastReward} />}
@@ -97,28 +98,12 @@ function MainContent({ user, token, intention, refreshGameState }) {
               )}
             </div>
 
-            <div className="mt-6 pt-6 border-t border-gray-700 text-center">
-              <button
-                onClick={handleFailIntentionClick}
-                className="text-gray-400 hover:text-white hover:bg-gray-700 py-2 px-4 rounded-md text-sm"
-              >
-                I can't finish my quest today.
-              </button>
-            </div>
+            <AIChatBox />
           </div>
         )
       ) : (
         <CreateDailyIntentionForm token={token} onDailyIntentionCreated={refreshGameState} />
       )}
-
-      <ConfirmationModal
-        isOpen={isFailConfirmVisible}
-        onClose={() => setIsFailConfirmVisible(false)}
-        onConfirm={confirmFailIntention}
-        title="End Today's Quest?"
-      >
-        <p>Are you sure you want to end today's quest? This will move you to your evening reflection.</p>
-      </ConfirmationModal>
     </div>
   );
 }
