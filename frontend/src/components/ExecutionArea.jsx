@@ -47,6 +47,8 @@ function ExecutionArea({ user, intention, onBlockCreated, onBlockCompleted }) { 
         minute: '2-digit',
     });
 
+    const userFirstName = user.name.split(' ')[0]; // Grab the first name from the 'user' prop to display it
+
     return (
     <div className="flex flex-col items-center justify-center h-full text-center">
       {activeBlock ? (
@@ -56,7 +58,7 @@ function ExecutionArea({ user, intention, onBlockCreated, onBlockCompleted }) { 
         // If no block is active, show our beautiful "Start Sprint" button
         <>
             {/* Welcome message */}
-            <h3 className="text-2xl font-bold text-gray-400 mb-4">Welcome, {user.name}</h3>
+            <h3 className="text-2xl font-bold text-gray-400 mb-4">Welcome, {userFirstName}</h3>
           
             {/* Current time formatted as AM/PM */}
             <h3 className="text-4xl font-mono font-bold text-white mb-6">{formattedTime}</h3>
