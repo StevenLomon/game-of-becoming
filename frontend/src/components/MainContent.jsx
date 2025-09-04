@@ -2,12 +2,13 @@ import { useState } from 'react';
 import CreateDailyIntentionForm from './CreateDailyIntentionForm';
 import DisplayIntention from './DisplayIntention';
 import ActiveFocusBlock from './ActiveFocusBlock';
-import CreateFocusBlockForm from './CreateFocusBlockForm';
+// import CreateFocusBlockForm from './CreateFocusBlockForm'; No longer used!
 import UpdateProgressForm from './UpdateProgressForm';
 import RewardDisplay from './RewardDisplay';
 import ConfirmationModal from './ConfirmationModal';
 import DailyResultDisplay from './DailyResultDisplay';
 import { completeDailyIntention, failDailyIntention } from '../services/api';
+import ExecutionArea from './ExecutionArea';
 
 // This component now contains all the logic and UI for the main application area.
 function MainContent({ user, token, intention, refreshGameState }) {
@@ -87,7 +88,7 @@ function MainContent({ user, token, intention, refreshGameState }) {
                 activeBlock ? (
                   <ActiveFocusBlock block={activeBlock} token={token} onBlockCompleted={handleFocusBlockCompleted} />
                 ) : (
-                  <CreateFocusBlockForm token={token} onBlockCreated={refreshGameState} />
+                  <ExecutionArea intention={intention} onBlockCreated={refreshGameState} onBlockCompleted={handleFocusBlockCompleted} />
                 )
               )}
 
