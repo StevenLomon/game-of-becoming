@@ -101,7 +101,7 @@ function ActiveFocusBlock({ block, token, onBlockCompleted }) {
             stroke="#48BB78" // This is Tailwind's green-500
             strokeWidth="15"
             strokeDasharray={circumference}
-            strokeDashOffset={strokeDashOffset}
+            strokeDashoffset={strokeDashOffset}
             strokeLinecap="round"
             transform="rotate(-90 100 100)" // This makes the circle start from the top
             style={{ transition: 'stroke-dashoffset 1s linear' }} // This animates the timer smoothly
