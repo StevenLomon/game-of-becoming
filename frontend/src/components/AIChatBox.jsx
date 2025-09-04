@@ -18,7 +18,7 @@ function AIChatBox() {
 
   // Placeholder for messages. In the future, this will come from props.
   const messageHistory = [
-    { sender: 'ai', text: 'Great work on the first focus block! How are you feeling?' },
+    { sender: 'ai', text: 'Great work on the first Focus Block! How are you feeling?' },
     { sender: 'user', text: 'Feeling good! Ready for the next sprint.' },
   ];
 

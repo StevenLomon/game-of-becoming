@@ -17,10 +17,18 @@ function DailyIntentionHeader({ intention, onComplete }) {
         <h2 className="text-lg font-semibold text-white">Daily Intention:</h2>
         <p className="text-gray-400">{intention.daily_intention_text}</p>
         
-        {/* Progress details */}
-        <div className="flex space-x-4 text-sm mt-1 text-gray-500">
-          <span>Progress: {intention.completed_quantity} / {intention.target_quantity}</span>
-          <span>Focus Blocks: {completedBlocksCount} / {intention.focus_block_count}</span>
+        {/* This parent div will hold our two vertically stacked lines of text. */}
+        <div className="text-sm space-y-1">
+          {/* Progress Line */}
+          <div>
+            <span className="font-bold text-white mr-2">Progress:</span>
+            <span className="text-gray-400">{intention.completed_quantity} / {intention.target_quantity}</span>
+          </div>
+          {/* Focus Blocks Line */}
+          <div>
+            <span className="font-bold text-white mr-2">Focus Blocks:</span>
+            <span className="text-gray-400">{completedBlocksCount} / {intention.focus_block_count}</span>
+          </div>
         </div>
       </div>
       
