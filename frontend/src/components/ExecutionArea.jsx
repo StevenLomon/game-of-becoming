@@ -2,6 +2,7 @@
 import { useState } from "react";
 import ActiveFocusBlock from './ActiveFocusBlock';
 import CreateFocusBlockModal from './CreateFocusBlockModal';
+import { createFocusBlock } from '../services/api'; 
 
 function ExecutionArea({ intention, onBlockCreated, onBlockCompleted }) {
     // Find if there's a block that is started out but not yet completed
@@ -12,11 +13,20 @@ function ExecutionArea({ intention, onBlockCreated, onBlockCompleted }) {
 
     // This function will be passed to the modal to handle form submission
     const handleCreateBlock = async (blockData) => {
-        // Here we'll call the API service, close the modal, and refresh the game state
-        // For now, let's just log it.
-        console.log("Creating block with:", blockData);
-        setIsModalOpen(false);
-        onBlockCreated(); // This function is passed down from the Dashboard
+        try {
+            // Call the API service with the data from the modal
+            await createFocusBlock(
+                blockData.focus_block_intention, 
+                blockData.duration_minutes
+            );
+
+            // On success, close the modal and refresh the game state
+            setIsModalOpen(false);
+            onBlockCreated(); // This function is passed down from the Dashboard and fetches the new state with an active block
+        } catch (error) {
+            console.error("Failed to create focus block:", error);
+            setIsModalOpen(false); // Close the modal even on error
+        }
     };
 
     return (
