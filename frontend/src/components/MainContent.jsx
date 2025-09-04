@@ -1,14 +1,15 @@
 import { useState } from 'react';
 import CreateDailyIntentionForm from './CreateDailyIntentionForm';
-import DisplayIntention from './DisplayIntention';
-import ActiveFocusBlock from './ActiveFocusBlock';
-// import CreateFocusBlockForm from './CreateFocusBlockForm'; No longer used!
+// import DisplayIntention from './DisplayIntention'; No longer used
+import DailyIntentionHeader from './DailyIntentionHeader';
+import ActiveFocusBlock from './ActiveFocusBlock'; // Updated to use circular UI
+// import CreateFocusBlockForm from './CreateFocusBlockForm'; No longer used
 import UpdateProgressForm from './UpdateProgressForm';
 import RewardDisplay from './RewardDisplay';
 import ConfirmationModal from './ConfirmationModal';
 import DailyResultDisplay from './DailyResultDisplay';
-import { completeDailyIntention, failDailyIntention } from '../services/api';
 import ExecutionArea from './ExecutionArea';
+import { completeDailyIntention, failDailyIntention } from '../services/api';
 
 // This component now contains all the logic and UI for the main application area.
 function MainContent({ user, token, intention, refreshGameState }) {
@@ -59,11 +60,6 @@ function MainContent({ user, token, intention, refreshGameState }) {
 
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-white">Welcome, {user.name}</h1>
-        <p className="text-gray-400">Your Highest Leverage Activity: "{user.hla}"</p>
-      </div>
-      
       {error && (
         <div className="bg-red-900 border-red-700 text-red-300 px-4 py-3 rounded-md mb-4">
           {error}
@@ -79,7 +75,7 @@ function MainContent({ user, token, intention, refreshGameState }) {
           />
         ) : (
           <div>
-            <DisplayIntention intention={intention} onComplete={handleCompleteIntention} />
+            <DailyIntentionHeader intention={intention} onComplete={handleCompleteIntention} />
             
             {view === 'progress' && <RewardDisplay rewards={lastReward} />}
             
