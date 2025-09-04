@@ -1,8 +1,12 @@
+// Now 2.0 to match the circular Focus Block UI of ExecutionArea.jsx!
 import { useState, useEffect, useCallback } from 'react';
 import { updateFocusBlock } from '../services/api';
 
 function ActiveFocusBlock({ block, token, onBlockCompleted }) {
     // --- START OF TIMER LOGIC ---
+
+    // Calculate the total duration in seconds from the start. This is our "100%" value.
+    const totalDuration = block.duration_minutes * 60;
 
     // A helper function to calculate time left based on the server's timestamp
     const calculateRemainingTime = () => {
@@ -23,8 +27,16 @@ function ActiveFocusBlock({ block, token, onBlockCompleted }) {
         return Math.max(0, Math.floor(remainingMs / 1000));
     }
 
-    // THE DISPLAY: Initializing our state by *calculating* the remining time
+    // THE DISPLAY: Initializing our state by *calculating* the remaining time
     const [timeLeft, setTimeLeft] = useState(calculateRemainingTime());
+
+    // THE CIRCLE: Using SVG and math
+    const radius = 80; // The size of our circle
+    const circumference = 2 * Math.PI * radius; // Total length of the circle's border
+
+    // Calculate how much of the circle's border shuold be "drawn" to show progress
+    const progress = timeLeft / totalDuration;
+    const strokeDashOffset = circumference * (1 - progress);
 
     // THE TICKING MECHANISM & CLEANUP: This effect runs when the component mounts
     useEffect(() => {
@@ -43,10 +55,6 @@ function ActiveFocusBlock({ block, token, onBlockCompleted }) {
 
     }, []); // The effect only runs *once* when the component mounts
 
-    // Helper variables to format the display from total seconds.
-    const minutes = Math.floor(timeLeft / 60);
-    const seconds = timeLeft % 60;
-
     // With our second effect in action now; we need to use useCallback to satisfy the dependency array of our new "watchdog" effect.
     // This tells React that `handleComplete` itself won't change unless its own dependencies change
     const handleComplete = useCallback(async () => {
@@ -59,7 +67,7 @@ function ActiveFocusBlock({ block, token, onBlockCompleted }) {
         }
     }, [block.id, token, onBlockCompleted]);
 
-    // A second effect that looks for the timer to hit zero and auto-complete the Focus Block (Single Responsibility Principle in action!)
+    // A second "Watchdog" effect that looks for the timer to hit zero and auto-complete the Focus Block (Single Responsibility Principle in action!)
     useEffect(() => {
         // If the timer hits 0, call the handleComplete function
         if (timeLeft === 0) {
@@ -67,24 +75,53 @@ function ActiveFocusBlock({ block, token, onBlockCompleted }) {
         }
     }, [timeLeft, handleComplete]); // We depend on timeLeft, and also handleComplete in case it changes
 
+    // Helper variables to format the display from total seconds to e.g. 16:24
+    const minutes = Math.floor(timeLeft / 60);
+    const seconds = timeLeft % 60;
+    const displayTime = `${minutes}:${seconds < 10 ? `0${seconds}` : seconds}`;
+
     return (
-        <div className="mt-6 p-4 bg-gray-700 rounded-lg border border-teal-500">
-        <h3 className="text-lg font-bold text-teal-400">Active Focus Sprint:</h3>
-        <p className="text-white mt-2 text-xl">"{block.focus_block_intention}"</p>
-        {/* We replace the static duration with our dynamic timer display */}
-        <p className="text-gray-400 mt-1 font-mono text-lg">
-            {/* Display the timer, adding a leading zero to seconds if needed */}
-            Time Remaining: {minutes}:{seconds < 10 ? `0${seconds}` : seconds}
-        </p>
-        <button
-            onClick={handleComplete}
-            className="mt-4 w-full py-2 px-4 border rounded-md font-medium text-white bg-green-600 hover:bg-green-700"
-        >
-            Mark as Complete
-        </button>
+    <div className="flex flex-col items-center justify-center">
+      <h3 className="text-2xl font-bold text-gray-400 mb-4">Focus Block: {block.focus_block_intention}</h3>
+      
+      {/* The SVG-based circular timer */}
+      <div className="relative w-48 h-48">
+        <svg className="w-full h-full" viewBox="0 0 200 200">
+          {/* The background circle (the gray track) */}
+          <circle
+            cx="100" cy="100" r={radius}
+            fill="none"
+            stroke="#4A5568" // This is Tailwind's gray-600
+            strokeWidth="15"
+          />
+          {/* The foreground circle (the green progress) */}
+          <circle
+            cx="100" cy="100" r={radius}
+            fill="none"
+            stroke="#48BB78" // This is Tailwind's green-500
+            strokeWidth="15"
+            strokeDasharray={circumference}
+            strokeDashOffset={strokeDashOffset}
+            strokeLinecap="round"
+            transform="rotate(-90 100 100)" // This makes the circle start from the top
+            style={{ transition: 'stroke-dashoffset 1s linear' }} // This animates the timer smoothly
+          />
+        </svg>
+        {/* The text inside the circle */}
+        <div className="absolute inset-0 flex items-center justify-center">
+          <span className="text-4xl font-bold text-white">{displayTime}</span>
         </div>
+      </div>
+
+      {/* The developer-only "Mark as Complete" button */}
+      <button
+        onClick={handleComplete}
+        className="mt-8 bg-gray-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-md text-sm"
+      >
+        Mark as Complete (Dev)
+      </button>
+    </div>
   );
 }
-
 
 export default ActiveFocusBlock;
