@@ -60,6 +60,7 @@ function MainContent({ user, token, intention, refreshGameState }) {
   const activeBlock = intention ? intention.focus_blocks.find(b => b.status === 'pending' || b.status === 'in_progress') : null;
 
   return (
+    // This top-level container is our main flex column. It's perfect.
     <div className="flex flex-col h-full">
       {error && (
         <div className="bg-red-900 border-red-700 text-red-300 px-4 py-3 rounded-md mb-4">
@@ -75,15 +76,20 @@ function MainContent({ user, token, intention, refreshGameState }) {
             refreshGameState={refreshGameState}
           />
         ) : (
-          <div className="flex flex-col h-full">
+          // This is the main execution view. It's a flex column.
+          <>
+            {/* 1. The Header (takes up its own height) */}
             <DailyIntentionHeader intention={intention} onComplete={handleCompleteIntention} />
-            
-            {view === 'progress' && <RewardDisplay rewards={lastReward} />}
-            
-            <div className="mt-8">
+
+            {/* 2. The Main Content Area (this div will grow) */}
+            {/* We give this div 'flex-grow' so it expands to fill all available
+                vertical space, pushing the AIChatBox to the bottom. */}
+            <div className="flex-grow mt-8">
+              {view === 'progress' && <RewardDisplay rewards={lastReward} />}
+              
               {view === 'focus' && (
                 activeBlock ? (
-                  <ActiveFocusBlock block={activeBlock} token={token} onBlockCompleted={handleFocusBlockCompleted} />
+                  <ActiveFocusBlock block={activeBlock} onBlockCompleted={handleFocusBlockCompleted} />
                 ) : (
                   <ExecutionArea user={user} intention={intention} onBlockCreated={refreshGameState} onBlockCompleted={handleFocusBlockCompleted} />
                 )
@@ -98,8 +104,9 @@ function MainContent({ user, token, intention, refreshGameState }) {
               )}
             </div>
 
+            {/* 3. The Footer (sits at the bottom) */}
             <AIChatBox user={user} />
-          </div>
+          </>
         )
       ) : (
         <CreateDailyIntentionForm token={token} onDailyIntentionCreated={refreshGameState} />

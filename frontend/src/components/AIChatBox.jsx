@@ -51,8 +51,9 @@ function AIChatBox({ user }) {
   };
 
   return (
-    <div className="flex flex-col h-full bg-gray-900 p-4 rounded-lg mt-8">
-      {/* Message History Area */}
+    // The main container is given a fixed height so that we can implement a scrollable chat box
+    <div className="flex flex-col h-96 bg-gray-900 p-4 rounded-lg mt-8"> 
+      {/* Message History Area (overflow-y-auto is the magic that adds a scrollbar only when needed) */}
       <div className="flex-grow overflow-y-auto mb-4 pr-2">
         <div className="space-y-4">
           {messages.map((msg, index) => (
