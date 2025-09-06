@@ -2,7 +2,7 @@ from typing import Any
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field
 from datetime import datetime, date, timezone
-import os
+import os, asyncio # asyncio added for asyncio.sleep which will be used for realistic testing when DISABLE_AI_CALLS is set to True
 
 # Import modules
 from . import models
@@ -415,7 +415,11 @@ async def generate_chat_response(db: Session, user: models.User, message: str) -
     This is the "Oracle" fot eh main chat interface.
     """
     if os.getenv("DISABLE_AI_CALLS") == "True":
-        print("--- AI CALL DISABLED: Returning mock chat response. ---")
+        print("--- AI CALL DISABLED: Returning mock chat response with 2-second delay. ---")
+        
+        # Add a non-blocking delay to simulate the AI "thinking"
+        await asyncio.sleep(2)
+        
         return f"This is a mock AI response to your message: '{message}'"
     
     llm_provider = get_llm_provider()
