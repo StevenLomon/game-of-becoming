@@ -408,3 +408,38 @@ async def process_recovery_quest_response(db: Session, user: models.User, result
         
     coaching["xp_awarded"] = xp_to_award # Include XP gain
     return coaching
+
+async def generate_chat_response(db: Session, user: models.User, message: str) -> str:
+    """
+    Generates a conversational response from the AI coach.
+    This is the "Oracle" fot eh main chat interface.
+    """
+    if os.getenv("DISABLE_AI_CALLS") == "True":
+        print("--- AI CALL DISABLED: Returning mock chat response. ---")
+        return f"This is a mock AI response to your message: '{message}'"
+    
+    llm_provider = get_llm_provider()
+
+    # This system prompt defines the AI's core persona for the chat.
+    # It's more conversational and less task-specific than our other prompts.
+    system_prompt = f"""
+    You are the AI Coach for "The Game of Becoming," a gamified productivity app.
+    Your persona is a supportive, encouraging, and slightly philosophical guide.
+    Your goal is to help the user stay focused, motivated, and aligned with their goals.
+    You are not just a chatbot; you are their partner on the journey of becoming the person they want to be.
+    Keep your responses concise, thoughtful, and encouraging (2-4 sentences).
+
+    User's Name: {user.name}
+    User's Stated Goal (HLA): {user.hla}
+    """
+
+    # We simply pass the user's message as the user prompt.
+    user_prompt = message
+
+    # We use generate_text_response because we just need a simple string,
+    # not a structured JSON object.
+    ai_response = await llm_provider.generate_text_response(
+        system_prompt=system_prompt, user_prompt=user_prompt
+    )
+
+    return ai_response
