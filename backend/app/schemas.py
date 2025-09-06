@@ -332,3 +332,16 @@ class GameStateResponse(BaseModel):
     unresolved_intention: Optional[DailyIntentionResponse] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+# =============================================================================
+# AI CHAT SCHEMAS
+# =============================================================================
+
+class ChatMessageInput(BaseModel):
+    """Schema for the user's input message to the AI chat."""
+    text: str = Field(..., min_length=1, max_length=4000)
+
+class ChatMessageResponse(BaseModel):
+    """Schema for the AI's response in the chat."""
+    ai_response: str
