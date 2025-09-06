@@ -13,12 +13,22 @@ const SendIcon = () => (
   </svg>
 );
 
-function AIChatBox({ user }) {
+// Receive the new props: isFullScreen and onIntentionCreated
+function AIChatBox({ user, isFullScreen, onIntentionCreated }) {
   const [message, setMessage] = useState('');
-  const [messages, setMessages] = useState([
-    { sender: 'ai', text: `Welcome, ${user.name.split(' ')[0]}. How can we bring the most clarity and execution today?`}
-  ]) // AI Chat memory!
+  const [messages, setMessages] = useState(() => {
+    // Set the initial message based on the mode.
+    const welcomeText = isFullScreen
+      ? `Welcome, ${user.name.split(' ')[0]}. Let's forge your Daily Intention.`
+      : `Welcome to your execution space. How can I help you focus today?`;
+    return [{ sender: 'ai', text: welcomeText }];
+  });
   const [isLoading, setIsLoading] = useState(false); // State to handle when the AI is "thinking"
+
+  // Dynamically set the container classes based on the mode
+  const containerClasses = isFullScreen
+    ? "flex flex-col h-full bg-gray-900 p-4 rounded-lg" // Full screen
+    : "flex flex-col h-96 bg-gray-900 p-4 rounded-lg mt-8"; // Standard footer
 
   // Our "Bookmark" for the auto-scroll feature
   const chatContainerRef = useRef(null);

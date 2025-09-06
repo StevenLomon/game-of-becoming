@@ -13,7 +13,7 @@ import AIChatBox from './AIChatBox';
 import { completeDailyIntention, failDailyIntention } from '../services/api';
 
 // This component now contains all the logic and UI for the main application area.
-function MainContent({ user, token, intention, refreshGameState }) {
+function MainContent({ user, token, intention, isCreatingIntention, onIntentionCreated, refreshGameState }) { // Receive the new props: isCreatingIntention and onIntentionCreated
   // These states are specific to the UI flow within the main content area.
   const [view, setView] = useState('focus');
   const [error, setError] = useState(null);
@@ -60,7 +60,7 @@ function MainContent({ user, token, intention, refreshGameState }) {
   const activeBlock = intention ? intention.focus_blocks.find(b => b.status === 'pending' || b.status === 'in_progress') : null;
 
   return (
-    // This top-level container is our main flex column. It's perfect.
+    // This top-level container remains our clean flex column.
     <div className="flex flex-col h-full">
       {error && (
         <div className="bg-red-900 border-red-700 text-red-300 px-4 py-3 rounded-md mb-4">
@@ -68,48 +68,57 @@ function MainContent({ user, token, intention, refreshGameState }) {
         </div>
       )}
 
-      {intention ? (
+      {/* The new "Master Switch" logic */}
+      {isCreatingIntention ? (
+        // MODE 1: CREATION - Render ONLY the chat box in full-screen mode.
+        <AIChatBox
+          user={user}
+          isFullScreen={true}
+          onIntentionCreated={onIntentionCreated}
+        />
+      ) : intention ? (
+        // MODE 2: EXECUTION - Render the standard execution view.
+        // This logic is only reachable if an intention already exists.
         intention.daily_result ? (
           <DailyResultDisplay 
-            result={intention.daily_result} 
-            token={token}
+            result={intention.daily_result}
             refreshGameState={refreshGameState}
           />
         ) : (
-          // This is the main execution view. It's a flex column.
           <>
-            {/* 1. The Header (takes up its own height) */}
             <DailyIntentionHeader intention={intention} onComplete={handleCompleteIntention} />
-
-            {/* 2. The Main Content Area (this div will grow) */}
-            {/* We give this div 'flex-grow' so it expands to fill all available
-                vertical space, pushing the AIChatBox to the bottom. */}
-            <div className="flex-grow mt-8">
-              {view === 'progress' && <RewardDisplay rewards={lastReward} />}
-              
-              {view === 'focus' && (
+            
+            <div className="flex-grow">
+              {/* This middle section contains the dynamic view (focus/progress) */}
+              {view === 'progress' ? (
+                <>
+                  <RewardDisplay rewards={lastReward} />
+                  <UpdateProgressForm 
+                    onProgressUpdated={handleProgressUpdated}
+                    currentProgress={intention.completed_quantity}
+                  />
+                </>
+              ) : (
                 activeBlock ? (
                   <ActiveFocusBlock block={activeBlock} onBlockCompleted={handleFocusBlockCompleted} />
                 ) : (
-                  <ExecutionArea user={user} intention={intention} onBlockCreated={refreshGameState} onBlockCompleted={handleFocusBlockCompleted} />
+                  <ExecutionArea 
+                    user={user} 
+                    intention={intention} 
+                    onBlockCreated={refreshGameState} 
+                    onBlockCompleted={handleFocusBlockCompleted} 
+                  />
                 )
               )}
-
-              {view === 'progress' && (
-                <UpdateProgressForm 
-                  token={token} 
-                  onProgressUpdated={handleProgressUpdated}
-                  currentProgress={intention.completed_quantity}
-                />
-              )}
             </div>
-
-            {/* 3. The Footer (sits at the bottom) */}
-            <AIChatBox user={user} />
+            
+            <AIChatBox user={user} isFullScreen={false} />
           </>
         )
       ) : (
-        <CreateDailyIntentionForm token={token} onDailyIntentionCreated={refreshGameState} />
+        // Fallback for an edge case where there's no intention, but we're not in creation mode.
+        // This could show a loading spinner or a message.
+        <p>Loading your day...</p>
       )}
     </div>
   );
