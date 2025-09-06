@@ -148,6 +148,24 @@ export async function getGameState() {
 }
 
 /**
+ * Sends a message to the general AI chat endpoint and returns the response.
+ * @param {string} messageText - The user's message to the AI.
+ * @returns {Promise<object>} - The AI's response object (e.g., { ai_response: '...' }).
+ */
+export async function sendChatMessage(messageText) {
+    const endpoint = '/api/chat';
+    const url = `${API_BASE_URL}${endpoint}`;
+
+    const response = await authFetch(url, {
+        method: 'POST',
+        // The body must match the Pydantic schema
+        body: JSON.stringify({ text: messageText }),
+    });
+
+    return handleErrors(response).then(res => res.json());
+}
+
+/**
  * Creates a new Daily Intention.
  * @param {object} intentionData - The intention data, including text, target, and block count.
  * @returns {Promise<object>} - The newly created Daily Intention object from the backend.
