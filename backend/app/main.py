@@ -366,6 +366,34 @@ async def handle_onboarding_step(
         )
     
 
+@app.post("/api/chat", response_model=schemas.ChatMessageResponse)
+async def handle_chat_message(
+    chat_input: schemas.ChatMessageInput,
+    current_user: Annotated[models.User, Depends(security.get_current_user)],
+    db: Session = Depends(database.get_db)
+):
+    """
+    Handles a user's message to the general AI chat and returns a response.
+    """
+    try:
+        # Call our new service function to get the AI's response
+        ai_text = await services.generate_chat_response(
+            db=db, user=current_user, message=chat_input.text
+        )
+        
+        # We could add logic here to log the conversation to the database in the future
+        # For now, we just return the response.
+
+        return schemas.ChatMessageResponse(ai_response=ai_text)
+
+    except Exception as e:
+        print(f"Error in chat endpoint: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An unexpected error occurred with the AI chat."
+        )
+    
+
 # --- DAILY INTENTION ENDPOINTS ---
 
 # Updated for Smart Detection! And now async!
