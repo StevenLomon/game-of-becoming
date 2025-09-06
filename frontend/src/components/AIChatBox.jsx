@@ -37,7 +37,7 @@ function AIChatBox({ user }) {
       const response = await sendChatMessage(userMessageText);
 
       // 3. Final update with the AI's response
-      const aiMessage = { sender: 'ai', text: response};
+      const aiMessage = { sender: 'ai', text: response.ai_response};
       setMessages(prevMessages => [...prevMessages, aiMessage]);
 
     } catch (error) {
