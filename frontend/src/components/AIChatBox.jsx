@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { sendChatMessage } from '../services/api';
+import { sendChatMessage, createDailyIntention } from '../services/api';
 
 // The Paper Plane SVG icon for the send button
 const SendIcon = () => (
