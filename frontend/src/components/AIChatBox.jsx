@@ -19,7 +19,7 @@ function AIChatBox({ user, isFullScreen, onIntentionCreated }) {
   const [messages, setMessages] = useState(() => {
     // Set the initial message based on the mode.
     const welcomeText = isFullScreen
-      ? `Welcome, ${user.name.split(' ')[0]}. Let's forge your Daily Intention.`
+      ? `Welcome, ${user.name.split(' ')[0]}. Let's forge your focus for today. What do you wish to set as your Daily Intention`
       : `Welcome to your execution space. How can I help you focus today?`;
     return [{ sender: 'ai', text: welcomeText }];
   });
