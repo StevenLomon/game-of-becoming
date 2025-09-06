@@ -60,9 +60,10 @@ function Dashboard({ token, onLogout }) {
     const [stats, setStats] = useState(null);
     const [intention, setIntention] = useState(null);
     const [error, setError] = useState(null);
-    // New state to hold the unresoved intention from the grace day
-    const [unresolvedIntention, setUnresolvedIntention] = useState(null);
+    const [unresolvedIntention, setUnresolvedIntention] = useState(null); // The unresoved intention from the grace day
     const [isLoading, setIsLoading] = useState(true);
+    // New state: Our "Master Switch" for the UI mode; Daily Intention
+    const [isCreatingIntention, setIsCreatingIntention] = useState(false);
 
     // This is our "Control Panel"
     const refreshGameState = async () => {
@@ -75,6 +76,10 @@ function Dashboard({ token, onLogout }) {
         // We now explicitly set both types of intentions
         setIntention(gameState.todays_intention);
         setUnresolvedIntention(gameState.unresolved_intention);
+
+        // Set our new mode state based on the fetched data.
+        // If there's no unresolved quest AND no intention for today, we are in creation mode.
+        setIsCreatingIntention(!gameState.unresolved_intention && !gameState.todays_intention);
       } catch (err) {
         setError(err.message);
       } finally {
@@ -109,6 +114,11 @@ function Dashboard({ token, onLogout }) {
     const handleOnboardingComplete = (updatedUser) => {
         // Its only job is to refresh the game state after the final step.
         refreshGameState();
+    };
+
+    // This function will be passed down to the chatbox to switch modes.
+    const handleIntentionCreated = () => {
+      refreshGameState(); // This will automatically set isCreatingIntention to false.
     };
 
 
@@ -164,12 +174,13 @@ function Dashboard({ token, onLogout }) {
               onQuestResolved={refreshGameState} 
             />
           ) : (
-            // Pass all necessary data and functions down to the MainContent area
-            <MainContent 
+            // Pass down the new mode and the handler function to MainContent
+            <MainContent
               user={user}
               token={token}
-              stats={stats}
               intention={intention}
+              isCreatingIntention={isCreatingIntention}
+              onIntentionCreated={handleIntentionCreated}
               refreshGameState={refreshGameState}
             />
           )}
