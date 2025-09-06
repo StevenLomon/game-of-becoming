@@ -1,6 +1,7 @@
 from pydantic import BaseModel, field_validator, Field, EmailStr, ConfigDict, computed_field
 from typing import Optional, Union
 from datetime import datetime
+from enum import Enum
 import math
 
 
@@ -142,7 +143,7 @@ class DailyIntentionCreate(BaseModel):
     daily_intention_text: str
     target_quantity: int
     focus_block_count: int 
-    is_refined: bool = False # NEW: Flag to indicate a refine submission. Defaults to False
+    is_refined: bool = False # Flag to indicate need for clarity refinement. Defaults to False
 
     @field_validator('daily_intention_text')
     def validate_daily_intention_text(cls, v):
@@ -345,3 +346,34 @@ class ChatMessageInput(BaseModel):
 class ChatMessageResponse(BaseModel):
     """Schema for the AI's response in the chat."""
     ai_response: str
+
+
+# =============================================================================
+# CONVERSATIONAL DAILY INTENTION CREATION SCHEMAS
+# =============================================================================
+
+class CreationStep(str, Enum):
+    """Defines the possible steps in the conversational creation process."""
+    AWAITING_TEXT = "AWAITING_TEXT"
+    AWAITING_REFINEMENT = "AWAITING_REFINEMENT"
+    # We will add these in the next iteration to keep the flow manageable
+    # AWAITING_QUANTITY = "AWAITING_QUANTITY"
+    # AWAITING_BLOCKS = "AWAITING_BLOCKS"
+    COMPLETE = "COMPLETE"
+
+class IntentionCreationRequest(BaseModel):
+    """The frontend sends this to the backend with each message during creation."""
+    user_text: str = Field(..., min_length=1)
+    # The frontend must tell the backend what step of the conversation it thinks it's on.
+    current_step: CreationStep
+    
+    # We'll use these fields in subsequent steps. For now, they can be optional.
+    target_quantity: Optional[int] = None
+    focus_block_count: Optional[int] = None
+
+class IntentionCreationResponse(BaseModel):
+    """The backend sends this back, telling the frontend exactly what to do next."""
+    next_step: CreationStep
+    ai_message: str
+    # The final, completed intention object will only be sent when the conversation is complete.
+    intention_payload: Optional[DailyIntentionResponse] = None
