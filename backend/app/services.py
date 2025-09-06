@@ -418,7 +418,7 @@ async def generate_chat_response(db: Session, user: models.User, message: str) -
         print("--- AI CALL DISABLED: Returning mock chat response with 2-second delay. ---")
         
         # Add a non-blocking delay to simulate the AI "thinking"
-        await asyncio.sleep(2)
+        await asyncio.sleep(3)
         
         return f"This is a mock AI response to your message: '{message}'"
     
