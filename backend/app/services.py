@@ -217,6 +217,7 @@ async def create_and_process_intention(db: Session, user: models.User, request_d
     # --- Development Mock Logic ---
     if os.getenv("DISABLE_AI_CALLS") == "True":
         print(f"--- AI CALL DISABLED: Processing step: {current_step} ---")
+        await asyncio.sleep(2)
         if "refine me" in user_text.lower():
             return schemas.IntentionCreationResponse(
                 next_step=schemas.CreationStep.AWAITING_REFINEMENT,
