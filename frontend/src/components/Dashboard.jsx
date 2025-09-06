@@ -65,10 +65,9 @@ function Dashboard({ token, onLogout }) {
     // New state: Our "Master Switch" for the UI mode; Daily Intention
     const [isCreatingIntention, setIsCreatingIntention] = useState(false);
 
-    // This is our "Control Panel"
+    // This is our "Control Panel" - it's our *single source of truth* for updating state
     const refreshGameState = async () => {
-      // We don't set loading to true here, since this is for *updates*,
-      // not the initial screen-blocking load
+      // We will now control the loading state from OUTSIDE this function
       try {
         const gameState = await getGameState();
         setUser(gameState.user);
@@ -87,31 +86,34 @@ function Dashboard({ token, onLogout }) {
       }
     };
 
-    // This is our "Embassy"
+    // This is our "Embassy" - it now uses the Control Panel to do the work
     useEffect(() => {
         // Renamed for clarity
         const fetchInitialGameState = async () => {
             setIsLoading(true); // This is the initial load
-            try {
-                // The API service handles the token, URL, and error checking for us now!
-                // Using our new definitive endpoint for the game state
-                const gameState = await getGameState();
+            // try {
+            //     // The API service handles the token, URL, and error checking for us now!
+            //     // Using our new definitive endpoint for the game state
+            //     const gameState = await getGameState();
                 
-                setUser(gameState.user);
-                setStats(gameState.stats);
-                setIntention(gameState.todays_intention);
-                setUnresolvedIntention(gameState.unresolved_intention);
+            //     setUser(gameState.user);
+            //     setStats(gameState.stats);
+            //     setIntention(gameState.todays_intention);
+            //     setUnresolvedIntention(gameState.unresolved_intention);
 
-            } catch (err) {
-                setError(err.message);
-            } finally {
-              setIsLoading(false); // Set loading false at the end
-            }
+            // } catch (err) {
+            //     setError(err.message);
+            // } finally {
+            //   setIsLoading(false); // Set loading false at the end
+            // }
+            // No try block or API call needed! Simply call the Control Panel!! Single source of truth
+            await refreshGameState();
+            setIsLoading(false);
         };
         fetchInitialGameState();
     }, [token]); // Re-run this effect if the token changes. onLogout not used anymore and therefore removed
 
-    const handleOnboardingComplete = (updatedUser) => {
+    const handleOnboardingComplete = () => {
         // Its only job is to refresh the game state after the final step.
         refreshGameState();
     };
