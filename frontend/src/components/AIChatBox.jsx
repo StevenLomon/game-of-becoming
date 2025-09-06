@@ -24,10 +24,12 @@ function AIChatBox({ user, isFullScreen, onIntentionCreated }) {
     return [{ sender: 'ai', text: welcomeText }];
   });
   const [isLoading, setIsLoading] = useState(false); // State to handle when the AI is "thinking"
-  // NEW STATE: The "short-term memory" for the Daily Intention Forge conversation
-  const [isRefining, setIsRefining] = useState(false);
-  // We'll also hold onto the original text if we need it
-  const [originalIntention, setOriginalIntention] = useState('');
+  const [isRefining, setIsRefining] = useState(false); // The "short-term memory" for the Daily Intention Forge conversation
+  const [originalIntention, setOriginalIntention] = useState(''); // We'll also hold onto the original text if we need it
+
+  // NEW STATE: This is our state machine. It mirrors the backend Enum.
+  // It's the "single source of truth" for what the chat is currently trying to do.
+  const [creationStep, setCreationStep] = useState('AWAITING_TEXT');
 
   // Dynamically set the container classes based on the mode
   const containerClasses = isFullScreen
@@ -60,31 +62,25 @@ function AIChatBox({ user, isFullScreen, onIntentionCreated }) {
     setIsLoading(true); // Show a loading state
 
     try {
-      // UPDATED: Context-aware logic switch; correct "playbook" based on the mode
       if (isFullScreen) {
-        // --- CREATION PLAYBOOK ---
-        const intentionData = {
-          // In a more advanced version, we'd use AI to parse these from text.
-          // For now, we'll use sensible defaults.
-          target_quantity: 1,
-          focus_block_count: 1,
-          daily_intention_text: userMessageText,
-          is_refined: isRefining, // Our new state determines this!
-        };
+        // --- CREATION PLAYBOOK v2 (The Multi-step State Machine) ---
 
-        const response = await createDailyIntention(intentionData);
+        // 1. Call our updated API service, sending the user's text and our current state.
+        const response = await createDailyIntention(userMessageText, creationStep);
 
-        if (response.needs_refinement) {
-          // The AI wants more clarity in the intention
-          const aiMessage = { sender: 'ai', text: response.ai_feedback };
-          setMessages(prev => [...prev, aiMessage]);
-          setIsRefining(true); // Switch to refinement mode for the next message
-        } else {
-          // Success! The Daily Intention was created
-          const successMessage = { sender: 'ai', text: "Excellent. Your Daily Intention is forged and locked in. Let's get executing."}
-          setMessages(prev => [...prev, successMessage]);
-          // The "hand-off"; we tell the Dashboard that the job is done
-          onIntentionCreated(response);
+        // 2. Display the AI's response message
+        const aiMessage = { sender: 'ai', text: response.ai_message };
+        setMessages(prev => [...prev, aiMessage]);
+
+        // 3. Update our state to follow the backend's instructions
+        setCreationStep(response.next_step);
+
+        // 4. If the conversation is complete, hand off to the Dashboard
+        if (response.next_step === 'COMPLETE') {
+          // Add a small delay so the user can read the final message before the UI transforms.
+          setTimeout(() => {
+            onIntentionCreated(response.intention_payload);
+          }, 2000); // 2-second delay
         }
 
       } else {
