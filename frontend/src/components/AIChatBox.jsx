@@ -28,7 +28,7 @@ function AIChatBox({ user, isFullScreen, onIntentionCreated }) {
   // Dynamically set the container classes based on the mode
   const containerClasses = isFullScreen
     ? "flex flex-col h-full bg-gray-900 p-4 rounded-lg" // Full screen
-    : "flex flex-col h-96 bg-gray-900 p-4 rounded-lg mt-8"; // Standard footer
+    : "flex flex-col h-96 bg-gray-900 p-4 rounded-lg mt-8"; // Standard footer; fixed height so that we can implement a scrollable chat box
 
   // Our "Bookmark" for the auto-scroll feature
   const chatContainerRef = useRef(null);
@@ -74,8 +74,8 @@ function AIChatBox({ user, isFullScreen, onIntentionCreated }) {
   };
 
   return (
-    // The main container is given a fixed height so that we can implement a scrollable chat box
-    <div className="flex flex-col h-96 bg-gray-900 p-4 rounded-lg mt-8"> 
+    // Apply the dynamic `containerClasses` variable here
+    <div className={containerClasses}> 
       {/* Message History Area (overflow-y-auto is the magic that adds a scrollbar only when needed) */}
       <div 
         ref={chatContainerRef} // Attach the "bookmark"!

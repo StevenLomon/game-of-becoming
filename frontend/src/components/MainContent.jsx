@@ -61,7 +61,7 @@ function MainContent({ user, token, intention, isCreatingIntention, onIntentionC
 
   return (
     // This top-level container remains our clean flex column.
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col flex-grow">
       {error && (
         <div className="bg-red-900 border-red-700 text-red-300 px-4 py-3 rounded-md mb-4">
           {error}
