@@ -212,10 +212,19 @@ async def create_and_process_intention(db: Session, user: models.User, intention
     This replaces analyze_daily_intention from main.py.
     """
     if os.getenv("DISABLE_AI_CALLS") == "True":
+        # Check for our "secret handshake" in the user's text.
+        if "refine me" in intention_data.daily_intention_text.lower():
+            print("--- AI CALL DISABLED: Returning mock 'REFINE' response. ---")
+            return {
+                "needs_refinement": True,
+                "ai_feedback": "Mock feedback: This is a good start, but it's a bit vague. How can you make it more specific and measurable?",
+            }
+        
+        # Otherwise, return the default approved response.
         print("--- AI CALL DISABLED: Returning mock 'APPROVED' response. ---")
         return {
             "needs_refinement": False,
-            "ai_feedback": "Mock feedback: This is a clear and actionable intention!",
+            "ai_feedback": "Mock feedback: This is a clear and actionable intention, no clarity refinement needed!",
             "clarity_stat_gain": 1
         }
     
