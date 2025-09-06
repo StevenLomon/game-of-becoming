@@ -397,16 +397,16 @@ async def handle_chat_message(
 # --- DAILY INTENTION ENDPOINTS ---
 
 # Updated for Smart Detection! And now async!
-@app.post("/api/intentions", response_model=schemas.DailyIntentionCreateResponse, status_code=status.HTTP_201_CREATED)
+@app.post("/api/intentions", response_model=schemas.DailyIntentionCreateResponse, status_code=status.HTTP_200_OK) # No longer 201_CREATED!
 async def create_daily_intention(
-    intention_data: schemas.DailyIntentionCreate,
+    intention_data: schemas.IntentionCreationRequest,
     current_user: Annotated[models.User, Depends(security.get_current_user)],
     stats: Annotated[models.CharacterStats, Depends(get_current_user_stats)],
     db: Session = Depends(database.get_db)
 ):
     """
-    Create today's Daily Intention, now driven by the service layer.
-    Handles initial submissions and refined submissions after AI feedback.
+    Handles the conversational creation of a Daily Intention.
+    This endpoint is now a passthrough to the conversational service layer.
     """
     # 1. Check if today's Daily Intention for the currently logged in user already exists
     if crud.get_today_intention(db, current_user.id):
@@ -415,43 +415,32 @@ async def create_daily_intention(
             detail="Daily Intention already exists for today! Get going making progress on it!"
         )
     
-    # 2. Delegate AI prompts and logic to the service layer. Now awaited!
-    analysis_result = await services.create_and_process_intention(db, current_user, intention_data)
+    # 2. NEW: Delegate the entire conversational logic to the service layer.
+    response = await services.create_and_process_intention(db, current_user, intention_data)
 
-    # 3. Handle the result using our precise business logic
-    if intention_data.is_refined or not analysis_result.get("needs_refinement"):
-        # Path 1: The intention is approved. Save it to the database
+    # 3. NEW: If the conversation is complete, we now need to save the new intention. The needs_refinement flag is a thing of the past!
+    if response.next_step == schemas.CreationStep.COMPLETE and response.intention_payload:
         try:
+            # We can use the data from the final payload to create the DB object
+            payload = response.intention_payload
             db_intention = models.DailyIntention(
                 user_id=current_user.id,
-                daily_intention_text=intention_data.daily_intention_text.strip(),
-                target_quantity=intention_data.target_quantity,
-                focus_block_count=intention_data.focus_block_count,
-                ai_feedback=analysis_result.get("ai_feedback")
+                daily_intention_text=payload.daily_intention_text,
+                target_quantity=payload.target_quantity,
+                focus_block_count=payload.focus_block_count,
             )
             db.add(db_intention)
-
-            # Update Clarity stat using our dependency
-            clarity_gain = analysis_result.get("clarity_stat_gain", 0)
-            if clarity_gain > 0:
-                stats.clarity += clarity_gain
-
+            stats.clarity += 1 # Award clarity for setting a good intention
             db.commit()
             db.refresh(db_intention)
-            if clarity_gain > 0:
-                db.refresh(stats)
+            # We need to replace the placeholder ID in the payload with the real one
+            response.intention_payload.id = db_intention.id
 
-            # completion_percentage now automatically added thanks to schemas.py computed fields
-            return db_intention
-        
         except Exception as e:
             db.rollback()
-            raise HTTPException(status_code=500, detail=f"Failed to create intention: {e}")
-    
-    else:
-        # Path 2: The intention needs refinement. Return the AI feedback
-        # This is a manual construction because the object doesn't exist in the DB.
-        return schemas.DailyIntentionRefinementResponse(ai_feedback=analysis_result.get("ai_feedback"))
+            raise HTTPException(status_code=500, detail=f"Failed to save final intention: {e}")
+            
+    return response
         
 @app.get("/api/intentions/today/me", response_model=schemas.DailyIntentionResponse)
 def get_my_daily_intention(
