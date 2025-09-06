@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { sendChatMessage } from '../services/api';
 
 // The Paper Plane SVG icon for the send button
@@ -19,6 +19,19 @@ function AIChatBox({ user }) {
     { sender: 'ai', text: `Welcome, ${user.name.split(' ')[0]}. How can we bring the most clarity and execution today?`}
   ]) // AI Chat memory!
   const [isLoading, setIsLoading] = useState(false); // State to handle when the AI is "thinking"
+
+  // Our "Bookmark" for the auto-scroll feature
+  const chatContainerRef = useRef(null);
+
+  // The auto-scrolling effect
+  useEffect(() => {
+    // This effect runs every time the 'messages' array changes
+    if (chatContainerRef.current) {
+      const { scrollHeight, clientHeight } = chatContainerRef.current;
+      // This command tells the browser to set the scroll position to the very bottom
+      chatContainerRef.current.scrollTop = scrollHeight - clientHeight;
+    }
+  }, [messages]); // The dependency array ensures this runs only when messages are added
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
@@ -54,7 +67,10 @@ function AIChatBox({ user }) {
     // The main container is given a fixed height so that we can implement a scrollable chat box
     <div className="flex flex-col h-96 bg-gray-900 p-4 rounded-lg mt-8"> 
       {/* Message History Area (overflow-y-auto is the magic that adds a scrollbar only when needed) */}
-      <div className="flex-grow overflow-y-auto mb-4 pr-2">
+      <div 
+        ref={chatContainerRef} // Attach the "bookmark"!
+        className="flex-grow overflow-y-auto mb-4 pr-2"
+      >
         <div className="space-y-4">
           {messages.map((msg, index) => (
             <div
