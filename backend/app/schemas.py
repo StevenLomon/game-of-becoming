@@ -185,11 +185,12 @@ class DailyIntentionUpdate(BaseModel):
         return v
 
 
-# NEW: This is the response when the AI says the intention needs refinement
-class DailyIntentionRefinementResponse(BaseModel):
-    """Response when an intention needs refinement by the user"""
-    needs_refinement: bool = True # Defaults to True
-    ai_feedback: str
+# # NEW: This is the response when the AI says the intention needs refinement
+# class DailyIntentionRefinementResponse(BaseModel):
+#     """Response when an intention needs refinement by the user"""
+#     needs_refinement: bool = True # Defaults to True
+#     ai_feedback: str
+# Obsolete, no longer used
 
 
 # =============================================================================
@@ -314,8 +315,9 @@ class DailyIntentionResponse(BaseModel):
             return 0.0
         return (self.completed_quantity / self.target_quantity) * 100
 
-# Tells the creation endpoint what its possible responses are
-DailyIntentionCreateResponse = Union[DailyIntentionRefinementResponse, DailyIntentionResponse]
+# # Tells the creation endpoint what its possible responses are
+# DailyIntentionCreateResponse = Union[DailyIntentionRefinementResponse, DailyIntentionResponse]
+# Obsolete, no longer used
 
 
 # =============================================================================

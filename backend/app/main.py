@@ -397,7 +397,7 @@ async def handle_chat_message(
 # --- DAILY INTENTION ENDPOINTS ---
 
 # Updated for Smart Detection! And now async!
-@app.post("/api/intentions", response_model=schemas.DailyIntentionCreateResponse, status_code=status.HTTP_200_OK) # No longer 201_CREATED!
+@app.post("/api/intentions", response_model=schemas.IntentionCreationResponse, status_code=status.HTTP_200_OK) # No longer 201_CREATED!
 async def create_daily_intention(
     intention_data: schemas.IntentionCreationRequest,
     current_user: Annotated[models.User, Depends(security.get_current_user)],
