@@ -206,81 +206,55 @@ async def process_onboarding_step(db: Session, user: models.User, step_data: sch
         "final_hla": user.hla if not next_step else None
     }
 
-async def create_and_process_intention(db: Session, user: models.User, intention_data: schemas.DailyIntentionCreate) -> dict[str, Any]:
+async def create_and_process_intention(db: Session, user: models.User, request_data: schemas.IntentionCreationRequest) -> dict[str, Any]:
     """
-    Analyzes a daily intention using the AI Coach's "Clarity Enforcer" role.
-    This replaces analyze_daily_intention from main.py.
+    Manages the multi-step conversational creation of a Daily Intention.
+    Acts as a state machine based on the 'current_step' provided by the frontend.
     """
+    current_step = request_data.current_step
+    user_text = request_data.user_text
+
+    # --- Development Mock Logic ---
     if os.getenv("DISABLE_AI_CALLS") == "True":
-        # Check for our "secret handshake" in the user's text.
-        if "refine me" in intention_data.daily_intention_text.lower():
-            print("--- AI CALL DISABLED: Returning mock 'REFINE' response. ---")
+        print(f"--- AI CALL DISABLED: Processing step: {current_step} ---")
+        if "refine me" in user_text.lower():
+            return schemas.IntentionCreationResponse(
+                next_step=schemas.CreationStep.AWAITING_REFINEMENT,
+                ai_message="Mock feedback: This is a good start, but it's a bit vague. How can you make it more specific and measurable?",
+            )
+        else:
+            # For now, our mock will assume any other text is a valid, complete intention.
+            # In a real scenario, this would be where we ask for quantity/blocks.
+            return schemas.IntentionCreationResponse(
+                next_step=schemas.CreationStep.COMPLETE,
+                ai_message="Excellent. Your Daily Intention is locked in. Let's get to work.",
+                # We'll need a placeholder intention object for the frontend to receive.
+                intention_payload=schemas.DailyIntentionResponse(
+                    id=999, user_id=user.id, daily_intention_text=user_text,
+                    target_quantity=1, completed_quantity=0, focus_block_count=1,
+                    status='pending', created_at=datetime.now(timezone.utc),
+                    needs_refinement=False, focus_blocks=[], daily_result=None
+                )
+            )
 
-            # Add a non-blocking delay to simulate the AI "thinking"
-            await asyncio.sleep(2)
-
-            return {
-                "needs_refinement": True,
-                "ai_feedback": "Mock feedback: This is a good start, but it's a bit vague. How can you make it more specific and measurable?",
-            }
-        
-        # Otherwise, return the default approved response.
-        print("--- AI CALL DISABLED: Returning mock 'APPROVED' response. ---")
-        await asyncio.sleep(2)
-        return {
-            "needs_refinement": False,
-            "ai_feedback": "Mock feedback: This is a clear and actionable intention, no clarity refinement needed!",
-            "clarity_stat_gain": 1
-        }
-    
+    # --- Real AI Logic (to be fully built out) ---
     llm_provider = get_llm_provider()
     
-    system_prompt = f"""
-    You are the AI Accountability and Clarity Coach for The Game of Becoming™. Your role is to analyze daily intentions and provide encouraging, actionable feedback.
+    # This is a simplified version for now. We will expand this state machine.
+    if current_step == schemas.CreationStep.AWAITING_TEXT or current_step == schemas.CreationStep.AWAITING_REFINEMENT:
+        # Here, you would have a sophisticated prompt that asks the LLM to analyze the user_text.
+        # The prompt would ask the LLM to decide if the text is a strong intention,
+        # and to generate a follow-up question if it isn't.
+        # For our MVP of this feature, we will just use the mock logic above for now.
+        # A full LLM-based state machine is a V2.1 feature.
+        pass
 
-    Your task is to determine if the user's intention is strong and clear enough for them to commit to. A strong intention is specific, measurable, actionable, and aligned with their main goal.
-
-    Analyze the user's intention based on these criteria and respond with a JSON object that matches this Pydantic model:
-    class IntentionAnalysisResponse(BaseModel):
-        is_strong_intention: bool = Field(description="True if the intention is clear, specific, and ready for commitment. False if it needs refinement.")
-        feedback: str = Field(description="Encouraging, actionable coaching feedback for the user (2-3 sentences max).")
-        clarity_stat_gain: int = Field(description="Set to 1 if is_strong_intention is true, otherwise 0.")
-    """
-
-    user_prompt = f"""
-    Here is the user's data:
-    - User's Highest Leverage Activity (HLA): "{user.hla}"
-    - Today's Daily Intention: "{intention_data.daily_intention_text}"
-    - Target Quantity: {intention_data.target_quantity}
-    - Planned Focus Block Count: {intention_data.focus_block_count}
-
-    Analyze this intention. Is it specific, measurable, actionable, and aligned with their HLA?
-
-    Example of a strong intention:
-    - Intention: "Send 5 personalized LinkedIn connection requests to potential clients in the SaaS industry."
-    - Analysis: This is strong. It's specific (LinkedIn requests), measurable (5), actionable, and likely aligns with a sales HLA.
-    - Your Response: {{"is_strong_intention": true, "feedback": "Your intention to send 5 LinkedIn outreaches is clear, specific, and directly aligned with your HLA! With your planned focus blocks, you're well-equipped to succeed.", "clarity_stat_gain": 1}}
-
-    Example of an intention needing refinement:
-    - Intention: "Work on my business."
-    - Analysis: This is vague. It's not specific or measurable.
-    - Your Response: {{"is_strong_intention": false, "feedback": "This intention is a good start, but it's a bit vague. How can you make it more specific? For example, 'Complete Module 1 of the marketing course' would give you a clear target.", "clarity_stat_gain": 0}}
-    
-    Now, analyze the user's data and provide your JSON response.
-    """
-    
-    analysis = await llm_provider.generate_structured_response(
-        system_prompt=system_prompt, user_prompt=user_prompt, response_model=IntentionAnalysisResponse
+    # For now, let's just return a default based on our mock logic for demonstration
+    # This ensures the function always returns the correct type.
+    return schemas.IntentionCreationResponse(
+        next_step=schemas.CreationStep.COMPLETE,
+        ai_message="This is a placeholder as the real AI logic is being built."
     )
-
-    if "error" in analysis:
-        return {"needs_refinement": False, "ai_feedback": "Great! Let's get to work.", "clarity_stat_gain": 1}
-
-    return {
-        "needs_refinement": not analysis.get("is_strong_intention"),
-        "ai_feedback": analysis.get("feedback"),
-        "clarity_stat_gain": analysis.get("clarity_stat_gain"),
-    }
 
 def complete_focus_block(
         db: Session, 
