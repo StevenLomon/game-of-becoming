@@ -24,6 +24,10 @@ function AIChatBox({ user, isFullScreen, onIntentionCreated }) {
     return [{ sender: 'ai', text: welcomeText }];
   });
   const [isLoading, setIsLoading] = useState(false); // State to handle when the AI is "thinking"
+  // NEW STATE: The "short-term memory" for the Daily Intention Forge conversation
+  const [isRefining, setIsRefining] = useState(false);
+  // We'll also hold onto the original text if we need it
+  const [originalIntention, setOriginalIntention] = useState('');
 
   // Dynamically set the container classes based on the mode
   const containerClasses = isFullScreen
@@ -48,7 +52,7 @@ function AIChatBox({ user, isFullScreen, onIntentionCreated }) {
     const userMessageText = message.trim();
     if (!userMessageText) return;
 
-    // 1. Optimistic Update for the User's Message
+    // Optimistic Update for the User's Message
     // Add the user's message to the whiteboard immediately for a snappy UI
     const userMessage = { sender: 'user', text: userMessageText };
     setMessages(prevMessages => [...prevMessages, userMessage]);
@@ -56,12 +60,39 @@ function AIChatBox({ user, isFullScreen, onIntentionCreated }) {
     setIsLoading(true); // Show a loading state
 
     try {
-      // 2. API Call: Send the message to the Oracle via our Messenger
-      const response = await sendChatMessage(userMessageText);
+      // UPDATED: Context-aware logic switch; correct "playbook" based on the mode
+      if (isFullScreen) {
+        // --- CREATION PLAYBOOK ---
+        const intentionData = {
+          // In a more advanced version, we'd use AI to parse these from text.
+          // For now, we'll use sensible defaults.
+          target_quantity: 1,
+          focus_block_count: 1,
+          daily_intention_text: userMessageText,
+          is_refined: isRefining, // Our new state determines this!
+        };
 
-      // 3. Final update with the AI's response
-      const aiMessage = { sender: 'ai', text: response.ai_response};
-      setMessages(prevMessages => [...prevMessages, aiMessage]);
+        const response = await createDailyIntention(intentionData);
+
+        if (response.needs_refinement) {
+          // The AI wants more clarity in the intention
+          const aiMessage = { sender: 'ai', text: response.ai_feedback };
+          setMessages(prev => [...prev, aiMessage]);
+          setIsRefining(true); // Switch to refinement mode for the next message
+        } else {
+          // Success! The Daily Intention was created
+          const successMessage = { sender: 'ai', text: "Excellent. Your Daily Intention is forged and locked in. Let's get executing."}
+          setMessages(prev => [...prev, successMessage]);
+          // The "hand-off"; we tell the Dashboard that the job is done
+          onIntentionCreated(response);
+        }
+
+      } else {
+        // --- EXECUTION (GENERAL CHAT) PLAYBOOK ---
+        const response = await sendChatMessage(userMessageText);
+        const aiMessage = { sender: 'ai', text: response.ai_response};
+        setMessages(prevMessages => [...prevMessages, aiMessage]);
+      }
 
     } catch (error) {
       console.error("Error sending message:", error);
