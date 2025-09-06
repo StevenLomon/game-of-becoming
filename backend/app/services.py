@@ -215,6 +215,10 @@ async def create_and_process_intention(db: Session, user: models.User, intention
         # Check for our "secret handshake" in the user's text.
         if "refine me" in intention_data.daily_intention_text.lower():
             print("--- AI CALL DISABLED: Returning mock 'REFINE' response. ---")
+
+            # Add a non-blocking delay to simulate the AI "thinking"
+            await asyncio.sleep(2)
+
             return {
                 "needs_refinement": True,
                 "ai_feedback": "Mock feedback: This is a good start, but it's a bit vague. How can you make it more specific and measurable?",
@@ -222,6 +226,7 @@ async def create_and_process_intention(db: Session, user: models.User, intention
         
         # Otherwise, return the default approved response.
         print("--- AI CALL DISABLED: Returning mock 'APPROVED' response. ---")
+        await asyncio.sleep(2)
         return {
             "needs_refinement": False,
             "ai_feedback": "Mock feedback: This is a clear and actionable intention, no clarity refinement needed!",
@@ -308,6 +313,7 @@ async def create_daily_reflection(db: Session, user: models.User, daily_intentio
 
     if os.getenv("DISABLE_AI_CALLS") == "True":
         print("--- AI CALL DISABLED: Returning mock reflection. ---")
+        await asyncio.sleep(2)
         if succeeded:
             return {"succeeded": True, "ai_feedback": "Mock Success: Great job!", "recovery_quest": None, "discipline_stat_gain": 1, "xp_awarded": xp_to_award}
         else:
@@ -379,6 +385,7 @@ async def process_recovery_quest_response(db: Session, user: models.User, result
 
     if os.getenv("DISABLE_AI_CALLS") == "True":
         print("--- AI CALL DISABLED: Returning mock coaching. ---")
+        await asyncio.sleep(2)
         return {"ai_coaching_feedback": "Mock Coaching: That's a great insight.", "resilience_stat_gain": 1, "xp_awarded": xp_to_award}
 
     llm_provider = get_llm_provider()
@@ -425,10 +432,7 @@ async def generate_chat_response(db: Session, user: models.User, message: str) -
     """
     if os.getenv("DISABLE_AI_CALLS") == "True":
         print("--- AI CALL DISABLED: Returning mock chat response with 2-second delay. ---")
-        
-        # Add a non-blocking delay to simulate the AI "thinking"
-        await asyncio.sleep(3)
-        
+        await asyncio.sleep(2)
         return f"This is a mock AI response to your message: '{message}'"
     
     llm_provider = get_llm_provider()
