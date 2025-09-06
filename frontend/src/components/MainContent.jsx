@@ -98,7 +98,7 @@ function MainContent({ user, token, intention, refreshGameState }) {
               )}
             </div>
 
-            <AIChatBox />
+            <AIChatBox user={user} />
           </div>
         )
       ) : (
