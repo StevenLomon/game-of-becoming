@@ -247,20 +247,86 @@ async def create_and_process_intention(db: Session, user: models.User, request_d
     # --- Real AI Logic (to be fully built out) ---
     llm_provider = get_llm_provider()
     
-    # This is a simplified version for now. We will expand this state machine.
-    if current_step == schemas.CreationStep.AWAITING_TEXT or current_step == schemas.CreationStep.AWAITING_REFINEMENT:
-        # Here, you would have a sophisticated prompt that asks the LLM to analyze the user_text.
-        # The prompt would ask the LLM to decide if the text is a strong intention,
-        # and to generate a follow-up question if it isn't.
-        # For our MVP of this feature, we will just use the mock logic above for now.
-        # A full LLM-based state machine is a V2.1 feature.
-        pass
+    # --- The AI's Job Description (System Prompt) ---
+    # This is the core logic of our feature. We are teaching the AI how to be a state machine manager.
+    system_prompt = f"""
+    You are the AI Clarity Coach for "The Game of Becoming". Your role is to guide a user named {user.name}
+    through creating a single, clear, measurable Daily Intention. You must be conversational, encouraging, and focused.
 
-    # For now, let's just return a default based on our mock logic for demonstration
-    # This ensures the function always returns the correct type.
+    You will manage a state machine with these steps: {', '.join([s.value for s in schemas.CreationStep])}.
+    You will be given the CURRENT STEP and the USER'S MESSAGE. Your job is to decide the NEXT STEP and what to say.
+
+    **STATE MACHINE LOGIC:**
+    1. If CURRENT_STEP is 'AWAITING_TEXT':
+       - The user is providing their first idea. Analyze their text.
+       - If the text is specific, measurable, and clear (e.g., "Send 10 cold emails"), the intention is strong. Set NEXT_STEP to 'COMPLETE'.
+       - If the text is vague (e.g., "work on my business"), it needs refinement. Set NEXT_STEP to 'AWAITING_REFINEMENT' and ask a clarifying question.
+    2. If CURRENT_STEP is 'AWAITING_REFINEMENT':
+       - The user is providing a revised, clearer intention. Assume this version is good.
+       - Set NEXT_STEP to 'COMPLETE'.
+
+    **RESPONSE FORMAT:**
+    You MUST respond in a JSON object that strictly follows this Pydantic model:
+    class AIConversationAnalysis(BaseModel):
+        next_step: Literal['AWAITING_TEXT', 'AWAITING_REFINEMENT', 'COMPLETE']
+        ai_message: str
+        extracted_intention_text: Optional[str]
+        extracted_target_quantity: Optional[int] = 1
+        extracted_focus_blocks: Optional[int] = 1
+    """
+
+    # --- The AI's Task (User Prompt) ---
+    user_prompt = f"""
+    Here is the current state of our conversation:
+    - CURRENT_STEP: "{request_data.current_step.value}"
+    - USER'S MESSAGE: "{request_data.user_text}"
+
+    Analyze the user's message based on the rules for the current step.
+    If you decide the next_step is 'COMPLETE', you MUST extract the final text, quantity, and blocks.
+    If the user doesn't specify a quantity or block count, use a default of 1 for each.
+    Generate the JSON response now.
+    """
+
+    # --- Call the LLM and Process the Response ---
+    analysis = await llm_provider.generate_structured_response(
+        system_prompt=system_prompt,
+        user_prompt=user_prompt,
+        response_model=AIConversationAnalysis
+    )
+
+    if "error" in analysis: # Fallback if the AI fails
+        return schemas.IntentionCreationResponse(
+            next_step=schemas.CreationStep.COMPLETE,
+            ai_message="There was a small hiccup, but let's proceed. Your intention is noted!",
+            intention_payload=schemas.DailyIntentionResponse(
+                id=999, user_id=user.id, daily_intention_text=request_data.user_text,
+                target_quantity=1, completed_quantity=0, focus_block_count=1,
+                status='pending', created_at=datetime.now(timezone.utc),
+                needs_refinement=False, focus_blocks=[], daily_result=None
+            )
+        )
+
+    # Build the final response object for the frontend
+    final_intention_payload = None
+    if analysis.get("next_step") == schemas.CreationStep.COMPLETE:
+        final_intention_payload = schemas.DailyIntentionResponse(
+            id=999, # Placeholder, will be replaced in main.py after saving
+            user_id=user.id,
+            daily_intention_text=analysis.get("extracted_intention_text", request_data.user_text),
+            target_quantity=analysis.get("extracted_target_quantity", 1),
+            completed_quantity=0,
+            focus_block_count=analysis.get("extracted_focus_blocks", 1),
+            status='pending',
+            created_at=datetime.now(timezone.utc),
+            needs_refinement=False,
+            focus_blocks=[],
+            daily_result=None
+        )
+
     return schemas.IntentionCreationResponse(
-        next_step=schemas.CreationStep.COMPLETE,
-        ai_message="This is a placeholder as the real AI logic is being built."
+        next_step=analysis.get("next_step"),
+        ai_message=analysis.get("ai_message"),
+        intention_payload=final_intention_payload
     )
 
 def complete_focus_block(
