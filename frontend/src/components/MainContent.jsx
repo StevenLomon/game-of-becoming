@@ -71,10 +71,13 @@ function MainContent({ user, token, intention, isCreatingIntention, onIntentionC
       {/* --- NEW STABLE LAYOUT --- */}
 
       {/* 1. Wrapper for all "Execution Mode" content. */}
-      {/* This div is ALWAYS in the DOM tree, but we conditionally hide it with */}
-      {/* Tailwind's `hidden` class (display: none) when in creation mode. */}
-      {/* When visible, it's a flex-column that grows to fill available space. */}
-      <div className={`flex flex-col flex-grow ${isCreatingIntention ? 'hidden' : 'flex'}`}>
+      {/* THE FIX: We no longer use `hidden`. Instead, we animate max-height and opacity. */}
+      {/* We add transition classes here so the container itself animates. */}
+      <div
+        className={`flex flex-col flex-grow transition-all duration-1000 ease-in-out overflow-hidden ${
+          isCreatingIntention ? 'max-h-0 opacity-0' : 'max-h-screen opacity-100'
+        }`}
+      >
         {intention ? (
           // If an intention exists, we decide what part of the execution flow to show.
           intention.daily_result ? (
