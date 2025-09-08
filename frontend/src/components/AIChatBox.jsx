@@ -49,6 +49,22 @@ function AIChatBox({ user, isFullScreen, onIntentionCreated }) {
     }
   }, [messages]); // The dependency array ensures this runs only when messages are added
 
+  // New "Watchdog" effect to watch for the mode change
+  useEffect(() => {
+    // This effect only runs whenever `isFullScreen` changes
+    // We only want to add the message when we transition OUT of full screen
+    if (isFullScreen === false) {
+      const executionWelcome = {
+        sender: 'ai',
+        text: `Welcome to your execution space. How can I help you focus today?`
+      };
+    // We use a small delay to let the animation finish before the message appears.
+      setTimeout(() => {
+        setMessages(prevMessages => [...prevMessages, executionWelcome]);
+      }, 2000); // Match this to your transition duration for a seamless feel.
+    }
+  }, [isFullScreen]); // Watch `isFullScreen`
+
   const handleSendMessage = async (e) => {
     e.preventDefault();
     const userMessageText = message.trim();
