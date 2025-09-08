@@ -68,9 +68,11 @@ function Dashboard({ token, onLogout }) {
     // this component more declarative. Less imperative force, more declarative flow
     // Not everything needs to useState!
 
-    // This is our "Control Panel" - it's our *single source of truth* for updating state
+    // CHANGED: This is now our single, robust "Control Panel" for all data fetching.
     const refreshGameState = async () => {
-      // We will now control the loading state from OUTSIDE this function
+      // Set loading to true at the beginning of ANY refresh.
+      // This prevents the UI from trying to render with partial or stale data.
+      setIsLoading(true);
       try {
         const gameState = await getGameState();
         setUser(gameState.user);
@@ -86,35 +88,38 @@ function Dashboard({ token, onLogout }) {
       } catch (err) {
         setError(err.message);
       } finally {
+        // Ensure loading is set to false after the operation is complete,
+        // whether it succeeded or failed.
         setIsLoading(false);
       }
     };
 
-    // This is our "Embassy" - it now uses the Control Panel to do the work
+    // This "Embassy" is now simpler. It just triggers the refresh.
     useEffect(() => {
-        // Renamed for clarity
-        const fetchInitialGameState = async () => {
-            setIsLoading(true); // This is the initial load
-            // try {
-            //     // The API service handles the token, URL, and error checking for us now!
-            //     // Using our new definitive endpoint for the game state
-            //     const gameState = await getGameState();
+        // // Renamed for clarity
+        // const fetchInitialGameState = async () => {
+        //     setIsLoading(true); // This is the initial load
+        //     // try {
+        //     //     // The API service handles the token, URL, and error checking for us now!
+        //     //     // Using our new definitive endpoint for the game state
+        //     //     const gameState = await getGameState();
                 
-            //     setUser(gameState.user);
-            //     setStats(gameState.stats);
-            //     setIntention(gameState.todays_intention);
-            //     setUnresolvedIntention(gameState.unresolved_intention);
+        //     //     setUser(gameState.user);
+        //     //     setStats(gameState.stats);
+        //     //     setIntention(gameState.todays_intention);
+        //     //     setUnresolvedIntention(gameState.unresolved_intention);
 
-            // } catch (err) {
-            //     setError(err.message);
-            // } finally {
-            //   setIsLoading(false); // Set loading false at the end
-            // }
-            // No try block or API call needed! Simply call the Control Panel!! Single source of truth
-            await refreshGameState();
-            setIsLoading(false);
-        };
-        fetchInitialGameState();
+        //     // } catch (err) {
+        //     //     setError(err.message);
+        //     // } finally {
+        //     //   setIsLoading(false); // Set loading false at the end
+        //     // }
+        //     // No try block or API call needed! Simply call the Control Panel!! Single source of truth
+        //     await refreshGameState();
+        //     setIsLoading(false);
+        // };
+        // fetchInitialGameState();
+        refreshGameState(); // Do NOTHING except refresh the game state
     }, [token]); // Re-run this effect if the token changes. onLogout not used anymore and therefore removed
 
     const handleOnboardingComplete = () => {
