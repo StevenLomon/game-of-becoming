@@ -1,21 +1,31 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 function Typewriter({ text, speed = 50 }) {
     const [displayedText, setDisplayedText] = useState('');
+    // Create a ref to hold the current index
+    const indexRef = useRef(0);
 
     useEffect(() => {
-        let i = 0;
-        setDisplayedText(''); // Reset the text every time the `text`prop changes
+        // Reset displayed text and index when the text prop changes
+        setDisplayedText('');
+        indexRef.current = 0;
+
         const typingInterval = setInterval(() => {
-            if (i < text.length) {
-                setDisplayedText(prevText => prevText + text.charAt(i));
-                i++;
+            // Get the current index from the ref
+            const currentIndex = indexRef.current;
+
+            if (currentIndex < text.length) {
+                // Update the state with the next character
+                setDisplayedText(prevText => prevText + text.charAt(currentIndex));
+                // Increment the index in the ref for the next tick
+                indexRef.current = currentIndex + 1;
             } else {
+                // We're done, clear the interval
                 clearInterval(typingInterval);
             }
         }, speed);
 
-        // Cleanup funciton to clear the interval if the component unmounts
+        // Cleanup function to clear the interval when the component unmounts
         return () => {
             clearInterval(typingInterval);
         };
@@ -23,6 +33,5 @@ function Typewriter({ text, speed = 50 }) {
 
     return <p>{displayedText}</p>;
 }
-
 
 export default Typewriter;
