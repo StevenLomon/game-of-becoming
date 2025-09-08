@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Optional
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field
 from datetime import datetime, date, timezone
@@ -45,6 +45,12 @@ class RecoveryQuestCoachingResponse(BaseModel):
     ai_coaching_feedback: str = Field(description="Encouraging, wisdom-building coaching based on the user's reflection (2-3 sentences max).")
     resilience_stat_gain: int = Field(description="Set to 1 for completing the reflection.")
 
+class AIConversationAnalysis(BaseModel):
+    """The AI's analysis of the user's input during Daily Intention creation"""
+    next_step: schemas.CreationStep = Field(description="Based on the user's input and the current conversational step, what is the next logical step?")
+    ai_message: str = Field(description="A concise, helpful message to send to the user to guide them to the next step.")
+    extracted_target_quantity: Optional[int] = Field(1, description="If the user specified a number, extract it. Otherwise, default to 1.")
+    extracted_focus_blocks: Optional[int] = Field(1, description="If the user specified a number of blocks, extract it. Otherwise, default to 1.")
 
 # --- Service Functions (Business Logic Layer) ---
 # All functions include a db object in their signature for future-proofing: the rules
