@@ -62,8 +62,11 @@ function Dashboard({ token, onLogout }) {
     const [error, setError] = useState(null);
     const [unresolvedIntention, setUnresolvedIntention] = useState(null); // The unresoved intention from the grace day
     const [isLoading, setIsLoading] = useState(true);
-    // New state: Our "Master Switch" for the UI mode; Daily Intention
-    const [isCreatingIntention, setIsCreatingIntention] = useState(false);
+    // // New state: Our "Master Switch" for the UI mode; Daily Intention
+    // const [isCreatingIntention, setIsCreatingIntention] = useState(false);
+    // No longer used! We will derive this state directly in the render logic, making
+    // this component more declarative. Less imperative force, more declarative flow
+    // Not everything needs to useState!
 
     // This is our "Control Panel" - it's our *single source of truth* for updating state
     const refreshGameState = async () => {
@@ -78,7 +81,8 @@ function Dashboard({ token, onLogout }) {
 
         // Set our new mode state based on the fetched data.
         // If there's no unresolved quest AND no intention for today, we are in creation mode.
-        setIsCreatingIntention(!gameState.unresolved_intention && !gameState.todays_intention);
+        // setIsCreatingIntention(!gameState.unresolved_intention && !gameState.todays_intention);
+        // No longer setting state here. We will derive this value below.
       } catch (err) {
         setError(err.message);
       } finally {
@@ -124,11 +128,17 @@ function Dashboard({ token, onLogout }) {
     };
 
 
+    // --- DERIVE STATE: The Architect's Approach ---
+    // Instead of storing isCreatingIntention in state (the Handyman's patch),
+    // we derive it on every render. This is more "honest" with React and prevents
+    // our state from ever getting out of sync. This is our new single source of truth.
+    const isCreatingIntention = !unresolvedIntention && !intention;
+
     // --- DERIVE THE CONTEXT FOR THE WELCOME MESSAGE ---
     // Heuristic: If the user is in creation mode AND their streak is 1 AND xp is 0,
     // we can be confident they just finished onboarding. Clearly separating a user who 
     // has just completed onboarding versus a user who has a broken streak.
-    const isPostOnboarding = isCreatingIntention && stats.current_streak === 1 && stats.xp === 0;
+    const isPostOnboarding = isCreatingIntention && user?.current_streak === 1 && stats?.xp === 0; // Use optional chaining
     const creationContext = isPostOnboarding ? 'post_onboarding' : 'daily_check_in';
 
 
@@ -189,7 +199,7 @@ function Dashboard({ token, onLogout }) {
               user={user}
               token={token}
               intention={intention}
-              isCreatingIntention={isCreatingIntention}
+              isCreatingIntention={isCreatingIntention} // Now using our derived value
               onIntentionCreated={handleIntentionCreated}
               refreshGameState={refreshGameState}
               creationContext={creationContext}

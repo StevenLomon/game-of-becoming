@@ -17,16 +17,7 @@ const SendIcon = () => (
 // Receive the new props: isFullScreen and onIntentionCreated
 function AIChatBox({ user, isFullScreen, onIntentionCreated, creationContext }) {
   const [message, setMessage] = useState('');
-  // UPDATED: Initialize state with the first message again.
-  // The initializer function only runs ONCE, preventing the loop.
-  const [messages, setMessages] = useState(() => {
-    // We can use the creationContext to determine the very first message.
-    const initialWelcome = (creationContext === 'post_onboarding')
-      ? `Thank you for letting me know more about your business, ${user.name.split(' ')[0]}. I am excited to act as your Clarity and Execution AI Oracle for this journey. To start off; let's forge your focus for today. What do you wish to set as your Daily Intention?`
-      : `Welcome, ${user.name.split(' ')[0]}. Let's forge your focus for today. What do you wish to set as your Daily Intention?`;
-    
-    return [{ sender: 'ai', text: initialWelcome }];
-  });
+  const [messages, setMessages] = useState([]) // CHANGED: messages is being back to being initialized simple as an empty array
   const [isLoading, setIsLoading] = useState(false); // State to handle when the AI is "thinking"
   const [isRefining, setIsRefining] = useState(false); // The "short-term memory" for the Daily Intention Forge conversation
   const [originalIntention, setOriginalIntention] = useState(''); // We'll also hold onto the original text if we need it
@@ -53,21 +44,39 @@ function AIChatBox({ user, isFullScreen, onIntentionCreated, creationContext }) 
     }
   }, [messages]); // The dependency array ensures this runs only when messages are added
 
-  // CHANGED: The useEffect now has only ONE job: handle the transition.
-  // This is clean and follows the Single Responsibility Principle.
+  // CHANGED: This "Embassy" now has a single, clear responsibility: manage the
+  // welcome messages and transitions between modes (creation vs. execution).
   useEffect(() => {
-    if (isFullScreen === false) {
-      setMessages([]);
+    // Guard clause: Don't do anything until the user object is actually loaded.
+    if (!user) return;
+
+    if (isFullScreen) {
+      // This is the creation mode. We set the initial welcome message.
+      const welcomeText = (creationContext === 'post_onboarding')
+        ? `Thank you for letting me know more about your business, ${user.name.split(' ')[0]}. I am excited to act as your Clarity and Execution AI Oracle for this journey. To start off; let's forge your focus for today. What do you wish to set as your Daily Intention?`
+        : `Welcome, ${user.name.split(' ')[0]}. Let's forge your focus for today. What do you wish to set as your Daily Intention?`;
+      
+      // THE KEY: We check if the chat is empty. This ensures this logic
+      // only runs ONCE when entering creation mode, preventing the infinite loop.
+      if (messages.length === 0) {
+        setMessages([{ sender: 'ai', text: welcomeText }]);
+      }
+    } else {
+      // This is the execution mode. We clear the chat and set the new welcome message
+      // after the animation delay.
+      setMessages([]); // Clear the slate
       const welcomeTimer = setTimeout(() => {
-        const executionWelcome = {
+        setMessages([{
           sender: 'ai',
           text: `Welcome to your execution space. How can I help you focus today?`
-        };
-        setMessages([executionWelcome]);
-      }, 2350);
+        }]);
+      }, 1000); // Shortened delay for a snappier feel
       return () => clearTimeout(welcomeTimer);
     }
-  }, [isFullScreen]); // Dependency array is now simpler and safer.
+    // THE DEPENDENCIES: We are being explicit. This effect should ONLY re-run if
+    // the mode (isFullScreen), the user, or the context truly changes. Because `user` is
+    // now stable from the Dashboard, this is safe.
+  }, [isFullScreen, user, creationContext]);
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
