@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { sendChatMessage, createDailyIntention } from '../services/api';
+import Typewriter from './Typewriter';
 
 // The Paper Plane SVG icon for the send button
 const SendIcon = () => (
@@ -150,15 +151,23 @@ function AIChatBox({ user, isFullScreen, onIntentionCreated }) {
                     : 'bg-gray-700 text-gray-300'
                 }`}
               >
-                {msg.text}
+                {/* UPDATED: If the message is from the AI, use our new Typewriter component! */}
+                {msg.sender === 'ai' ? (
+                  <Typewriter text={msg.text} speed={25} />
+                ) : (
+                  msg.text // User messages appear instantly
+                )}
               </div>
             </div>
           ))}
           {/* Show a "typing" indicator while the AI is thinking */}
           {isLoading && (
             <div className="flex justify-start">
-              <div className="max-w-xs lg:max-w-md px-4 py-2 rounded-lg bg-gray-700 text-gray-300">
-                <span className="animate-pulse">...</span>
+              {/* UPDATED: Replace the old text bubble with our pulsing orb */}
+              <div className="flex items-center justify-center space-x-2 p-2">
+                <div className="w-2 h-2 bg-gray-200 rounded-full animate-pulse-orb [animation-delay:-0.3s]"></div>
+                <div className="w-2 h-2 bg-gray-200 rounded-full animate-pulse-orb [animation-delay:-0.15s]"></div>
+                <div className="w-2 h-2 bg-gray-200 rounded-full animate-pulse-orb"></div>
               </div>
             </div>
           )}
