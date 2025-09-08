@@ -162,13 +162,9 @@ function AIChatBox({ user, isFullScreen, onIntentionCreated }) {
           ))}
           {/* Show a "typing" indicator while the AI is thinking */}
           {isLoading && (
-            <div className="flex justify-start">
-              {/* UPDATED: Replace the old text bubble with our pulsing orb */}
-              <div className="flex items-center justify-center space-x-2 p-2">
-                <div className="w-2 h-2 bg-gray-200 rounded-full animate-pulse-orb [animation-delay:-0.3s]"></div>
-                <div className="w-2 h-2 bg-gray-200 rounded-full animate-pulse-orb [animation-delay:-0.15s]"></div>
-                <div className="w-2 h-2 bg-gray-200 rounded-full animate-pulse-orb"></div>
-              </div>
+            <div className="flex justify-start p-4">
+              {/* UPDATED: A single, larger orb using our new heartbeat animation */}
+              <div className="w-3 h-3 bg-gray-200 rounded-full animate-pulse-heartbeat"></div>
             </div>
           )}
         </div>
