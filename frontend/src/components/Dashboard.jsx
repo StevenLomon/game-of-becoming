@@ -124,6 +124,14 @@ function Dashboard({ token, onLogout }) {
     };
 
 
+    // --- DERIVE THE CONTEXT FOR THE WELCOME MESSAGE ---
+    // Heuristic: If the user is in creation mode AND their streak is 1 AND xp is 0,
+    // we can be confident they just finished onboarding. Clearly separating a user who 
+    // has just completed onboarding versus a user who has a broken streak.
+    const isPostOnboarding = isCreatingIntention && stats.current_streak === 1 && stats.xp === 0;
+    const creationContext = isPostOnboarding ? 'post_onboarding' : 'daily_check_in';
+
+
     if (isLoading) { // Use the new loading state
         return <div className="text-gray-400">Loading your quest...</div>;
     }
@@ -184,6 +192,7 @@ function Dashboard({ token, onLogout }) {
               isCreatingIntention={isCreatingIntention}
               onIntentionCreated={handleIntentionCreated}
               refreshGameState={refreshGameState}
+              creationContext={creationContext}
             />
           )}
         </div>

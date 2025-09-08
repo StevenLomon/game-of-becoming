@@ -15,14 +15,17 @@ const SendIcon = () => (
 );
 
 // Receive the new props: isFullScreen and onIntentionCreated
-function AIChatBox({ user, isFullScreen, onIntentionCreated }) {
+function AIChatBox({ user, isFullScreen, onIntentionCreated, creationContext }) {
   const [message, setMessage] = useState('');
+  // UPDATED: Initialize state with the first message again.
+  // The initializer function only runs ONCE, preventing the loop.
   const [messages, setMessages] = useState(() => {
-    // Set the initial message based on the mode.
-    const welcomeText = isFullScreen
-      ? `Welcome, ${user.name.split(' ')[0]}. Let's forge your focus for today. What do you wish to set as your Daily Intention?`
-      : `Welcome to your execution space. How can I help you focus today?`;
-    return [{ sender: 'ai', text: welcomeText }];
+    // We can use the creationContext to determine the very first message.
+    const initialWelcome = (creationContext === 'post_onboarding')
+      ? `Thank you for letting me know more about your business, ${user.name.split(' ')[0]}. I am excited to act as your Clarity and Execution AI Oracle for this journey. To start off; let's forge your focus for today. What do you wish to set as your Daily Intention?`
+      : `Welcome, ${user.name.split(' ')[0]}. Let's forge your focus for today. What do you wish to set as your Daily Intention?`;
+    
+    return [{ sender: 'ai', text: initialWelcome }];
   });
   const [isLoading, setIsLoading] = useState(false); // State to handle when the AI is "thinking"
   const [isRefining, setIsRefining] = useState(false); // The "short-term memory" for the Daily Intention Forge conversation
@@ -50,33 +53,21 @@ function AIChatBox({ user, isFullScreen, onIntentionCreated }) {
     }
   }, [messages]); // The dependency array ensures this runs only when messages are added
 
-  // This "Embassy" is now a sophisticated orchestrator for the mode change.
+  // CHANGED: The useEffect now has only ONE job: handle the transition.
+  // This is clean and follows the Single Responsibility Principle.
   useEffect(() => {
-    // This effect runs the moment `isFullScreen` changes.
-    // We only care about the transition from true -> false.
     if (isFullScreen === false) {
-      
-      // STEP 1: Immediately reset the messages to an empty array.
-      // This happens in the same browser tick that the animation starts.
-      // The user will see an empty chatbox smoothly resizing.
       setMessages([]);
-
-      // STEP 2: Set a timer to add the new welcome message *after* the
-      // animation is complete. Your animation is 850ms, so let's wait
-      // a little longer than that for a nice rhythm.
-      const executionWelcome = {
-        sender: 'ai',
-        text: `Welcome to your execution space. How can I help you focus today?`
-      };
-      
       const welcomeTimer = setTimeout(() => {
+        const executionWelcome = {
+          sender: 'ai',
+          text: `Welcome to your execution space. How can I help you focus today?`
+        };
         setMessages([executionWelcome]);
-      }, 2350); // Wait 1.2 seconds before showing the welcome.
-
-      // A good practice is to clean up the timer if the component unmounts mid-sequence.
+      }, 2350);
       return () => clearTimeout(welcomeTimer);
     }
-  }, [isFullScreen]); // This effect is perfectly dependent on `isFullScreen`.
+  }, [isFullScreen]); // Dependency array is now simpler and safer.
 
   const handleSendMessage = async (e) => {
     e.preventDefault();

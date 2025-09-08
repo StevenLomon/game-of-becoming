@@ -13,7 +13,7 @@ import AIChatBox from './AIChatBox';
 import { completeDailyIntention, failDailyIntention } from '../services/api';
 
 // This component now contains all the logic and UI for the main application area.
-function MainContent({ user, token, intention, isCreatingIntention, onIntentionCreated, refreshGameState }) { // Receive the new props: isCreatingIntention and onIntentionCreated
+function MainContent({ user, token, intention, isCreatingIntention, onIntentionCreated, refreshGameState, creationContext }) { // Receive the new props: isCreatingIntention and onIntentionCreated
   // These states are specific to the UI flow within the main content area.
   const [view, setView] = useState('focus');
   const [error, setError] = useState(null);
@@ -128,6 +128,7 @@ function MainContent({ user, token, intention, isCreatingIntention, onIntentionC
         user={user}
         isFullScreen={isCreatingIntention}
         onIntentionCreated={onIntentionCreated}
+        creationContext={creationContext}
       />
     </div>
   );
