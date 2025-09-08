@@ -60,8 +60,11 @@ function AIChatBox({ user, isFullScreen, onIntentionCreated }) {
       };
     // We use a small delay to let the animation finish before the message appears.
       setTimeout(() => {
-        setMessages(prevMessages => [...prevMessages, executionWelcome]);
-      }, 2000); // Match this to your transition duration for a seamless feel.
+      // Instead of pushing to the old message list,
+      // we now completely RESET the messages state to a new array
+      // containing only the welcome message for the new mode.
+        setMessages(executionWelcome);
+      }, 2350); // Match this to your transition duration for a seamless feel.
     }
   }, [isFullScreen]); // Watch `isFullScreen`
 
