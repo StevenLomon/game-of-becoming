@@ -155,7 +155,7 @@ function AIChatBox({ user, isFullScreen, onIntentionCreated }) {
                   ) : (
                       // Styles for AI messages (full-width text)
                       <div className="text-gray-300 w-full text-lg">
-                          <Typewriter text={msg.text} speed={50} />
+                          <Typewriter text={msg.text} baseSpeed={50} />
                       </div>
                   )}
               </div>

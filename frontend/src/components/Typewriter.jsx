@@ -1,42 +1,52 @@
 import { useState, useEffect, useRef } from 'react';
 
-// Added a new prop: chunkSize, with a default of 5
-function Typewriter({ text, speed = 50, chunkSize = 5 }) {
+function Typewriter({ text, baseSpeed = 40 }) {
     const [displayedText, setDisplayedText] = useState('');
-    // Create a ref to hold the current index
     const indexRef = useRef(0);
+    const timeoutRef = useRef(null);
 
     useEffect(() => {
-        // Reset displayed text and index when the text prop changes
         setDisplayedText('');
         indexRef.current = 0;
 
-        const typingInterval = setInterval(() => {
+        const typeNextChunk = () => {
             const currentIndex = indexRef.current;
-
-            if (currentIndex < text.length) {
-                // Determine how many characters to add in this chunk
-                const charactersToAdd = Math.min(chunkSize, text.length - currentIndex);
-                
-                // Get the chunk of text to display
-                const nextChunk = text.substring(currentIndex, currentIndex + charactersToAdd);
-
-                // Update the state with the new chunk
-                setDisplayedText(prevText => prevText + nextChunk);
-                
-                // Increment the index by the size of the chunk
-                indexRef.current = currentIndex + charactersToAdd;
-            } else {
-                // We're done, clear the interval
-                clearInterval(typingInterval);
+            if (currentIndex >= text.length) {
+                // We're done, no more characters to type
+                return;
             }
-        }, speed);
 
-        // Cleanup function to clear the interval when the component unmounts
-        return () => {
-            clearInterval(typingInterval);
+            // Find the next space or punctuation to get a more natural word-based chunk
+            const nextWordEndIndex = text.indexOf(' ', currentIndex + 1) || text.length;
+            const nextPunctuationIndex = text.indexOf('.', currentIndex + 1) || text.length;
+            const chunkEndIndex = Math.min(nextWordEndIndex, nextPunctuationIndex);
+            
+            // Determine the chunk of characters to add
+            const chunk = text.substring(currentIndex, chunkEndIndex + 1);
+            
+            // Add the chunk to the displayed text
+            setDisplayedText(prevText => prevText + chunk);
+            
+            // Update the index for the next call
+            indexRef.current = chunkEndIndex + 1;
+
+            // Introduce a randomized delay for a more natural feel
+            const randomDelay = baseSpeed + (Math.random() * (baseSpeed * 0.75));
+            
+            // Store the timeout ID in a ref
+            timeoutRef.current = setTimeout(typeNextChunk, randomDelay);
         };
-    }, [text, speed, chunkSize]); // Rerun the effect if the text, speed, or chunk size changes
+
+        // Start the typing process
+        typeNextChunk();
+
+        // Cleanup function to clear the timeout if the component unmounts or reruns
+        return () => {
+            if (timeoutRef.current) {
+                clearTimeout(timeoutRef.current);
+            }
+        };
+    }, [text, baseSpeed]); // Rerun the effect if the text or baseSpeed changes
 
     return <p>{displayedText}</p>;
 }
