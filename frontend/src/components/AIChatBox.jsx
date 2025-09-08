@@ -19,7 +19,7 @@ function AIChatBox({ user, isFullScreen, onIntentionCreated }) {
   const [messages, setMessages] = useState(() => {
     // Set the initial message based on the mode.
     const welcomeText = isFullScreen
-      ? `Welcome, ${user.name.split(' ')[0]}. Let's forge your focus for today. What do you wish to set as your Daily Intention`
+      ? `Welcome, ${user.name.split(' ')[0]}. Let's forge your focus for today. What do you wish to set as your Daily Intention?`
       : `Welcome to your execution space. How can I help you focus today?`;
     return [{ sender: 'ai', text: welcomeText }];
   });
@@ -31,10 +31,10 @@ function AIChatBox({ user, isFullScreen, onIntentionCreated }) {
   // It's the "single source of truth" for what the chat is currently trying to do.
   const [creationStep, setCreationStep] = useState('AWAITING_TEXT');
 
-  // Dynamically set the container classes based on the mode
+  // Dynamically set the container classes based on the mode. UPDATE:Now with a smooth transition!
   const containerClasses = isFullScreen
-    ? "flex flex-col h-full bg-gray-900 p-4 rounded-lg" // Full screen
-    : "flex flex-col h-96 bg-gray-900 p-4 rounded-lg mt-8"; // Standard footer; fixed height so that we can implement a scrollable chat box
+    ? "flex flex-col h-full bg-gray-900 p-4 rounded-lg transition-all duration-2000 ease-in-out" // Full screen
+    : "flex flex-col h-96 bg-gray-900 p-4 rounded-lg mt-8 transition-all duration-2000 ease-in-out"; // Standard footer; fixed height so that we can implement a scrollable chat box
 
   // Our "Bookmark" for the auto-scroll feature
   const chatContainerRef = useRef(null);
