@@ -33,6 +33,8 @@ function AIChatBox({ user, isFullScreen, onIntentionCreated, creationContext }) 
 
   // Our "Bookmark" for the auto-scroll feature
   const chatContainerRef = useRef(null);
+  // NEW: A ref to prevent the infinite loop of welcome messages
+  const welcomeSetRef = useRef(false);
 
   // The auto-scrolling effect
   useEffect(() => {
@@ -56,15 +58,16 @@ function AIChatBox({ user, isFullScreen, onIntentionCreated, creationContext }) 
         ? `Thank you for letting me know more about your business, ${user.name.split(' ')[0]}. I am excited to act as your Clarity and Execution AI Oracle for this journey. To start off; let's forge your focus for today. What do you wish to set as your Daily Intention?`
         : `Welcome, ${user.name.split(' ')[0]}. Let's forge your focus for today. What do you wish to set as your Daily Intention?`;
       
-      // THE KEY: We check if the chat is empty. This ensures this logic
-      // only runs ONCE when entering creation mode, preventing the infinite loop.
-      if (messages.length === 0) {
+      // Use our Ref and only set once
+      if (!welcomeSetRef.current) {
         setMessages([{ sender: 'ai', text: welcomeText }]);
+        welcomeSetRef.current = true;
       }
     } else {
       // This is the execution mode. We clear the chat and set the new welcome message
       // after the animation delay.
       setMessages([]); // Clear the slate
+      welcomeSetRef.current = false; // Reset when leaving full screen
       const welcomeTimer = setTimeout(() => {
         setMessages([{
           sender: 'ai',
