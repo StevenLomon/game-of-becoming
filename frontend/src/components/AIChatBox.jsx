@@ -33,8 +33,8 @@ function AIChatBox({ user, isFullScreen, onIntentionCreated }) {
 
   // Dynamically set the container classes based on the mode. UPDATE:Now with a smooth transition!
   const containerClasses = isFullScreen
-    ? "flex flex-col h-full bg-gray-900 p-4 rounded-lg transition-all duration-2000 ease-in-out" // Full screen
-    : "flex flex-col h-96 bg-gray-900 p-4 rounded-lg mt-8 transition-all duration-2000 ease-in-out"; // Standard footer; fixed height so that we can implement a scrollable chat box
+    ? "flex flex-col h-full bg-gray-900 p-4 rounded-lg transition-all duration-[3000ms] ease-in-out" // Full screen
+    : "flex flex-col h-96 bg-gray-900 p-4 rounded-lg mt-8 transition-all duration-[3000ms] ease-in-out"; // Standard footer; fixed height so that we can implement a scrollable chat box
 
   // Our "Bookmark" for the auto-scroll feature
   const chatContainerRef = useRef(null);
@@ -77,11 +77,11 @@ function AIChatBox({ user, isFullScreen, onIntentionCreated }) {
 
         // 4. If the conversation is complete, hand off to the Dashboard
         if (response.next_step === 'COMPLETE') {
-          // Add a small delay so the user can read the final message before the UI transforms.
-          setTimeout(() => {
-            onIntentionCreated(response.intention_payload);
-          }, 2000); // 2-second delay
-        }
+          // await asyncio.sleep(2);
+          onIntentionCreated(response.intention_payload);
+        } 
+        // setTimeout no longer used. The CSS transition acts as the delay that allows 
+        // the user to read the final message!
 
       } else {
         // --- EXECUTION (GENERAL CHAT) PLAYBOOK ---
