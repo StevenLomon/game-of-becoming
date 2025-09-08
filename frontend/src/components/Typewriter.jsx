@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 
-function Typewriter({ text, speed = 50 }) {
+// Added a new prop: chunkSize, with a default of 5
+function Typewriter({ text, speed = 50, chunkSize = 5 }) {
     const [displayedText, setDisplayedText] = useState('');
     // Create a ref to hold the current index
     const indexRef = useRef(0);
@@ -11,14 +12,20 @@ function Typewriter({ text, speed = 50 }) {
         indexRef.current = 0;
 
         const typingInterval = setInterval(() => {
-            // Get the current index from the ref
             const currentIndex = indexRef.current;
 
             if (currentIndex < text.length) {
-                // Update the state with the next character
-                setDisplayedText(prevText => prevText + text.charAt(currentIndex));
-                // Increment the index in the ref for the next tick
-                indexRef.current = currentIndex + 1;
+                // Determine how many characters to add in this chunk
+                const charactersToAdd = Math.min(chunkSize, text.length - currentIndex);
+                
+                // Get the chunk of text to display
+                const nextChunk = text.substring(currentIndex, currentIndex + charactersToAdd);
+
+                // Update the state with the new chunk
+                setDisplayedText(prevText => prevText + nextChunk);
+                
+                // Increment the index by the size of the chunk
+                indexRef.current = currentIndex + charactersToAdd;
             } else {
                 // We're done, clear the interval
                 clearInterval(typingInterval);
@@ -29,7 +36,7 @@ function Typewriter({ text, speed = 50 }) {
         return () => {
             clearInterval(typingInterval);
         };
-    }, [text, speed]); // Rerun the effect if the text or speed changes
+    }, [text, speed, chunkSize]); // Rerun the effect if the text, speed, or chunk size changes
 
     return <p>{displayedText}</p>;
 }
