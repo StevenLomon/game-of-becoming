@@ -63,7 +63,7 @@ function AIChatBox({ user, isFullScreen, onIntentionCreated }) {
       // Instead of pushing to the old message list,
       // we now completely RESET the messages state to a new array
       // containing only the welcome message for the new mode.
-        setMessages(executionWelcome);
+        setMessages([executionWelcome]); // We need to preserve the array nature of messages!
       }, 2350); // Match this to your transition duration for a seamless feel.
     }
   }, [isFullScreen]); // Watch `isFullScreen`
