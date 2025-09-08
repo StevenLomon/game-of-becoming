@@ -140,32 +140,32 @@ function AIChatBox({ user, isFullScreen, onIntentionCreated }) {
       >
         <div className="space-y-4">
           {messages.map((msg, index) => (
-            <div
-              key={index}
-              className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-            >
               <div
-                className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                  msg.sender === 'user'
-                    ? 'bg-teal-600 text-white'
-                    : 'bg-gray-700 text-gray-300'
-                }`}
+                  key={index}
+                  className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
               >
-                {/* UPDATED: If the message is from the AI, use our new Typewriter component! */}
-                {msg.sender === 'ai' ? (
-                  <Typewriter text={msg.text} speed={25} />
-                ) : (
-                  msg.text // User messages appear instantly
-                )}
+                  {/* Conditional styling for the message content */}
+                  {msg.sender === 'user' ? (
+                      // Styles for user messages (chat bubble)
+                      <div
+                          className="max-w-xs lg:max-w-md px-4 py-2 rounded-lg text-lg bg-teal-600 text-white"
+                      >
+                          {msg.text}
+                      </div>
+                  ) : (
+                      // Styles for AI messages (full-width text)
+                      <div className="text-gray-300 w-full text-lg">
+                          <Typewriter text={msg.text} speed={25} />
+                      </div>
+                  )}
               </div>
-            </div>
           ))}
+
           {/* Show a "typing" indicator while the AI is thinking */}
           {isLoading && (
-            <div className="flex justify-start p-4">
-              {/* UPDATED: A single, larger orb using our new heartbeat animation */}
-              <div className="w-3 h-3 bg-gray-200 rounded-full animate-pulse-heartbeat"></div>
-            </div>
+              <div className="flex justify-start p-4">
+                  <div className="w-3 h-3 bg-gray-200 rounded-full animate-pulse-heartbeat"></div>
+              </div>
           )}
         </div>
       </div>
