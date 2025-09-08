@@ -60,66 +60,72 @@ function MainContent({ user, token, intention, isCreatingIntention, onIntentionC
   const activeBlock = intention ? intention.focus_blocks.find(b => b.status === 'pending' || b.status === 'in_progress') : null;
 
   return (
-    // This top-level container remains our clean flex column.
-    <div className="flex flex-col flex-grow">
+    // This root div remains the same, providing the flex-column context.
+    <div className="flex flex-col h-full">
       {error && (
         <div className="bg-red-900 border-red-700 text-red-300 px-4 py-3 rounded-md mb-4">
           {error}
         </div>
       )}
 
-      {/* The new "Master Switch" logic */}
-      {isCreatingIntention ? (
-        // MODE 1: CREATION - Render ONLY the chat box in full-screen mode.
-        <AIChatBox
-          user={user}
-          isFullScreen={true}
-          onIntentionCreated={onIntentionCreated}
-        />
-      ) : intention ? (
-        // MODE 2: EXECUTION - Render the standard execution view.
-        // This logic is only reachable if an intention already exists.
-        intention.daily_result ? (
-          <DailyResultDisplay 
-            result={intention.daily_result}
-            refreshGameState={refreshGameState}
-          />
-        ) : (
-          <>
-            <DailyIntentionHeader intention={intention} onComplete={handleCompleteIntention} />
-            
-            <div className="flex-grow">
-              {/* This middle section contains the dynamic view (focus/progress) */}
-              {view === 'progress' ? (
-                <>
-                  <RewardDisplay rewards={lastReward} />
-                  <UpdateProgressForm 
-                    onProgressUpdated={handleProgressUpdated}
-                    currentProgress={intention.completed_quantity}
-                  />
-                </>
-              ) : (
-                activeBlock ? (
-                  <ActiveFocusBlock block={activeBlock} onBlockCompleted={handleFocusBlockCompleted} />
+      {/* --- NEW STABLE LAYOUT --- */}
+
+      {/* 1. Wrapper for all "Execution Mode" content. */}
+      {/* This div is ALWAYS in the DOM tree, but we conditionally hide it with */}
+      {/* Tailwind's `hidden` class (display: none) when in creation mode. */}
+      {/* When visible, it's a flex-column that grows to fill available space. */}
+      <div className={`flex flex-col flex-grow ${isCreatingIntention ? 'hidden' : 'flex'}`}>
+        {intention ? (
+          // If an intention exists, we decide what part of the execution flow to show.
+          intention.daily_result ? (
+            <DailyResultDisplay
+              result={intention.daily_result}
+              refreshGameState={refreshGameState}
+            />
+          ) : (
+            // This is the main execution view.
+            <>
+              <DailyIntentionHeader intention={intention} onComplete={handleCompleteIntention} />
+
+              <div className="flex-grow">
+                {/* This middle section contains the dynamic view (focus/progress) */}
+                {view === 'progress' ? (
+                  <>
+                    <RewardDisplay rewards={lastReward} />
+                    <UpdateProgressForm
+                      onProgressUpdated={handleProgressUpdated}
+                      currentProgress={intention.completed_quantity}
+                    />
+                  </>
                 ) : (
-                  <ExecutionArea 
-                    user={user} 
-                    intention={intention} 
-                    onBlockCreated={refreshGameState} 
-                    onBlockCompleted={handleFocusBlockCompleted} 
-                  />
-                )
-              )}
-            </div>
-            
-            <AIChatBox user={user} isFullScreen={false} />
-          </>
-        )
-      ) : (
-        // Fallback for an edge case where there's no intention, but we're not in creation mode.
-        // This could show a loading spinner or a message.
-        <p>Loading your day...</p>
-      )}
+                  activeBlock ? (
+                    <ActiveFocusBlock block={activeBlock} onBlockCompleted={handleFocusBlockCompleted} />
+                  ) : (
+                    <ExecutionArea
+                      user={user}
+                      intention={intention}
+                      onBlockCreated={refreshGameState}
+                      onBlockCompleted={handleFocusBlockCompleted}
+                    />
+                  )
+                )}
+              </div>
+            </>
+          )
+        ) : (
+          // This fallback now lives safely inside the conditionally hidden wrapper.
+          <p>Loading your day...</p>
+        )}
+      </div>
+
+      {/* 2. The AIChatBox is ALWAYS rendered here, in the same position in the tree. */}
+      {/* Its state will be preserved, and its CSS transitions will now work because */}
+      {/* the component itself is never unmounted during a mode change. */}
+      <AIChatBox
+        user={user}
+        isFullScreen={isCreatingIntention}
+        onIntentionCreated={onIntentionCreated}
+      />
     </div>
   );
 }
