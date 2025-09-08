@@ -49,24 +49,33 @@ function AIChatBox({ user, isFullScreen, onIntentionCreated }) {
     }
   }, [messages]); // The dependency array ensures this runs only when messages are added
 
-  // New "Watchdog" effect to watch for the mode change
+  // This "Embassy" is now a sophisticated orchestrator for the mode change.
   useEffect(() => {
-    // This effect only runs whenever `isFullScreen` changes
-    // We only want to add the message when we transition OUT of full screen
+    // This effect runs the moment `isFullScreen` changes.
+    // We only care about the transition from true -> false.
     if (isFullScreen === false) {
+      
+      // STEP 1: Immediately reset the messages to an empty array.
+      // This happens in the same browser tick that the animation starts.
+      // The user will see an empty chatbox smoothly resizing.
+      setMessages([]);
+
+      // STEP 2: Set a timer to add the new welcome message *after* the
+      // animation is complete. Your animation is 850ms, so let's wait
+      // a little longer than that for a nice rhythm.
       const executionWelcome = {
         sender: 'ai',
         text: `Welcome to your execution space. How can I help you focus today?`
       };
-    // We use a small delay to let the animation finish before the message appears.
-      setTimeout(() => {
-      // Instead of pushing to the old message list,
-      // we now completely RESET the messages state to a new array
-      // containing only the welcome message for the new mode.
-        setMessages([executionWelcome]); // We need to preserve the array nature of messages!
-      }, 2350); // Match this to your transition duration for a seamless feel.
+      
+      const welcomeTimer = setTimeout(() => {
+        setMessages([executionWelcome]);
+      }, 2350); // Wait 1.2 seconds before showing the welcome.
+
+      // A good practice is to clean up the timer if the component unmounts mid-sequence.
+      return () => clearTimeout(welcomeTimer);
     }
-  }, [isFullScreen]); // Watch `isFullScreen`
+  }, [isFullScreen]); // This effect is perfectly dependent on `isFullScreen`.
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
