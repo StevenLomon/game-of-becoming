@@ -7,13 +7,16 @@ export default {
   theme: {
     extend: {
       keyframes: {
-        'pulse-orb': {
-          '0%, 100%': { opacity: '1', transform: 'scale(1)' },
-          '50%': { opacity: '0.5', transform: 'scale(0.75)' },
+        // UPDATED: This animation creates a more subtle "heartbeat" pulse
+        // by gently scaling the orb up and changing its opacity.
+        'pulse-heartbeat': {
+          '0%, 100%': { transform: 'scale(1)', opacity: '0.7' },
+          '50%': { transform: 'scale(1.1)', opacity: '1' },
         }
       },
       animation: {
-        'pulse-orb': 'pulse-orb 1.5s infinite ease-in-out',
+        // We give it a new name to be clear about its purpose.
+        'pulse-heartbeat': 'pulse-heartbeat 2s infinite ease-in-out',
       }
     },
   },
