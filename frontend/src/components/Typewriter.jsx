@@ -1,50 +1,35 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 
 function Typewriter({ text, baseSpeed = 40 }) {
+    // We now use state for both the displayed text and the index
     const [displayedText, setDisplayedText] = useState('');
-    const timeoutRef = useRef(null);
+    const [index, setIndex] = useState(0);
 
     useEffect(() => {
-        // Always clear any existing timer when the effect re-runs (e.g., text changes)
-        if (timeoutRef.current) {
-            clearTimeout(timeoutRef.current);
+        // We only proceed if there are still characters to type
+        if (index < text.length) {
+            // Schedule the next character to be added
+            const timerId = setTimeout(() => {
+                // This will add the next character based on the current index
+                setDisplayedText(prev => prev + text.charAt(index));
+                
+                // And then we increment the index to trigger the next loop
+                setIndex(prev => prev + 1);
+            }, baseSpeed + (Math.random() * (baseSpeed * 0.75))); // Retain your random delay
+
+            // The cleanup function is now tied to the timerId
+            return () => clearTimeout(timerId);
         }
-        
-        // Reset the state for the new text
-        setDisplayedText('');
-        
-        let currentIndex = 0;
+    }, [index, text, baseSpeed]); // The effect re-runs whenever index, text, or speed changes
 
-        const typeCharacter = () => {
-            if (currentIndex < text.length) {
-                setDisplayedText(prev => prev + text[currentIndex]);
-                currentIndex++;
+    // When the `text` prop changes, we need to reset the state.
+    // We can do this with a separate effect.
+    useEffect(() => {
+      setDisplayedText('');
+      setIndex(0);
+    }, [text]);
 
-                // SUGGESTION: Add natural pauses for punctuation
-                const currentChar = text[currentIndex - 1];
-                const delay = currentChar === '.' || currentChar === '?' || currentChar === '!'
-                    ? baseSpeed * 12 // Longer pause for sentence end
-                    : currentChar === ','
-                    ? baseSpeed * 6 // Shorter pause for comma
-                    : baseSpeed + (Math.random() * (baseSpeed * 0.75));
-
-                timeoutRef.current = setTimeout(typeCharacter, delay);
-            }
-        };
-
-        // Start the typing process
-        typeCharacter();
-
-        // The critical cleanup function: This runs when the component unmounts
-        // or before the effect re-runs, preventing "zombie timers".
-        return () => {
-            if (timeoutRef.current) {
-                clearTimeout(timeoutRef.current);
-            }
-        };
-    }, [text, baseSpeed]); // This effect is now perfectly self-contained
-
-    return <span>{displayedText}</span>; // Use a <span> for inline text
+    return <span>{displayedText}</span>;
 }
 
 export default Typewriter;
