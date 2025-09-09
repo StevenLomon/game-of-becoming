@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { getGameState } from '../services/api';
 import Onboarding from './Onboarding';
 import CreateDailyIntentionForm from './CreateDailyIntentionForm';
@@ -69,7 +69,10 @@ function Dashboard({ token, onLogout }) {
     // Not everything needs to useState!
 
     // CHANGED: This is now our single, robust "Control Panel" for all data fetching.
-    const refreshGameState = async () => {
+    // Wrap the entire function in useCallback.
+    // The empty dependency array `[]` means this function will be created ONLY ONCE
+    // for the entire life of the component, giving it a stable identity.
+    const refreshGameState = useCallback(async () => {
       // Set loading to true at the beginning of ANY refresh.
       // This prevents the UI from trying to render with partial or stale data.
       setIsLoading(true);
@@ -92,7 +95,7 @@ function Dashboard({ token, onLogout }) {
         // whether it succeeded or failed.
         setIsLoading(false);
       }
-    };
+    }, []);
 
     // This "Embassy" is now simpler. It just triggers the refresh.
     useEffect(() => {
@@ -120,7 +123,7 @@ function Dashboard({ token, onLogout }) {
         // };
         // fetchInitialGameState();
         refreshGameState(); // Do NOTHING except refresh the game state
-    }, [token]); // Re-run this effect if the token changes. onLogout not used anymore and therefore removed
+    }, [token, refreshGameState]); // It's best practice to include memoized functions in the dep array
 
     const handleOnboardingComplete = () => {
         // Its only job is to refresh the game state after the final step.
