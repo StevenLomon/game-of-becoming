@@ -140,6 +140,19 @@ export async function submitOnboardingV2Step(userText, currentStep) {
 }
 
 /**
+ * Fetches the entire game state in a single call.
+ * @returns {Promise<object>} - The comprehensive game state object.
+ */
+export async function getGameState() {
+    const endpoint = "/api/users/me/game-state";
+    const url = `${API_BASE_URL}${endpoint}`;
+
+    const response = await authFetch(url);
+
+    return handleErrors(response).then(res => res.json());
+}
+
+/**
  * Sends a message to the general AI chat endpoint and returns the response.
  * @param {string} messageText - The user's message to the AI.
  * @returns {Promise<object>} - The AI's response object (e.g., { ai_response: '...' }).
