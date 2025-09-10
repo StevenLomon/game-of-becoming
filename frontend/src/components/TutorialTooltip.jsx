@@ -18,6 +18,7 @@ function TutorialTooltip({ targetRef, text, onNext }) {
       }
     };
 
+    // Calculate position immediately and on any window resize
     calculatePosition();
     window.addEventListener('resize', calculatePosition);
     return () => window.removeEventListener('resize', calculatePosition);
