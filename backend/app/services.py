@@ -45,6 +45,17 @@ class RecoveryQuestCoachingResponse(BaseModel):
     ai_coaching_feedback: str = Field(description="Encouraging, wisdom-building coaching based on the user's reflection (2-3 sentences max).")
     resilience_stat_gain: int = Field(description="Set to 1 for completing the reflection.")
 
+class AIOnboardingAnalysis(BaseModel):
+    """The AI's structured analysis of the user's message during onboarding."""
+    next_step: schemas.OnboardingStepName = Field(description="Based on the user's input and the current step, what is the next logical step?")
+    ai_message: str = Field(description="A concise, helpful message to send to the user to guide them.")
+    # The AI will use these fields to save data as the conversation progresses
+    extracted_business_stage: Optional[str] = Field(None)
+    extracted_stretch_goal: Optional[str] = Field(None)
+    extracted_primary_constraint: Optional[str] = Field(None)
+    extracted_obstacle: Optional[str] = Field(None)
+    extracted_hla: Optional[str] = Field(None)
+
 class AIConversationAnalysis(BaseModel):
     """The AI's analysis of the user's input during Daily Intention creation"""
     next_step: schemas.CreationStep = Field(description="Based on the user's input and the current conversational step, what is the next logical step?")
