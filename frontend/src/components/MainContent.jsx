@@ -77,16 +77,16 @@ function MainContent({ user, token, intention, isCreatingIntention, onIntentionC
           </div>
         )}
 
-        {intention ? (
-          // If an intention exists, we decide what part of the execution flow to show.
-          intention.daily_result ? (
+        {/* UPDATED: By removing the top-level ternary, we ensure a stable layout for the animation */}
+        {intention?.daily_result ? (
             <DailyResultDisplay
               result={intention.daily_result}
               refreshGameState={refreshGameState}
             />
           ) : (
             // This is the main execution view.
-            <>
+            // This container and its children are now ALWAYS in the DOM.
+            <div className="flex flex-col h-full">
               <DailyIntentionHeader intention={intention} onComplete={handleCompleteIntention} />
 
               <div className="flex-grow">
@@ -112,24 +112,20 @@ function MainContent({ user, token, intention, isCreatingIntention, onIntentionC
                   )
                 )}
               </div>
-            </>
-          )
-        ) : (
-          // This fallback now lives safely inside the conditionally hidden wrapper.
-          <p>Loading your day...</p>
-        )}
+            </div>
+          )}
+        </div>
       </div>
-    </div>
 
-    {/* 2. The AIChatBox is ALWAYS rendered here, in the same position in the tree. */}
-    {/* It is now simply the second grid row. */}
-    <AIChatBox
-      user={user}
-      isFullScreen={isCreatingIntention}
-      onIntentionCreated={onIntentionCreated}
-      creationContext={creationContext}
-    />
-  </div>
+      {/* 2. The AIChatBox is ALWAYS rendered here, in the same position in the tree. */}
+      {/* It is now simply the second grid row. */}
+      <AIChatBox
+        user={user}
+        isFullScreen={isCreatingIntention}
+        onIntentionCreated={onIntentionCreated}
+        creationContext={creationContext}
+      />
+    </div>
   );
 }
 
