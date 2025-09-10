@@ -96,7 +96,7 @@ function MainContent({ user, token, intention, isCreatingIntention, onIntentionC
                     <RewardDisplay rewards={lastReward} />
                     <UpdateProgressForm
                       onProgressUpdated={handleProgressUpdated}
-                      currentProgress={intention.completed_quantity}
+                      currentProgress={intention?.completed_quantity || 0}
                     />
                   </>
                 ) : (
