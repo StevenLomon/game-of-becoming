@@ -117,34 +117,26 @@ export async function getCharacterStats() {
 }
 
 /**
- * Submits one step of the conversational onboarding process.
- * @param {string} step - The name of the current step (e.g., 'vision').
- * @param {string} text - The user's text input for that step.
- * @returns {Promise<object>} - The AI's response and the next step in the flow.
+ * Submits one step of the V2 conversational onboarding process.
+ * @param {string} userText - The user's text input for the current step.
+ * @param {string} currentStep - The name of the current step (e.g., 'AWAITING_BUSINESS_STAGE').
+ * @returns {Promise<object>} - The AI's instructional response for the next step.
  */
-export async function submitOnboardingStep(step, text) {
+export async function submitOnboardingV2Step(userText, currentStep) {
   const endpoint = "/api/onboarding/step";
   const url = `${API_BASE_URL}${endpoint}`;
 
+  const requestBody = {
+    user_text: userText,
+    current_step: currentStep,
+  };
+
   const response = await authFetch(url, {
     method: "POST",
-    body: JSON.stringify({ step, text }),
+    body: JSON.stringify(requestBody),
   });
 
   return handleErrors(response).then((res) => res.json());
-}
-
-/**
- * Fetches the entire game state in a single call.
- * @returns {Promise<object>} - The comprehensive game state object.
- */
-export async function getGameState() {
-    const endpoint = "/api/users/me/game-state";
-    const url = `${API_BASE_URL}${endpoint}`;
-
-    const response = await authFetch(url);
-
-    return handleErrors(response).then(res => res.json());
 }
 
 /**
