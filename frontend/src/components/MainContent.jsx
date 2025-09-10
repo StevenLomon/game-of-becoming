@@ -60,65 +60,54 @@ function MainContent({ user, token, intention, isCreatingIntention, onIntentionC
   const activeBlock = intention ? intention.focus_blocks.find(b => b.status === 'pending' || b.status === 'in_progress') : null;
 
   return (
-  // UPDATED: The root div is now a grid container that will handle the animation.
-  <div className={`grid flex-grow transition-[grid-template-rows] duration-1000 ease-in-out ${isCreatingIntention ? 'grid-rows-[0fr_1fr]' : 'grid-rows-[1fr_auto]'}`}>
-    {/* --- NEW STABLE LAYOUT --- */}
-
-    {/* 1. This div wraps the content that appears and disappears. */}
-    {/* It will be placed in the first grid row, which animates its height. */}
-    <div className="overflow-hidden">
-
-      {/* UPDATED: Single source of truth wrapper for the opacity transition */}
-      <div className={`transition-opacity duration-700 ease-in-out ${isCreatingIntention ? 'opacity-0' : 'opacity-100'}`}>
-        {/* All the previous content now lives inside the opacity wrapper, unchanged. */}
+    // 1. This is now our positioning context and clipping boundary.
+    <div className="relative flex-grow overflow-hidden">
+      
+      {/* --- Main Execution Content --- */}
+      {/* 2. This content is now always rendered "underneath" the chatbox. */}
+      {/* We animate its opacity to fade it in as the chatbox shrinks. */}
+      <div className={`h-full transition-opacity duration-1000 ease-in-out ${isCreatingIntention ? 'opacity-0' : 'opacity-100'}`}>
         {error && (
           <div className="bg-red-900 border-red-700 text-red-300 px-4 py-3 rounded-md mb-4">
             {error}
           </div>
         )}
-
-        {/* UPDATED: By removing the top-level ternary, we ensure a stable layout for the animation */}
         {intention?.daily_result ? (
-            <DailyResultDisplay
-              result={intention.daily_result}
-              refreshGameState={refreshGameState}
-            />
-          ) : (
-            // This is the main execution view.
-            // This container and its children are now ALWAYS in the DOM.
-            <div className="flex flex-col h-full">
-              <DailyIntentionHeader intention={intention} onComplete={handleCompleteIntention} />
-
-              <div className="flex-grow">
-                {/* This middle section contains the dynamic view (focus/progress) */}
-                {view === 'progress' ? (
-                  <>
-                    <RewardDisplay rewards={lastReward} />
-                    <UpdateProgressForm
-                      onProgressUpdated={handleProgressUpdated}
-                      currentProgress={intention?.completed_quantity || 0}
-                    />
-                  </>
+          <DailyResultDisplay
+            result={intention.daily_result}
+            refreshGameState={refreshGameState}
+          />
+        ) : (
+          <div className="flex flex-col h-full">
+            <DailyIntentionHeader intention={intention} onComplete={handleCompleteIntention} />
+            <div className="flex-grow">
+              {view === 'progress' ? (
+                <>
+                  <RewardDisplay rewards={lastReward} />
+                  <UpdateProgressForm
+                    onProgressUpdated={handleProgressUpdated}
+                    currentProgress={intention?.completed_quantity || 0}
+                  />
+                </>
+              ) : (
+                activeBlock ? (
+                  <ActiveFocusBlock block={activeBlock} onBlockCompleted={handleFocusBlockCompleted} />
                 ) : (
-                  activeBlock ? (
-                    <ActiveFocusBlock block={activeBlock} onBlockCompleted={handleFocusBlockCompleted} />
-                  ) : (
-                    <ExecutionArea
-                      user={user}
-                      intention={intention}
-                      onBlockCreated={refreshGameState}
-                      onBlockCompleted={handleFocusBlockCompleted}
-                    />
-                  )
-                )}
-              </div>
+                  <ExecutionArea
+                    user={user}
+                    intention={intention}
+                    onBlockCreated={refreshGameState}
+                    onBlockCompleted={handleFocusBlockCompleted}
+                  />
+                )
+              )}
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
-      {/* 2. The AIChatBox is ALWAYS rendered here, in the same position in the tree. */}
-      {/* It is now simply the second grid row. */}
+      {/* --- AIChatBox Overlay --- */}
+      {/* 3. The chatbox is now an absolutely positioned overlay. */}
       <AIChatBox
         user={user}
         isFullScreen={isCreatingIntention}

@@ -75,7 +75,9 @@ function Dashboard({ token, onLogout }) {
     const refreshGameState = useCallback(async () => {
       // Set loading to true at the beginning of ANY refresh.
       // This prevents the UI from trying to render with partial or stale data.
-      setIsLoading(true);
+      // setIsLoading(true);
+      // UPDATED: We no longer set a loading state inside the refresh function.
+    // It will now just fetch data and update the props of the already-visible components.
       try {
         const gameState = await getGameState();
         setUser(gameState.user);
@@ -90,14 +92,16 @@ function Dashboard({ token, onLogout }) {
         // No longer setting state here. We will derive this value below.
       } catch (err) {
         setError(err.message);
-      } finally {
-        // Ensure loading is set to false after the operation is complete,
-        // whether it succeeded or failed.
-        setIsLoading(false);
-      }
+      } 
+      // finally {
+      //   // Ensure loading is set to false after the operation is complete,
+      //   // whether it succeeded or failed.
+      //   setIsLoading(false);
+      // } No longer needed!
     }, []);
 
     // This "Embassy" is now simpler. It just triggers the refresh.
+    // UPDATED: The initial fetch now also manages the initial loading state!
     useEffect(() => {
         // // Renamed for clarity
         // const fetchInitialGameState = async () => {
@@ -122,8 +126,14 @@ function Dashboard({ token, onLogout }) {
         //     setIsLoading(false);
         // };
         // fetchInitialGameState();
-        refreshGameState(); // Do NOTHING except refresh the game state
-    }, [token, refreshGameState]); // It's best practice to include memoized functions in the dep array
+        const fetchInitialData = async () => {
+            // No need to set isLoading(true) here, it's already true by default.
+            await refreshGameState();
+            setIsLoading(false); // Turn off the loader ONLY after the first load.
+        };
+
+        fetchInitialData();
+    }, []); // Run this effect only ONCE on mount.
 
     const handleOnboardingComplete = () => {
         // Its only job is to refresh the game state after the final step.

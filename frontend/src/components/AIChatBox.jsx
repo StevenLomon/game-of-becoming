@@ -26,10 +26,14 @@ function AIChatBox({ user, isFullScreen, onIntentionCreated, creationContext }) 
   // It's the "single source of truth" for what the chat is currently trying to do.
   const [creationStep, setCreationStep] = useState('AWAITING_TEXT');
 
-  // Dynamically set the container classes based on the mode. UPDATED: Remove h-full and the transition classes. The grid parent now controls the height and animation.
-  const containerClasses = isFullScreen
-    ? "flex flex-col bg-gray-900 p-4 rounded-lg ease-in-out" // Full screen
-    : "flex flex-col h-96 bg-gray-900 p-4 rounded-lg ease-in-out"; // Standard footer; fixed height so that we can implement a scrollable chat box
+  // This class string now defines the component as an overlay
+  // that animates its height between h-full and h-96.
+  const containerClasses = `
+    absolute bottom-0 left-0 right-0
+    flex flex-col bg-gray-900 p-4 rounded-lg
+    transition-all duration-1000 ease-in-out
+    ${isFullScreen ? 'h-full' : 'h-96'}
+  `;
 
   // Our "Bookmark" for the auto-scroll feature
   const chatContainerRef = useRef(null);
