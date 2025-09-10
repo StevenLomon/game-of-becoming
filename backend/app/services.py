@@ -1,5 +1,6 @@
 from typing import Any, Optional
 from sqlalchemy.orm import Session
+from fastapi import HTTPException
 from pydantic import BaseModel, Field
 from datetime import datetime, date, timezone
 import os, asyncio # asyncio added for asyncio.sleep which will be used for realistic testing when DISABLE_AI_CALLS is set to True
@@ -106,122 +107,83 @@ def update_user_streak(user: models.User, today: date = date.today()):
 
     return True
 
-async def process_onboarding_step(db: Session, user: models.User, step_data: schemas.OnboardingStepInput) -> dict[str, Any]:
+async def process_onboarding_step(db: Session, user: models.User, request_data: schemas.OnboardingV2Request) -> schemas.OnboardingV2Response:
     """
-    Processes a single step in the conversational onboarding flow, using the AI
-    to generate a mirrored + smart response and guide the user.
+    Processes a single step in the V2 conversational onboarding flow.
+    Acts as an AI-powered state machine based on the Theory of Constraints.
     """
-    # The "off switch"
-    if os.getenv("DISABLE_AI_CALLS") == "True":
-        print(f"--- AI CALL DISABLED: Returning mock response for onboarding step: {step_data.step} ---")
-        
-        # We can simulate the AI's "Mirrored + Smart" response
-        mock_ai_response = f"Mock response for {step_data.step}: Acknowledged '{step_data.text}'. Now, what is the next step?"
-        next_step_map = {
-            "vision": "milestone",
-            "milestone": "constraint",
-            "constraint": "hla",
-            "hla": None
-        }
-        next_step = next_step_map.get(step_data.step)
-        
-        # Save the user's input, which is a key part of the real function
-        if step_data.step == "vision": user.vision = step_data.text
-        elif step_data.step == "milestone": user.milestone = step_data.text
-        elif step_data.step == "constraint": user.constraint = step_data.text
-        elif step_data.step == "hla": user.hla = step_data.text
-        db.commit()
-
-        return {
-            "ai_response": mock_ai_response,
-            "next_step": next_step,
-            "final_hla": user.hla if not next_step else None,
-        }
-    
     llm_provider = get_llm_provider()
-    step = step_data.step
-    user_input = step_data.text
+    current_step = request_data.current_step
+    user_text = request_data.user_text
 
-    # --- System Prompt: The AI's Core Identity ---
-    system_prompt = """
-    You are the AI Clarity Coach for "The Game of Becoming". Your persona is "Mirrored + Smart."
-    - **Mirrored:** You always start your response by acknowledging and repeating the core of what the user just told you.
-    - **Smart:** You then ask a single, sharp, clarifying question to guide them ot the next step of defining their Highest Leverage Action (HLA).
-    - **Tone:** You are encouraging, game-oriented, and focused. You use terms like "North Star" (for vision), "Quest" (for milestone), "Boss" (for constraint), and "First Move" (for the HLA).
+    # --- The AI's Job Description (System Prompt) ---
+    system_prompt = f"""
+    You are the AI Clarity Coach for "Xecution.ai". Your role is to guide a new user, {user.name},
+    through a conversational onboarding process based on the Theory of Constraints.
+    Your persona is "Mirrored + Smart": first, validate the user's input, then ask the next incisive question.
+
+    You will manage a state machine with these steps: {', '.join([s.value for s in schemas.OnboardingStepName])}.
+    You are given the CURRENT_STEP and USER_MESSAGE. Your job is to analyze the message, decide the NEXT_STEP,
+    and generate the AI_MESSAGE to guide the user.
+
+    **STATE MACHINE LOGIC:**
+    1.  **AWAITING_BUSINESS_STAGE**: Ask the user what kind of business they are running.
+    2.  **AWAITING_STRETCH_GOAL**: The user has described their business. Acknowledge it, then ask for their 6-12 month stretch goal.
+    3.  **AWAITING_CONSTRAINT_CHOICE**: The user has set their goal. Acknowledge it. Now, ask them to choose their single biggest constraint: Traffic, Sales, or Fulfillment.
+        - **SPECIAL RULE**: If their business stage indicated they are "pre-launch" or "considering starting", their constraint is automatically Traffic. Tell them this and set NEXT_STEP to AWAITING_OBSTACLE_DEFINITION.
+    4.  **AWAITING_OBSTACLE_DEFINITION**: The user has chosen their primary constraint. Acknowledge it. Now ask them to define the #1 specific obstacle related to that constraint.
+    5.  **AWAITING_HLA_DEFINITION**: The user has defined their obstacle. Acknowledge it. Now, ask them for the "Highest Leverage Action" (HLA) - the single daily action that will solve this obstacle.
+    6.  **COMPLETE**: The user has defined their HLA. Acknowledge it, confirm that their onboarding is complete, and wish them well on their first quest.
+
+    You MUST respond in a JSON object matching this Pydantic model:
+    class AIOnboardingAnalysis(BaseModel):
+        next_step: schemas.OnboardingStepName
+        ai_message: str
+        extracted_business_stage: Optional[str]
+        extracted_stretch_goal: Optional[str]
+        extracted_primary_constraint: Optional[str]
+        extracted_obstacle: Optional[str]
+        extracted_hla: Optional[str]
     """
 
-    # --- Dynamic User Prompt based on the current step ---
-    if step == "vision":
-        user.vision = user_input # Save the input to the user model
-        user_prompt = f"""
-        The user has just defined their Vision (North Star).
-        User's Vision: "{user_input}"
+    user_prompt = f"""
+    CURRENT_STEP: "{current_step.value}"
+    USER_MESSAGE: "{user_text}"
 
-        Your Task:
-        1. Mirror their vision back to them.
-        2. Ask them to define a 90-day milestone that moves them toward that vision.
+    Analyze the user's message according to the STATE MACHINE LOGIC for the current step.
+    Extract any relevant data into the 'extracted_' fields.
+    Generate the JSON response now.
+    """
 
-        Example Response: "Wonderful. Your North Star is: {user_input}. What's ONE milestone you can hit in the next 90 days that moves you in the direction of that North Star?
-        """
-        next_step = "milestone"
-
-    elif step == "milestone":
-        user.milestone = user_input
-        user_prompt = f"""
-        The user has just defined their 90-Day Milestone based on their North Star.
-        User's 90-Day Milestone: "{user_input}"
-
-        Your Task:
-        1. Mirror their milestone back to them.
-        2. Ask them to identify the single biggest obstacle holding them back.
-
-        Example Response: "Locked in. Your 90-Day Milestone is to: {user_input}. What's the #1 obstacle, the 'Boss', holding you back from hitting this milestone?
-        """
-        next_step = "constraint"
-
-    elif step == "constraint":
-        user.constraint = user_input
-        user_prompt = f"""
-        The user has identified the 'Boss' blocking them from hitting their milestone.
-        The Boss: "{user_input}"
-
-        Your Task:
-        1. Acknowledge the Boss.
-        2. Ask the identity-driven "ONE Thing" question to uncover their First Move (their HLA).
-
-        Example Response: "Got it. The Boss blocking your milestone is: {user_input}. Now for the clarity question: What's the ONE commitment your future self would act on today to become the kind of person who defeats this Boss?"
-        """
-        next_step = "hla"
-
-    elif step == "hla":
-        user.hla = user_input # This is the final piece
-        user_prompt = f"""
-        The user has defined their First Move (their HLA).
-        User's First Move: "{user_input}"
-
-        Your Task:
-        1. Mirror their First Move back to them.
-        2. ASk for their final commitment to begin their streak. This is the final step, so you don't need to ask another question.
-
-        Example Response: "Perfect. Your First Move is: {user_input}. Every streak starts with a commitment. Are you ready to show up daily for this First Move until the 90-Day Milestone is hit?
-        """
-        next_step = None # Signifies the end of the Onboarding
-    else:
-        raise ValueError("Invalid onboarding step provided.")
-    
-    # --- Call the LLM ---
-    # We now use our new, simpler method to get a plain text response
-    ai_response_text = await llm_provider.generate_text_response(
-        system_prompt=system_prompt, user_prompt=user_prompt
+    analysis = await llm_provider.generate_structured_response(
+        system_prompt=system_prompt,
+        user_prompt=user_prompt,
+        response_model=AIOnboardingAnalysis
     )
+
+    if "error" in analysis:
+        # Simple fallback in case of AI error
+        raise HTTPException(status_code=500, detail="An error occurred with the AI Coach.")
+
+    # --- Save extracted data to the user model ---
+    if analysis.get("extracted_business_stage"):
+        user.business_stage = analysis["extracted_business_stage"]
+    if analysis.get("extracted_stretch_goal"):
+        user.stretch_goal = analysis["extracted_stretch_goal"]
+    if analysis.get("extracted_primary_constraint"):
+        user.primary_constraint = analysis["extracted_primary_constraint"]
+    if analysis.get("extracted_obstacle"):
+        user.constraint = analysis["extracted_obstacle"] # Repurposing this field
+    if analysis.get("extracted_hla"):
+        user.hla = analysis["extracted_hla"]
 
     db.commit()
 
-    return {
-        "ai_response": ai_response_text,
-        "next_step": next_step,
-        "final_hla": user.hla if not next_step else None
-    }
+    return schemas.OnboardingV2Response(
+        next_step=analysis["next_step"],
+        ai_message=analysis["ai_message"],
+        final_hla=user.hla if analysis["next_step"] == schemas.OnboardingStepName.COMPLETE else None
+    )
 
 async def create_and_process_intention(db: Session, user: models.User, request_data: schemas.IntentionCreationRequest) -> dict[str, Any]:
     """
