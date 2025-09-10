@@ -26,14 +26,15 @@ function AIChatBox({ user, isFullScreen, onIntentionCreated, creationContext }) 
   // It's the "single source of truth" for what the chat is currently trying to do.
   const [creationStep, setCreationStep] = useState('AWAITING_TEXT');
 
-  // This class string now defines the component as an overlay
+  // This class string defines the component as an absolutely positioned overlay
   // that animates its height between h-full and h-96.
   const containerClasses = `
     absolute bottom-0 left-0 right-0
-    flex flex-col bg-gray-900 p-4 rounded-lg
+    flex flex-col bg-gray-900 p-4
     transition-all duration-1000 ease-in-out
-    ${isFullScreen ? 'h-full' : 'h-96'}
+    ${isFullScreen ? 'h-full rounded-lg' : 'h-96'}
   `;
+  // Note: rounded-lg is now applied conditionally
 
   // Our "Bookmark" for the auto-scroll feature
   const chatContainerRef = useRef(null);

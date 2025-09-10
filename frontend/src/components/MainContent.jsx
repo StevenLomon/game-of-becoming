@@ -60,54 +60,57 @@ function MainContent({ user, token, intention, isCreatingIntention, onIntentionC
   const activeBlock = intention ? intention.focus_blocks.find(b => b.status === 'pending' || b.status === 'in_progress') : null;
 
   return (
-    // 1. This is now our positioning context and clipping boundary.
-    <div className="relative flex-grow overflow-hidden">
+    // 1. This is our positioning context. `flex-grow` allows it to fill the space.
+    <div className="relative flex-grow">
       
-      {/* --- Main Execution Content --- */}
-      {/* 2. This content is now always rendered "underneath" the chatbox. */}
-      {/* We animate its opacity to fade it in as the chatbox shrinks. */}
-      <div className={`h-full transition-opacity duration-1000 ease-in-out ${isCreatingIntention ? 'opacity-0' : 'opacity-100'}`}>
+      {/* --- Main Scrollable Content Area --- */}
+      {/* 2. This container holds the execution view. It is always present. */}
+      {/* It can scroll if content is long, and has padding at the bottom to make space for the chatbox. */}
+      <div className={`h-full overflow-y-auto pb-96 transition-opacity duration-700 ease-in-out ${isCreatingIntention ? 'opacity-0' : 'opacity-100'}`}>
         {error && (
           <div className="bg-red-900 border-red-700 text-red-300 px-4 py-3 rounded-md mb-4">
             {error}
           </div>
         )}
+
         {intention?.daily_result ? (
           <DailyResultDisplay
             result={intention.daily_result}
             refreshGameState={refreshGameState}
           />
         ) : (
-          <div className="flex flex-col h-full">
-            <DailyIntentionHeader intention={intention} onComplete={handleCompleteIntention} />
-            <div className="flex-grow">
-              {view === 'progress' ? (
-                <>
-                  <RewardDisplay rewards={lastReward} />
-                  <UpdateProgressForm
-                    onProgressUpdated={handleProgressUpdated}
-                    currentProgress={intention?.completed_quantity || 0}
-                  />
-                </>
-              ) : (
-                activeBlock ? (
-                  <ActiveFocusBlock block={activeBlock} onBlockCompleted={handleFocusBlockCompleted} />
+          intention && ( // Only render this block if there is an intention
+            <div className="flex flex-col h-full">
+              <DailyIntentionHeader intention={intention} onComplete={handleCompleteIntention} />
+              <div className="flex-grow">
+                {view === 'progress' ? (
+                  <>
+                    <RewardDisplay rewards={lastReward} />
+                    <UpdateProgressForm
+                      onProgressUpdated={handleProgressUpdated}
+                      currentProgress={intention.completed_quantity}
+                    />
+                  </>
                 ) : (
-                  <ExecutionArea
-                    user={user}
-                    intention={intention}
-                    onBlockCreated={refreshGameState}
-                    onBlockCompleted={handleFocusBlockCompleted}
-                  />
-                )
-              )}
+                  activeBlock ? (
+                    <ActiveFocusBlock block={activeBlock} onBlockCompleted={handleFocusBlockCompleted} />
+                  ) : (
+                    <ExecutionArea
+                      user={user}
+                      intention={intention}
+                      onBlockCreated={refreshGameState}
+                      onBlockCompleted={handleFocusBlockCompleted}
+                    />
+                  )
+                )}
+              </div>
             </div>
-          </div>
+          )
         )}
       </div>
 
       {/* --- AIChatBox Overlay --- */}
-      {/* 3. The chatbox is now an absolutely positioned overlay. */}
+      {/* 3. The chatbox is the animating overlay. */}
       <AIChatBox
         user={user}
         isFullScreen={isCreatingIntention}
