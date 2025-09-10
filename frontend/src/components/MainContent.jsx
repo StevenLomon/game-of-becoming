@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import CreateDailyIntentionForm from './CreateDailyIntentionForm';
 // import DisplayIntention from './DisplayIntention'; No longer used
 import DailyIntentionHeader from './DailyIntentionHeader';
@@ -10,10 +10,11 @@ import RewardDisplay from './RewardDisplay';
 import DailyResultDisplay from './DailyResultDisplay';
 import ExecutionArea from './ExecutionArea';
 import AIChatBox from './AIChatBox';
+import TutorialTooltip from './TutorialTooltip'; // Our new component for the Post Onboarding Tutorial
 import { completeDailyIntention, failDailyIntention } from '../services/api';
 
 // This component now contains all the logic and UI for the main application area.
-function MainContent({ user, token, intention, isCreatingIntention, onIntentionCreated, refreshGameState, creationContext }) { // Receive the new props: isCreatingIntention and onIntentionCreated
+function MainContent({ user, token, intention, isCreatingIntention, onIntentionCreated, refreshGameState, creationContext, tutorialStep, setTutorialStep }) { // Receive the new props: isCreatingIntention and onIntentionCreated + UPDATED: tutorial props!
   // These states are specific to the UI flow within the main content area.
   const [view, setView] = useState('focus');
   const [error, setError] = useState(null);
@@ -59,9 +60,35 @@ function MainContent({ user, token, intention, isCreatingIntention, onIntentionC
 
   const activeBlock = intention ? intention.focus_blocks.find(b => b.status === 'pending' || b.status === 'in_progress') : null;
 
+  // Refs for the tour
+  const headerRef = useRef(null);
+  const executionAreaRef = useRef(null);
+
+  const handleNextTutorialStep = () => {
+    if (tutorialStep === 'header') {
+      setTutorialStep('focusBlock');
+    } else if (tutorialStep === 'focusBlock') {
+      setTutorialStep(null); // End the tutorial
+    }
+  };
+
   return (
     // 1. This is our positioning context. `flex-grow` allows it to fill the space.
     <div className="relative flex-grow">
+      {/* --- RENDER THE TUTORIAL TOOLTIP --- */}
+      {tutorialStep === 'header' ? (
+        <TutorialTooltip
+          targetRef={headerRef}
+          text="Here you can view the Daily Intention you just forged and your progress towards it. Once you're done, you will be able to complete it and gain XP!"
+          onNext={handleNextTutorialStep}
+        />
+      ) : tutorialStep === 'focusBlock' ? (
+        <TutorialTooltip
+          targetRef={executionAreaRef}
+          text="Here you can start your first Focus Block and make progress towards completing your Daily Intention."
+          onNext={handleNextTutorialStep}
+        />
+      ) : null}
       
       {/* --- Main Scrollable Content Area --- */}
       {/* 2. This container holds the execution view. It is always present. */}
@@ -81,7 +108,10 @@ function MainContent({ user, token, intention, isCreatingIntention, onIntentionC
         ) : (
           intention && ( // Only render this block if there is an intention
             <div className="flex flex-col h-full">
-              <DailyIntentionHeader intention={intention} onComplete={handleCompleteIntention} />
+              {/* Attach the ref to a wrapper div */}
+              <div ref={headerRef}>
+                <DailyIntentionHeader intention={intention} onComplete={handleCompleteIntention} />
+              </div>
               <div className="flex-grow">
                 {view === 'progress' ? (
                   <>
@@ -95,12 +125,15 @@ function MainContent({ user, token, intention, isCreatingIntention, onIntentionC
                   activeBlock ? (
                     <ActiveFocusBlock block={activeBlock} onBlockCompleted={handleFocusBlockCompleted} />
                   ) : (
-                    <ExecutionArea
-                      user={user}
-                      intention={intention}
-                      onBlockCreated={refreshGameState}
-                      onBlockCompleted={handleFocusBlockCompleted}
-                    />
+                    // Attach the ref to the ExecutionArea
+                    <div ref={executionAreaRef}>
+                      <ExecutionArea
+                        user={user}
+                        intention={intention}
+                        onBlockCreated={refreshGameState}
+                        onBlockCompleted={handleFocusBlockCompleted}
+                      />
+                    </div>
                   )
                 )}
               </div>
@@ -116,6 +149,8 @@ function MainContent({ user, token, intention, isCreatingIntention, onIntentionC
         isFullScreen={isCreatingIntention}
         onIntentionCreated={onIntentionCreated}
         creationContext={creationContext}
+        // Tell the chatbox not to run its welcome logic if the tutorial is active
+        isTutorialActive={!!tutorialStep}
       />
     </div>
   );
