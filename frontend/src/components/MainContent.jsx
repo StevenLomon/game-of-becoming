@@ -61,7 +61,7 @@ function MainContent({ user, token, intention, isCreatingIntention, onIntentionC
 
   return (
   // UPDATED: The root div is now a grid container that will handle the animation.
-  <div className={`grid h-full transition-[grid-template-rows] duration-1000 ease-in-out ${isCreatingIntention ? 'grid-rows-[0fr_1fr]' : 'grid-rows-[1fr_auto]'}`}>
+  <div className={`grid flex-grow transition-[grid-template-rows] duration-1000 ease-in-out ${isCreatingIntention ? 'grid-rows-[0fr_1fr]' : 'grid-rows-[1fr_auto]'}`}>
     {/* --- NEW STABLE LAYOUT --- */}
 
     {/* 1. This div wraps the content that appears and disappears. */}
