@@ -1,107 +1,87 @@
-// We no longer need useEffect
 import { useState } from 'react';
-import { submitOnboardingStep } from '../services/api';
+// Import our new V2 API function
+import { submitOnboardingV2Step } from '../services/api';
 
-// This function will determine the starting point of the conversation
-const getInitialStep = (user) => {
-  if (!user.vision) return 'vision';
-  if (!user.milestone) return 'milestone';
-  if (!user.constraint) return 'constraint';
-  if (!user.hla) return 'hla';
-  return 'complete';
-};
+function OnboardingFlow({ user, onFlowStepComplete }) {
+  // --- STATE ---
+  // The component now manages the current step of the conversation,
+  // the prompt to display, and the user's input.
+  const [step, setStep] = useState('AWAITING_BUSINESS_STAGE');
+  const [prompt, setPrompt] = useState("Let's begin. What kind of business are you running or considering starting?");
+  const [userInput, setUserInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-// This function provides the correct prompt for each step
-const getPromptForStep = (step, user) => {
-    switch (step) {
-        case 'vision':
-            return "Let's start with your North Star. In the next 5+ years, what is the single most important vision you have for your business?";
-        case 'milestone':
-            return `Wonderful. Your North Star is: ${user.vision}. What's ONE milestone you can hit in the next 90 days that moves you in the direction of that North Star?`;
-        case 'constraint':
-            return `Locked in. Your 90-Day Milestone is to: ${user.milestone}. What's the #1 obstacle, the 'Boss', holding you back from hitting this milestone?`;
-        case 'hla':
-            return `Got it. Now for the clarity question: What is the ONE action you can take daily that resolves the constraint ${user.constraint} and moves you closer to your milestone?`;
-        default:
-            return "Loading your next step...";
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    if (!userInput.trim()) return;
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      // Call our new V2 service with the current input and step
+      const response = await submitOnboardingV2Step(userInput, step);
+
+      // Clear the input field for the next step
+      setUserInput('');
+
+      // Update our state based on the backend's instructions
+      setStep(response.next_step);
+      setPrompt(response.ai_message);
+
+      // If the backend tells us the flow is complete, we notify the Dashboard
+      if (response.next_step === 'COMPLETE') {
+        // We use a timeout to let the user read the final message
+        setTimeout(() => {
+          onFlowStepComplete();
+        }, 3000); // 3-second pause on the final message
+      }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
     }
-};
+  };
 
-function OnboardingFlow({ user, token, onFlowStepComplete }) {
-    // REMOVED: We no longer store step or prompt in state.
-    // const [step, setStep] = useState(getInitialStep(user));
-    // const [prompt, setPrompt] = useState(getPromptForStep(step, user));
-    
-    // CALCULATE them on every render from the single source of truth: the user prop.
-    const step = getInitialStep(user);
-    const prompt = getPromptForStep(step, user);
-
-    // The only state this component now owns is the input field's value.
-    const [userInput, setUserInput] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState(null);
-
-    const handleSubmit = async (event) => {
-        event.preventDefault();
-        if (!userInput.trim()) return; // Prevent submitting empty input
-        setIsLoading(true);
-        setError(null);
-
-        try {
-            // We don't need the response data here anymore
-            await submitOnboardingStep(step, userInput);
-
-            // Clear the input field for the next step
-            setUserInput(''); 
-
-            // After every successful step, we tell the parent to refresh.
-            onFlowStepComplete();
-
-            // The original logic for handling the *final* step is now implicitly
-            // handled by the Dashboard's re-render
-
-        } catch (err) {
-            setError(err.message);
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    return (
+  // The UI is now simpler, driven entirely by the 'prompt' state.
+  return (
     <div className="text-center">
       <div className="mb-6 p-4 bg-gray-900 rounded-lg min-h-[100px]">
         <p className="text-lg text-gray-300 italic">"{prompt}"</p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <textarea
-            value={userInput}
-            onChange={(e) => setUserInput(e.target.value)}
-            required
-            className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-teal-500 focus:border-teal-500"
-            rows={3}
-            placeholder="Your response..."
-            disabled={isLoading}
-          />
-        </div>
-
-        {error && (
-          <div className="bg-red-900 border border-red-700 text-red-300 px-4 py-3 rounded-md">
-            {error}
+      {/* We prevent form submission if the conversation is complete */}
+      {step !== 'COMPLETE' && (
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <textarea
+              value={userInput}
+              onChange={(e) => setUserInput(e.target.value)}
+              required
+              className="mt-1 block w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-teal-500 focus:border-teal-500"
+              rows={3}
+              placeholder="Your response..."
+              disabled={isLoading}
+            />
           </div>
-        )}
 
-        <div>
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="w-full flex justify-center py-2 px-4 border rounded-md font-medium text-white bg-teal-600 hover:bg-teal-700 disabled:bg-gray-500 disabled:cursor-wait"
-          >
-            {isLoading ? 'Thinking...' : 'Continue'}
-          </button>
-        </div>
-      </form>
+          {error && (
+            <div className="bg-red-900 border border-red-700 text-red-300 px-4 py-3 rounded-md">
+              {error}
+            </div>
+          )}
+
+          <div>
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full flex justify-center py-2 px-4 border rounded-md font-medium text-white bg-teal-600 hover:bg-teal-700 disabled:bg-gray-500 disabled:cursor-wait"
+            >
+              {isLoading ? 'Thinking...' : 'Continue'}
+            </button>
+          </div>
+        </form>
+      )}
     </div>
   );
 }
