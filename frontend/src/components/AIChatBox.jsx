@@ -15,7 +15,7 @@ const SendIcon = () => (
 );
 
 // Receive the new props: isFullScreen and onIntentionCreated
-function AIChatBox({ user, isFullScreen, onIntentionCreated, creationContext }) {
+function AIChatBox({ user, isFullScreen, onIntentionCreated, creationContext, isTutorialActive }) { // Accept the new isTutorialActive prop
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState([]) // UPDATED: messages is being back to being initialized simple as an empty array
   const [isLoading, setIsLoading] = useState(false); // State to handle when the AI is "thinking"
@@ -49,45 +49,54 @@ function AIChatBox({ user, isFullScreen, onIntentionCreated, creationContext }) 
     }
   }, [messages]); // The dependency array ensures this runs only when messages are added
 
-  // CHANGED: This "Embassy" now has a single, clear responsibility: manage the
-  // welcome messages and transitions between modes (creation vs. execution).
+  // This "Embassy" useEffect is now the single, robust orchestrator for all
+  // welcome messages and mode-change logic.
   useEffect(() => {
-    // Guard clause: Don't do anything until the user object is actually loaded.
+    // Guard clause: Don't do anything until the user prop is loaded.
     if (!user) return;
 
+    // --- SITUATION A: We are in full-screen "Creation Mode" ---
     if (isFullScreen) {
-      // This is the creation mode. We set the initial welcome message.
       const welcomeText = (creationContext === 'post_onboarding')
         ? `Thank you for letting me know more about your business, ${user.name.split(' ')[0]}. I am excited to act as your Clarity and Execution AI Oracle for this journey.\n\n To start off; let's forge your focus for today. What do you wish to set as your Daily Intention?\n\n An intention in line with your Highest Leverage Action that, if completed, would move you closer to your Stretch Goal?`
         : `Welcome, ${user.name.split(' ')[0]}. Let's forge your focus for today. What do you wish to set as your Daily Intention?`;
       
-      setMessages(prevMessages => {
-      // Only set if not already present as the first message
-      if (
-        prevMessages.length === 0 ||
-        prevMessages[0].text !== welcomeText
-      ) {
-        return [{ sender: 'ai', text: welcomeText }];
+      // We only set the initial message if the chat isn't already populated.
+      // This prevents the message from being re-added during the conversation.
+      if (messages.length === 0) {
+        setMessages([{ sender: 'ai', text: welcomeText }]);
       }
-      return prevMessages;
-    });
+      return; // We're done, exit the effect.
+    }
+    
+    // If we've reached this point, we know `isFullScreen` is false.
 
-    } else {
-      // This is the execution mode. We clear the chat and set the new welcome message
-      // after the animation delay.
-      setMessages([]); // Clear the slate
-      const welcomeTimer = setTimeout(() => {
-        setMessages([{
+    // --- SITUATION B: The tutorial is currently active ---
+    if (isTutorialActive) {
+      // While the tour is happening, the chat should be a clean slate.
+      setMessages([]);
+      return; // Do nothing else until the tour is over.
+    }
+
+    // --- SITUATION C: Execution mode, and no tutorial is active ---
+    // This code will run on a normal day, OR right after the tutorial finishes
+    // (when `isTutorialActive` flips from true to false).
+    if (messages.length === 0) {
+      const executionWelcome = {
           sender: 'ai',
           text: `Welcome to your execution space. How can I help you focus today?`
-        }]);
-      }, 1000); // Shortened delay for a snappier feel
+        };
+
+      // We use a timer to let the UI settle before the message appears.
+      const welcomeTimer = setTimeout(() => {
+        setMessages([executionWelcome]);
+      }, 1200); // 1.2-second delay for a nice rhythm.
+      
+      // Cleanup the timer if the component re-renders or unmounts.
       return () => clearTimeout(welcomeTimer);
     }
-    // THE DEPENDENCIES: We are being explicit. This effect should ONLY re-run if
-    // the mode (isFullScreen), the user, or the context truly changes. Because `user` is
-    // now stable from the Dashboard, this is safe.
-  }, [isFullScreen, user, creationContext]);
+    
+  }, [isFullScreen, user, creationContext, isTutorialActive]);
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
