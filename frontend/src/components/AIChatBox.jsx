@@ -1,209 +1,142 @@
+// src/components/AIChatBox.jsx
+
 import { useState, useEffect, useRef } from 'react';
 import { sendChatMessage, createDailyIntention } from '../services/api';
 import Typewriter from './Typewriter';
 
-// The Paper Plane SVG icon for the send button
 const SendIcon = () => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 24 24"
-    fill="currentColor"
-    className="w-6 h-6"
-  >
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6">
     <path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" />
   </svg>
 );
 
-// Receive the new props: isFullScreen and onIntentionCreated
-function AIChatBox({ user, isFullScreen, onIntentionCreated, creationContext, isTutorialActive }) { // Accept the new isTutorialActive prop
+function AIChatBox({ user, isFullScreen, onIntentionCreated, creationContext, isTutorialActive }) {
   const [message, setMessage] = useState('');
-  const [messages, setMessages] = useState([]) // UPDATED: messages is being back to being initialized simple as an empty array
-  const [isLoading, setIsLoading] = useState(false); // State to handle when the AI is "thinking"
-  const [isRefining, setIsRefining] = useState(false); // The "short-term memory" for the Daily Intention Forge conversation
-  const [originalIntention, setOriginalIntention] = useState(''); // We'll also hold onto the original text if we need it
-
-  // NEW STATE: This is our state machine. It mirrors the backend Enum.
-  // It's the "single source of truth" for what the chat is currently trying to do.
+  const [messages, setMessages] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
   const [creationStep, setCreationStep] = useState('AWAITING_TEXT');
-
-  // This class string defines the component as an absolutely positioned overlay
-  // that animates its height between h-full and h-96.
-  const containerClasses = `
-    absolute bottom-0 left-0 right-0
-    flex flex-col bg-gray-900 p-4
-    transition-all duration-1000 ease-in-out
-    ${isFullScreen ? 'h-full rounded-lg' : 'h-96'}
-  `;
-  // Note: rounded-lg is now applied conditionally
-
-  // Our "Bookmark" for the auto-scroll feature
   const chatContainerRef = useRef(null);
+  const prevIsFullScreenRef = useRef(isFullScreen);
 
-  // The auto-scrolling effect
+  // This is the core of the fix. We determine if we are in a transition state
+  // DURING the render, not after it in an effect.
+  const isTransitioning = prevIsFullScreenRef.current && !isFullScreen;
+
   useEffect(() => {
-    // This effect runs every time the 'messages' array changes
-    if (chatContainerRef.current) {
-      const { scrollHeight, clientHeight } = chatContainerRef.current;
-      // This command tells the browser to set the scroll position to the very bottom
-      chatContainerRef.current.scrollTop = scrollHeight - clientHeight;
-    }
-  }, [messages]); // The dependency array ensures this runs only when messages are added
+    // This effect now has one job: manage the welcome messages when not transitioning.
+    if (!user || isTransitioning) return;
 
-  // This "Embassy" useEffect is now the single, robust orchestrator for all
-  // welcome messages and mode-change logic.
-  useEffect(() => {
-    // Guard clause: Don't do anything until the user prop is loaded.
-    if (!user) return;
-
-    // --- SITUATION A: We are in full-screen "Creation Mode" ---
+    // The logic from here is simplified because we know we aren't in a transition.
     if (isFullScreen) {
-      const welcomeText = (creationContext === 'post_onboarding')
-        ? `Thank you for letting me know more about your business, ${user.name.split(' ')[0]}. I am excited to act as your Clarity and Execution AI Oracle for this journey.\n\n To start off; let's forge your focus for today. What do you wish to set as your Daily Intention?\n\n An intention in line with your Highest Leverage Action that, if completed, would move you closer to your Stretch Goal?`
-        : `Welcome, ${user.name.split(' ')[0]}. Let's forge your focus for today. What do you wish to set as your Daily Intention?`;
-      
-      // We only set the initial message if the chat isn't already populated.
-      // This prevents the message from being re-added during the conversation.
       if (messages.length === 0) {
+        const welcomeText = (creationContext === 'post_onboarding')
+          ? `Thank you for letting me know more about your business, ${user.name.split(' ')[0]}. I am excited to act as your Clarity and Execution AI Oracle for this journey.\n\n To start off; let's forge your focus for today. What do you wish to set as your Daily Intention?\n\n An intention in line with your Highest Leverage Action that, if completed, would move you closer to your Stretch Goal?`
+          : `Welcome, ${user.name.split(' ')[0]}. Let's forge your focus for today. What do you wish to set as your Daily Intention?`;
         setMessages([{ sender: 'ai', text: welcomeText }]);
       }
-      return; // We're done, exit the effect.
+    } else if (isTutorialActive) {
+      if (messages.length > 0) setMessages([]);
+    } else {
+      // This runs for a normal day OR after the tutorial is finished.
+      if (messages.length === 0) {
+        const timer = setTimeout(() => {
+          setMessages([{ sender: 'ai', text: `Welcome to your execution space. How can I help you focus today?` }]);
+        }, 1200);
+        return () => clearTimeout(timer);
+      }
     }
-    
-    // If we've reached this point, we know `isFullScreen` is false.
+  }, [isFullScreen, user, creationContext, isTutorialActive, isTransitioning, messages.length]);
 
-    // --- SITUATION B: The tutorial is currently active ---
-    if (isTutorialActive) {
-      // While the tour is happening, the chat should be a clean slate.
-      setMessages([]);
-      return; // Do nothing else until the tour is over.
+  // This simple effect runs after every render to keep our memory updated for the next render.
+  useEffect(() => {
+    prevIsFullScreenRef.current = isFullScreen;
+  });
+  
+  // This effect for auto-scrolling is correct.
+  useEffect(() => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
     }
-
-    // --- SITUATION C: Execution mode, and no tutorial is active ---
-    // This code will run on a normal day, OR right after the tutorial finishes
-    // (when `isTutorialActive` flips from true to false).
-    if (messages.length === 0) {
-      const executionWelcome = {
-          sender: 'ai',
-          text: `Welcome to your execution space. How can I help you focus today?`
-        };
-
-      // We use a timer to let the UI settle before the message appears.
-      const welcomeTimer = setTimeout(() => {
-        setMessages([executionWelcome]);
-      }, 1200); // 1.2-second delay for a nice rhythm.
-      
-      // Cleanup the timer if the component re-renders or unmounts.
-      return () => clearTimeout(welcomeTimer);
-    }
-    
-  }, [isFullScreen, user, creationContext, isTutorialActive]);
+  }, [messages]);
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
     const userMessageText = message.trim();
     if (!userMessageText) return;
 
-    // Optimistic Update for the User's Message
-    // Add the user's message to the whiteboard immediately for a snappy UI
     const userMessage = { sender: 'user', text: userMessageText };
     setMessages(prevMessages => [...prevMessages, userMessage]);
-    setMessage(''); // Clear the input field
-    setIsLoading(true); // Show a loading state
+    setMessage('');
+    setIsLoading(true);
 
     try {
       if (isFullScreen) {
-        // --- CREATION PLAYBOOK v2 (The Multi-step State Machine) ---
-
-        // 1. Call our updated API service, sending the user's text and our current state.
         const response = await createDailyIntention(userMessageText, creationStep);
-
-        // 2. Display the AI's response message
         const aiMessage = { sender: 'ai', text: response.ai_message };
         setMessages(prev => [...prev, aiMessage]);
-
-        // 3. Update our state to follow the backend's instructions
         setCreationStep(response.next_step);
 
-        // 4. If the conversation is complete, hand off to the Dashboard AFTER a pause.
         if (response.next_step === 'COMPLETE') {
-          // setTimeout to create a deliberate pause. This ensures the user has time 
-          // to read the final confirmation before the UI transition begins.
           setTimeout(() => {
             onIntentionCreated(response.intention_payload);
           }, 2350);
         }
-
       } else {
-        // --- EXECUTION (GENERAL CHAT) PLAYBOOK ---
         const response = await sendChatMessage(userMessageText);
         const aiMessage = { sender: 'ai', text: response.ai_response};
         setMessages(prevMessages => [...prevMessages, aiMessage]);
       }
-
     } catch (error) {
       console.error("Error sending message:", error);
-      // Add an error message to the chat
       const errorMessage = { sender: 'ai', text: "Sorry, I'm having troubles connecting. Please try again."};
       setMessages(prevMessages => [...prevMessages, errorMessage]);
     } finally {
-      setIsLoading(false); // Stop the loading state
+      setIsLoading(false);
     }
   };
 
-  return (
-    // Apply the dynamic `containerClasses` variable here
-    <div className={containerClasses}> 
-      {/* Message History Area (overflow-y-auto is the magic that adds a scrollbar only when needed) */}
-      <div 
-        ref={chatContainerRef} // Attach the "bookmark"!
-        className="flex-grow overflow-y-auto mb-4 pr-2"
-      >
-        <div className="space-y-4">
-          {messages.map((msg, index) => (
-              <div
-                  key={index}
-                  className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-              >
-                  {/* Conditional styling for the message content */}
-                  {msg.sender === 'user' ? (
-                      // Styles for user messages (chat bubble)
-                      <div
-                          className="max-w-xs lg:max-w-md px-4 py-2 rounded-lg text-lg bg-teal-600 text-white"
-                      >
-                          {msg.text}
-                      </div>
-                  ) : (
-                      // Styles for AI messages (full-width text)
-                      <div className="text-gray-300 w-full text-lg whitespace-pre-line">
-                          <Typewriter key={msg.text} text={msg.text} baseSpeed={25} />
-                      </div>
-                  )}
-              </div>
-          ))}
+  const containerClasses = `
+    absolute bottom-0 left-0 right-0
+    flex flex-col bg-gray-900 p-4
+    transition-all duration-1000 ease-in-out
+    ${isFullScreen ? 'h-full rounded-lg' : 'h-96'}
+  `;
 
-          {/* Show a "typing" indicator while the AI is thinking */}
+  return (
+    <div className={containerClasses}>
+      <div ref={chatContainerRef} className="flex-grow overflow-y-auto mb-4 pr-2">
+        <div className="space-y-4">
+          {/* We conditionally render the messages. If we're transitioning, we render nothing. */}
+          {!isTransitioning && messages.map((msg, index) => (
+            <div key={index} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
+              {msg.sender === 'user' ? (
+                <div className="max-w-xs lg:max-w-md px-4 py-2 rounded-lg text-lg bg-teal-600 text-white">
+                  {msg.text}
+                </div>
+              ) : (
+                <div className="text-gray-300 w-full text-lg whitespace-pre-line">
+                  <Typewriter key={msg.text} text={msg.text} baseSpeed={25} />
+                </div>
+              )}
+            </div>
+          ))}
           {isLoading && (
-              <div className="flex justify-start p-4">
-                  <div className="w-3 h-3 bg-gray-200 rounded-full animate-pulse-heartbeat"></div>
-              </div>
+            <div className="flex justify-start p-4">
+              <div className="w-3 h-3 bg-gray-200 rounded-full animate-pulse-heartbeat"></div>
+            </div>
           )}
         </div>
       </div>
-
-      {/* Message Input Area */}
       <form onSubmit={handleSendMessage} className="flex items-center space-x-2">
         <input
           type="text"
           value={message}
           onChange={(e) => setMessage(e.target.value)}
-          placeholder={isLoading ? "AI is thinking..." : "Send a message..."} // Now dynamically uses the isLoading state
+          placeholder={isLoading ? "AI is thinking..." : "Send a message..."}
           disabled={isLoading}
           className="flex-grow bg-gray-700 rounded-full py-2 px-4 text-gray-200 focus:outline-none focus:ring-2 focus:ring-teal-500"
         />
-        <button
-          type="submit"
-          className="bg-teal-600 text-white p-3 rounded-full hover:bg-teal-700 transition-colors"
-        >
+        <button type="submit" className="bg-teal-600 text-white p-3 rounded-full hover:bg-teal-700 transition-colors">
           <SendIcon />
         </button>
       </form>

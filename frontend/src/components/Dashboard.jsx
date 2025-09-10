@@ -143,13 +143,17 @@ function Dashboard({ token, onLogout }) {
     };
 
     // This function will be passed down to the chatbox to switch modes.
-    const handleIntentionCreated = () => {
+    const handleIntentionCreated = async () => {
       // If this happened in the post-onboarding context, start the tutorial.
       if (creationContext === 'post_onboarding') {
         // We first refresh the state to show the execution UI...
-        refreshGameState(); 
-        // ...and then immediately set the tutorial state to begin the tour.
+        await refreshGameState(); // 1. AWAIT the state refresh to complete. The function will pause here
+        // 2. NOW that the UI has re-rendered into execution mode,
+        //    set the state to start the tutorial.
+        setTimeout(() => {
+        // 3. After 2350ms, this code will run, starting the tutorial.
         setTutorialStep('header');
+      }, 2350);
       } else {
       // For a normal day, just refresh the state.
       refreshGameState();
