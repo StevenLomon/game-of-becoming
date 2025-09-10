@@ -108,8 +108,15 @@ function MainContent({ user, token, intention, isCreatingIntention, onIntentionC
         ) : (
           intention && ( // Only render this block if there is an intention
             <div className="flex flex-col h-full">
-              {/* Attach the ref to a wrapper div */}
-              <div ref={headerRef}>
+              {/* Attach the ref to our wrapper div. UPDATE: Now also has conditional classes */}
+              {/* When this is the active tutorial step, we make it `relative` and give it a z-index */}
+              {/* higher than the overlay's backdrop (which is z-50). */}
+              <div 
+                ref={headerRef}
+                className={`transition-all duration-300 ${
+                  tutorialStep === 'header' ? 'relative z-[60]' : ''
+              }`}
+              >
                 <DailyIntentionHeader intention={intention} onComplete={handleCompleteIntention} />
               </div>
               <div className="flex-grow">
@@ -125,8 +132,13 @@ function MainContent({ user, token, intention, isCreatingIntention, onIntentionC
                   activeBlock ? (
                     <ActiveFocusBlock block={activeBlock} onBlockCompleted={handleFocusBlockCompleted} />
                   ) : (
-                    // Attach the ref to the ExecutionArea
-                    <div ref={executionAreaRef}>
+                    // Attach the ref to the ExecutionArea as well as the tutorial z-[60] logic
+                    <div
+                      ref={executionAreaRef}
+                      className={`transition-all duration-300 ${
+                        tutorialStep === 'focusBlock' ? 'relative z-[60]' : ''
+                      }`}
+                    >
                       <ExecutionArea
                         user={user}
                         intention={intention}
