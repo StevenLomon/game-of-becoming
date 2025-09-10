@@ -71,15 +71,19 @@ class UserResponse(BaseModel):
     id: int
     name: str
     email: str
-    hla: Optional[str]
     current_streak: int
     longest_streak: int
     registered_at: datetime
 
-    # New Onboarding fields
-    vision: Optional[str]
-    milestone: Optional[str]
+    # --- Repurposed V1 Fields ---
+    # These are still used in the V2 flow for the obstacle and final action
     constraint: Optional[str]
+    hla: Optional[str]
+
+    # --- NEW V2 Onboarding Fields ---
+    business_stage: Optional[str]
+    stretch_goal: Optional[str]
+    primary_constraint: Optional[str]
 
     model_config = ConfigDict(from_attributes=True)
 
