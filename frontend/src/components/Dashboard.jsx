@@ -67,6 +67,8 @@ function Dashboard({ token, onLogout }) {
     // No longer used! We will derive this state directly in the render logic, making
     // this component more declarative. Less imperative force, more declarative flow
     // Not everything needs to useState!
+    // New state: Tutorial step after the Onboarding!
+    const [tutorialStep, setTutorialStep] = useState(null);
 
     // CHANGED: This is now our single, robust "Control Panel" for all data fetching.
     // Wrap the entire function in useCallback.
@@ -142,7 +144,16 @@ function Dashboard({ token, onLogout }) {
 
     // This function will be passed down to the chatbox to switch modes.
     const handleIntentionCreated = () => {
-      refreshGameState(); // This will automatically set isCreatingIntention to false.
+      // If this happened in the post-onboarding context, start the tutorial.
+      if (creationContext === 'post_onboarding') {
+        // We first refresh the state to show the execution UI...
+        refreshGameState(); 
+        // ...and then immediately set the tutorial state to begin the tour.
+        setTutorialStep('header');
+      } else {
+      // For a normal day, just refresh the state.
+      refreshGameState();
+      }
     };
 
 
@@ -221,6 +232,8 @@ function Dashboard({ token, onLogout }) {
               onIntentionCreated={handleIntentionCreated}
               refreshGameState={refreshGameState}
               creationContext={creationContext}
+              tutorialStep={tutorialStep} // Pass down our new state as a prop
+              setTutorialStep={setTutorialStep}
             />
           )}
         </div>
