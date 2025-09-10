@@ -113,7 +113,7 @@ function MainContent({ user, token, intention, isCreatingIntention, onIntentionC
               {/* higher than the overlay's backdrop (which is z-50). */}
               <div 
                 ref={headerRef}
-                className={`transition-all duration-300 ${
+                className={`transition-all duration-300 mb-8 ${
                   tutorialStep === 'header' ? 'relative z-[60]' : ''
               }`}
               >

@@ -10,7 +10,7 @@ function DailyIntentionHeader({ intention, onComplete }) {
 
   return (
     // The main container for the header. A flexbox, now with items-start and relative to position the button
-    <div className="flex items-start justify-between bg-gray-900 p-4 rounded-lg shadow-md mb-8 relative">
+    <div className="flex items-start justify-between bg-gray-900 p-4 rounded-lg shadow-md relative">
       
       {/* Left side of the header */}
       <div>
