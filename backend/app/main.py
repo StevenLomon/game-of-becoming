@@ -337,20 +337,21 @@ async def get_game_state(
         unresolved_intention=unresolved_intention
     )
 
-@app.post("/api/onboarding/step", response_model=schemas.OnboardingStepResponse)
+@app.post("/api/onboarding/step", response_model=schemas.OnboardingV2Response)
 async def handle_onboarding_step(
-    step_data: schemas.OnboardingStepInput,
+    step_data: schemas.OnboardingV2Request, # Use the new V2 request schema
     current_user: Annotated[models.User, Depends(security.get_current_user)],
     db: Session = Depends(database.get_db)
 ):
     """
-    Handles one step of the AI-driven conversational onboarding flow.
+    Handles one step of the V2 AI-driven conversational onboarding flow.
     """
     try:
+        # Delegate directly to our new, more powerful service function
         response_data = await services.process_onboarding_step(db, current_user, step_data)
         
-        # If this is the final step, start the user's streak.
-        if response_data.get("next_step") is None:
+        # If the service has determined the conversation is complete, start the user's streak.
+        if response_data.next_step == schemas.OnboardingStepName.COMPLETE:
             services.update_user_streak(user=current_user)
             db.commit()
 
