@@ -60,24 +60,21 @@ function MainContent({ user, token, intention, isCreatingIntention, onIntentionC
   const activeBlock = intention ? intention.focus_blocks.find(b => b.status === 'pending' || b.status === 'in_progress') : null;
 
   return (
-    // This root div remains the same, providing the flex-column context.
-    <div className="flex flex-col h-full">
-      {error && (
-        <div className="bg-red-900 border-red-700 text-red-300 px-4 py-3 rounded-md mb-4">
-          {error}
-        </div>
-      )}
-
+    // UPDATED: The root div is now a grid container that will handle the animation.
+    <div className={`grid h-full transition-[grid-template-rows] duration-1000 ease-in-out ${isCreatingIntention ? 'grid-rows-[0fr_1fr]' : 'grid-rows-[1fr_auto]'}`}>
       {/* --- NEW STABLE LAYOUT --- */}
 
-      {/* 1. Wrapper for all "Execution Mode" content. */}
-      {/* THE FIX: We no longer use `hidden`. Instead, we animate max-height and opacity. */}
-      {/* We add transition classes here so the container itself animates. */}
-      <div
-        className={`flex flex-col flex-grow transition-all duration-1000 ease-in-out overflow-hidden ${
-          isCreatingIntention ? 'max-h-0 opacity-0' : 'max-h-screen opacity-100'
-        }`}
-      >
+      {/* 1. This div wraps the content that appears and disappears. */}
+      {/* It will be placed in the first grid row, which animates its height. */}
+      <div className="overflow-hidden">
+
+        {/* All the content from the old animated div goes here */}
+        {error && (
+          <div className="bg-red-900 border-red-700 text-red-300 px-4 py-3 rounded-md mb-4">
+            {error}
+          </div>
+        )}
+
         {intention ? (
           // If an intention exists, we decide what part of the execution flow to show.
           intention.daily_result ? (
@@ -122,8 +119,7 @@ function MainContent({ user, token, intention, isCreatingIntention, onIntentionC
       </div>
 
       {/* 2. The AIChatBox is ALWAYS rendered here, in the same position in the tree. */}
-      {/* Its state will be preserved, and its CSS transitions will now work because */}
-      {/* the component itself is never unmounted during a mode change. */}
+      {/* It is now simply the second grid row. */}
       <AIChatBox
         user={user}
         isFullScreen={isCreatingIntention}

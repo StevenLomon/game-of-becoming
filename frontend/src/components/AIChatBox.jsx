@@ -17,7 +17,7 @@ const SendIcon = () => (
 // Receive the new props: isFullScreen and onIntentionCreated
 function AIChatBox({ user, isFullScreen, onIntentionCreated, creationContext }) {
   const [message, setMessage] = useState('');
-  const [messages, setMessages] = useState([]) // CHANGED: messages is being back to being initialized simple as an empty array
+  const [messages, setMessages] = useState([]) // UPDATED: messages is being back to being initialized simple as an empty array
   const [isLoading, setIsLoading] = useState(false); // State to handle when the AI is "thinking"
   const [isRefining, setIsRefining] = useState(false); // The "short-term memory" for the Daily Intention Forge conversation
   const [originalIntention, setOriginalIntention] = useState(''); // We'll also hold onto the original text if we need it
@@ -26,10 +26,10 @@ function AIChatBox({ user, isFullScreen, onIntentionCreated, creationContext }) 
   // It's the "single source of truth" for what the chat is currently trying to do.
   const [creationStep, setCreationStep] = useState('AWAITING_TEXT');
 
-  // Dynamically set the container classes based on the mode. UPDATE:Now with a smooth transition!
+  // Dynamically set the container classes based on the mode. UPDATED: Remove h-full and the transition classes. The grid parent now controls the height and animation.
   const containerClasses = isFullScreen
-    ? "flex flex-col h-full bg-gray-900 p-4 rounded-lg transition-all duration-[850ms] ease-in-out" // Full screen
-    : "flex flex-col h-96 bg-gray-900 p-4 rounded-lg mt-8 transition-all duration-[850ms] ease-in-out"; // Standard footer; fixed height so that we can implement a scrollable chat box
+    ? "flex flex-col bg-gray-900 p-4 rounded-lg ease-in-out" // Full screen
+    : "flex flex-col h-96 bg-gray-900 p-4 rounded-lg ease-in-out"; // Standard footer; fixed height so that we can implement a scrollable chat box
 
   // Our "Bookmark" for the auto-scroll feature
   const chatContainerRef = useRef(null);
