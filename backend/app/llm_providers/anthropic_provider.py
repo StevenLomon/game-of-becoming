@@ -39,7 +39,7 @@ class AnthropicProvider(BaseLLMProvider):
             return {"error": str(e)}
         
     # NEW: Implementation for our new text generation method
-    async def generate_text_respone(
+    async def generate_text_response(
             self, system_prompt: str, user_prompt: str
     ) -> str:
         try:

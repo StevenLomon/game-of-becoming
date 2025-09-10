@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Optional
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field
 from datetime import datetime, date, timezone
@@ -45,6 +45,12 @@ class RecoveryQuestCoachingResponse(BaseModel):
     ai_coaching_feedback: str = Field(description="Encouraging, wisdom-building coaching based on the user's reflection (2-3 sentences max).")
     resilience_stat_gain: int = Field(description="Set to 1 for completing the reflection.")
 
+class AIConversationAnalysis(BaseModel):
+    """The AI's analysis of the user's input during Daily Intention creation"""
+    next_step: schemas.CreationStep = Field(description="Based on the user's input and the current conversational step, what is the next logical step?")
+    ai_message: str = Field(description="A concise, helpful message to send to the user to guide them to the next step.")
+    extracted_target_quantity: Optional[int] = Field(1, description="If the user specified a number, extract it. Otherwise, default to 1.")
+    extracted_focus_blocks: Optional[int] = Field(1, description="If the user specified a number of blocks, extract it. Otherwise, default to 1.")
 
 # --- Service Functions (Business Logic Layer) ---
 # All functions include a db object in their signature for future-proofing: the rules
@@ -206,67 +212,122 @@ async def process_onboarding_step(db: Session, user: models.User, step_data: sch
         "final_hla": user.hla if not next_step else None
     }
 
-async def create_and_process_intention(db: Session, user: models.User, intention_data: schemas.DailyIntentionCreate) -> dict[str, Any]:
+async def create_and_process_intention(db: Session, user: models.User, request_data: schemas.IntentionCreationRequest) -> dict[str, Any]:
     """
-    Analyzes a daily intention using the AI Coach's "Clarity Enforcer" role.
-    This replaces analyze_daily_intention from main.py.
+    Manages the multi-step conversational creation of a Daily Intention.
+    Acts as a state machine based on the 'current_step' provided by the frontend.
     """
+    current_step = request_data.current_step
+    user_text = request_data.user_text
+
+    # --- Development Mock Logic ---
     if os.getenv("DISABLE_AI_CALLS") == "True":
-        print("--- AI CALL DISABLED: Returning mock 'APPROVED' response. ---")
-        return {
-            "needs_refinement": False,
-            "ai_feedback": "Mock feedback: This is a clear and actionable intention!",
-            "clarity_stat_gain": 1
-        }
-    
+        print(f"--- AI CALL DISABLED: Processing step: {current_step} ---")
+        await asyncio.sleep(2)
+        if "refine me" in user_text.lower():
+            return schemas.IntentionCreationResponse(
+                next_step=schemas.CreationStep.AWAITING_REFINEMENT,
+                ai_message="Mock feedback: This is a good start, but it's a bit vague. How can you make it more specific and measurable?",
+            )
+        else:
+            # For now, our mock will assume any other text is a valid, complete intention.
+            # In a real scenario, this would be where we ask for quantity/blocks.
+            return schemas.IntentionCreationResponse(
+                next_step=schemas.CreationStep.COMPLETE,
+                ai_message="Excellent. Your Daily Intention is locked in. Let's get to work.",
+                # We'll need a placeholder intention object for the frontend to receive.
+                intention_payload=schemas.DailyIntentionResponse(
+                    id=999, user_id=user.id, daily_intention_text=user_text,
+                    target_quantity=1, completed_quantity=0, focus_block_count=1,
+                    status='pending', created_at=datetime.now(timezone.utc),
+                    needs_refinement=False, focus_blocks=[], daily_result=None
+                )
+            )
+
+    # --- Real AI Logic (to be fully built out) ---
     llm_provider = get_llm_provider()
     
+    # --- The AI's Job Description (System Prompt) ---
+    # This is the core logic of our feature. We are teaching the AI how to be a state machine manager.
     system_prompt = f"""
-    You are the AI Accountability and Clarity Coach for The Game of Becoming™. Your role is to analyze daily intentions and provide encouraging, actionable feedback.
+    You are the AI Clarity Coach for "The Game of Becoming". Your role is to guide a user named {user.name}
+    through creating a single, clear, measurable Daily Intention. You must be conversational, encouraging, and focused.
 
-    Your task is to determine if the user's intention is strong and clear enough for them to commit to. A strong intention is specific, measurable, actionable, and aligned with their main goal.
+    You will manage a state machine with these steps: {', '.join([s.value for s in schemas.CreationStep])}.
+    You will be given the CURRENT STEP and the USER'S MESSAGE. Your job is to decide the NEXT STEP and what to say.
 
-    Analyze the user's intention based on these criteria and respond with a JSON object that matches this Pydantic model:
-    class IntentionAnalysisResponse(BaseModel):
-        is_strong_intention: bool = Field(description="True if the intention is clear, specific, and ready for commitment. False if it needs refinement.")
-        feedback: str = Field(description="Encouraging, actionable coaching feedback for the user (2-3 sentences max).")
-        clarity_stat_gain: int = Field(description="Set to 1 if is_strong_intention is true, otherwise 0.")
+    **STATE MACHINE LOGIC:**
+    1. If CURRENT_STEP is 'AWAITING_TEXT':
+       - The user is providing their first idea. Analyze their text.
+       - If the text is specific, measurable, and clear (e.g., "Send 10 cold emails"), the intention is strong. Set NEXT_STEP to 'COMPLETE'.
+       - If the text is vague (e.g., "work on my business"), it needs refinement. Set NEXT_STEP to 'AWAITING_REFINEMENT' and ask a clarifying question.
+    2. If CURRENT_STEP is 'AWAITING_REFINEMENT':
+       - The user is providing a revised, clearer intention. Assume this version is good.
+       - Set NEXT_STEP to 'COMPLETE'.
+
+    **RESPONSE FORMAT:**
+    You MUST respond in a JSON object that strictly follows this Pydantic model:
+    class AIConversationAnalysis(BaseModel):
+        next_step: Literal['AWAITING_TEXT', 'AWAITING_REFINEMENT', 'COMPLETE']
+        ai_message: str
+        extracted_intention_text: Optional[str]
+        extracted_target_quantity: Optional[int] = 1
+        extracted_focus_blocks: Optional[int] = 1
     """
 
+    # --- The AI's Task (User Prompt) ---
     user_prompt = f"""
-    Here is the user's data:
-    - User's Highest Leverage Activity (HLA): "{user.hla}"
-    - Today's Daily Intention: "{intention_data.daily_intention_text}"
-    - Target Quantity: {intention_data.target_quantity}
-    - Planned Focus Block Count: {intention_data.focus_block_count}
+    Here is the current state of our conversation:
+    - CURRENT_STEP: "{request_data.current_step.value}"
+    - USER'S MESSAGE: "{request_data.user_text}"
 
-    Analyze this intention. Is it specific, measurable, actionable, and aligned with their HLA?
-
-    Example of a strong intention:
-    - Intention: "Send 5 personalized LinkedIn connection requests to potential clients in the SaaS industry."
-    - Analysis: This is strong. It's specific (LinkedIn requests), measurable (5), actionable, and likely aligns with a sales HLA.
-    - Your Response: {{"is_strong_intention": true, "feedback": "Your intention to send 5 LinkedIn outreaches is clear, specific, and directly aligned with your HLA! With your planned focus blocks, you're well-equipped to succeed.", "clarity_stat_gain": 1}}
-
-    Example of an intention needing refinement:
-    - Intention: "Work on my business."
-    - Analysis: This is vague. It's not specific or measurable.
-    - Your Response: {{"is_strong_intention": false, "feedback": "This intention is a good start, but it's a bit vague. How can you make it more specific? For example, 'Complete Module 1 of the marketing course' would give you a clear target.", "clarity_stat_gain": 0}}
-    
-    Now, analyze the user's data and provide your JSON response.
+    Analyze the user's message based on the rules for the current step.
+    If you decide the next_step is 'COMPLETE', you MUST extract the final text, quantity, and blocks.
+    If the user doesn't specify a quantity or block count, use a default of 1 for each.
+    Generate the JSON response now.
     """
-    
+
+    # --- Call the LLM and Process the Response ---
     analysis = await llm_provider.generate_structured_response(
-        system_prompt=system_prompt, user_prompt=user_prompt, response_model=IntentionAnalysisResponse
+        system_prompt=system_prompt,
+        user_prompt=user_prompt,
+        response_model=AIConversationAnalysis
     )
 
-    if "error" in analysis:
-        return {"needs_refinement": False, "ai_feedback": "Great! Let's get to work.", "clarity_stat_gain": 1}
+    if "error" in analysis: # Fallback if the AI fails
+        return schemas.IntentionCreationResponse(
+            next_step=schemas.CreationStep.COMPLETE,
+            ai_message="There was a small hiccup, but let's proceed. Your intention is noted!",
+            intention_payload=schemas.DailyIntentionResponse(
+                id=999, user_id=user.id, daily_intention_text=request_data.user_text,
+                target_quantity=1, completed_quantity=0, focus_block_count=1,
+                status='pending', created_at=datetime.now(timezone.utc),
+                needs_refinement=False, focus_blocks=[], daily_result=None
+            )
+        )
 
-    return {
-        "needs_refinement": not analysis.get("is_strong_intention"),
-        "ai_feedback": analysis.get("feedback"),
-        "clarity_stat_gain": analysis.get("clarity_stat_gain"),
-    }
+    # Build the final response object for the frontend
+    final_intention_payload = None
+    if analysis.get("next_step") == schemas.CreationStep.COMPLETE:
+        final_intention_payload = schemas.DailyIntentionResponse(
+            id=999, # Placeholder, will be replaced in main.py after saving
+            user_id=user.id,
+            daily_intention_text=analysis.get("extracted_intention_text", request_data.user_text),
+            target_quantity=analysis.get("extracted_target_quantity", 1),
+            completed_quantity=0,
+            focus_block_count=analysis.get("extracted_focus_blocks", 1),
+            status='pending',
+            created_at=datetime.now(timezone.utc),
+            needs_refinement=False,
+            focus_blocks=[],
+            daily_result=None
+        )
+
+    return schemas.IntentionCreationResponse(
+        next_step=analysis.get("next_step"),
+        ai_message=analysis.get("ai_message"),
+        intention_payload=final_intention_payload
+    )
 
 def complete_focus_block(
         db: Session, 
@@ -299,6 +360,7 @@ async def create_daily_reflection(db: Session, user: models.User, daily_intentio
 
     if os.getenv("DISABLE_AI_CALLS") == "True":
         print("--- AI CALL DISABLED: Returning mock reflection. ---")
+        await asyncio.sleep(2)
         if succeeded:
             return {"succeeded": True, "ai_feedback": "Mock Success: Great job!", "recovery_quest": None, "discipline_stat_gain": 1, "xp_awarded": xp_to_award}
         else:
@@ -370,6 +432,7 @@ async def process_recovery_quest_response(db: Session, user: models.User, result
 
     if os.getenv("DISABLE_AI_CALLS") == "True":
         print("--- AI CALL DISABLED: Returning mock coaching. ---")
+        await asyncio.sleep(2)
         return {"ai_coaching_feedback": "Mock Coaching: That's a great insight.", "resilience_stat_gain": 1, "xp_awarded": xp_to_award}
 
     llm_provider = get_llm_provider()
@@ -416,26 +479,33 @@ async def generate_chat_response(db: Session, user: models.User, message: str) -
     """
     if os.getenv("DISABLE_AI_CALLS") == "True":
         print("--- AI CALL DISABLED: Returning mock chat response with 2-second delay. ---")
-        
-        # Add a non-blocking delay to simulate the AI "thinking"
-        await asyncio.sleep(3)
-        
+        await asyncio.sleep(2)
         return f"This is a mock AI response to your message: '{message}'"
     
     llm_provider = get_llm_provider()
 
     # This system prompt defines the AI's core persona for the chat.
-    # It's more conversational and less task-specific than our other prompts.
+    # It's more conversational and less task-specific than our other prompts while
+    # still being specific about its boundaries.
     system_prompt = f"""
     You are the AI Coach for "The Game of Becoming," a gamified productivity app.
-    Your persona is a supportive, encouraging, and slightly philosophical guide.
-    Your goal is to help the user stay focused, motivated, and aligned with their goals.
-    You are not just a chatbot; you are their partner on the journey of becoming the person they want to be.
-    Keep your responses concise, thoughtful, and encouraging (2-4 sentences).
+    Your persona is a supportive, encouraging, and highly focused guide.
+    Your SOLE PURPOSE is to help the user achieve their stated goal.
+    You are their partner on this journey.
 
     User's Name: {user.name}
     User's Stated Goal (HLA): {user.hla}
+
+    RULES:
+    1. Keep responses concise (2-3 sentences).
+    2. NEVER answer questions that are unrelated to the user's goal or the app's function (e.g., trivia, news, general knowledge).
+    3. If the user asks an unrelated question, briefly acknowledge it and immediately PIVOT back to their goal. Your job is to be a friendly but relentless guardian of their focus.
+
+    EXAMPLE PIVOT:
+    User asks: "Who won the football game last night?"
+    Your Response: "That's a fun question! However, my focus is entirely on helping you make progress on your quest. How are you feeling about the next step for '{user.hla}'?"
     """
+
 
     # We simply pass the user's message as the user prompt.
     user_prompt = message

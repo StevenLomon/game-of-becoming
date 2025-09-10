@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { sendChatMessage } from '../services/api';
+import { sendChatMessage, createDailyIntention } from '../services/api';
+import Typewriter from './Typewriter';
 
 // The Paper Plane SVG icon for the send button
 const SendIcon = () => (
@@ -13,12 +14,27 @@ const SendIcon = () => (
   </svg>
 );
 
-function AIChatBox({ user }) {
+// Receive the new props: isFullScreen and onIntentionCreated
+function AIChatBox({ user, isFullScreen, onIntentionCreated, creationContext }) {
   const [message, setMessage] = useState('');
-  const [messages, setMessages] = useState([
-    { sender: 'ai', text: `Welcome, ${user.name.split(' ')[0]}. How can we bring the most clarity and execution today?`}
-  ]) // AI Chat memory!
+  const [messages, setMessages] = useState([]) // UPDATED: messages is being back to being initialized simple as an empty array
   const [isLoading, setIsLoading] = useState(false); // State to handle when the AI is "thinking"
+  const [isRefining, setIsRefining] = useState(false); // The "short-term memory" for the Daily Intention Forge conversation
+  const [originalIntention, setOriginalIntention] = useState(''); // We'll also hold onto the original text if we need it
+
+  // NEW STATE: This is our state machine. It mirrors the backend Enum.
+  // It's the "single source of truth" for what the chat is currently trying to do.
+  const [creationStep, setCreationStep] = useState('AWAITING_TEXT');
+
+  // This class string defines the component as an absolutely positioned overlay
+  // that animates its height between h-full and h-96.
+  const containerClasses = `
+    absolute bottom-0 left-0 right-0
+    flex flex-col bg-gray-900 p-4
+    transition-all duration-1000 ease-in-out
+    ${isFullScreen ? 'h-full rounded-lg' : 'h-96'}
+  `;
+  // Note: rounded-lg is now applied conditionally
 
   // Our "Bookmark" for the auto-scroll feature
   const chatContainerRef = useRef(null);
@@ -33,12 +49,52 @@ function AIChatBox({ user }) {
     }
   }, [messages]); // The dependency array ensures this runs only when messages are added
 
+  // CHANGED: This "Embassy" now has a single, clear responsibility: manage the
+  // welcome messages and transitions between modes (creation vs. execution).
+  useEffect(() => {
+    // Guard clause: Don't do anything until the user object is actually loaded.
+    if (!user) return;
+
+    if (isFullScreen) {
+      // This is the creation mode. We set the initial welcome message.
+      const welcomeText = (creationContext === 'post_onboarding')
+        ? `Thank you for letting me know more about your business, ${user.name.split(' ')[0]}. I am excited to act as your Clarity and Execution AI Oracle for this journey. To start off; let's forge your focus for today. What do you wish to set as your Daily Intention?`
+        : `Welcome, ${user.name.split(' ')[0]}. Let's forge your focus for today. What do you wish to set as your Daily Intention?`;
+      
+      setMessages(prevMessages => {
+      // Only set if not already present as the first message
+      if (
+        prevMessages.length === 0 ||
+        prevMessages[0].text !== welcomeText
+      ) {
+        return [{ sender: 'ai', text: welcomeText }];
+      }
+      return prevMessages;
+    });
+
+    } else {
+      // This is the execution mode. We clear the chat and set the new welcome message
+      // after the animation delay.
+      setMessages([]); // Clear the slate
+      const welcomeTimer = setTimeout(() => {
+        setMessages([{
+          sender: 'ai',
+          text: `Welcome to your execution space. How can I help you focus today?`
+        }]);
+      }, 1000); // Shortened delay for a snappier feel
+      return () => clearTimeout(welcomeTimer);
+    }
+    // THE DEPENDENCIES: We are being explicit. This effect should ONLY re-run if
+    // the mode (isFullScreen), the user, or the context truly changes. Because `user` is
+    // now stable from the Dashboard, this is safe.
+  }, [isFullScreen, user, creationContext]);
+
   const handleSendMessage = async (e) => {
     e.preventDefault();
     const userMessageText = message.trim();
     if (!userMessageText) return;
 
-    // 1. Optimistic Update for the User's Message
+    // Optimistic Update for the User's Message
     // Add the user's message to the whiteboard immediately for a snappy UI
     const userMessage = { sender: 'user', text: userMessageText };
     setMessages(prevMessages => [...prevMessages, userMessage]);
@@ -46,12 +102,34 @@ function AIChatBox({ user }) {
     setIsLoading(true); // Show a loading state
 
     try {
-      // 2. API Call: Send the message to the Oracle via our Messenger
-      const response = await sendChatMessage(userMessageText);
+      if (isFullScreen) {
+        // --- CREATION PLAYBOOK v2 (The Multi-step State Machine) ---
 
-      // 3. Final update with the AI's response
-      const aiMessage = { sender: 'ai', text: response.ai_response};
-      setMessages(prevMessages => [...prevMessages, aiMessage]);
+        // 1. Call our updated API service, sending the user's text and our current state.
+        const response = await createDailyIntention(userMessageText, creationStep);
+
+        // 2. Display the AI's response message
+        const aiMessage = { sender: 'ai', text: response.ai_message };
+        setMessages(prev => [...prev, aiMessage]);
+
+        // 3. Update our state to follow the backend's instructions
+        setCreationStep(response.next_step);
+
+        // 4. If the conversation is complete, hand off to the Dashboard AFTER a pause.
+        if (response.next_step === 'COMPLETE') {
+          // setTimeout to create a deliberate pause. This ensures the user has time 
+          // to read the final confirmation before the UI transition begins.
+          setTimeout(() => {
+            onIntentionCreated(response.intention_payload);
+          }, 2350);
+        }
+
+      } else {
+        // --- EXECUTION (GENERAL CHAT) PLAYBOOK ---
+        const response = await sendChatMessage(userMessageText);
+        const aiMessage = { sender: 'ai', text: response.ai_response};
+        setMessages(prevMessages => [...prevMessages, aiMessage]);
+      }
 
     } catch (error) {
       console.error("Error sending message:", error);
@@ -64,8 +142,8 @@ function AIChatBox({ user }) {
   };
 
   return (
-    // The main container is given a fixed height so that we can implement a scrollable chat box
-    <div className="flex flex-col h-96 bg-gray-900 p-4 rounded-lg mt-8"> 
+    // Apply the dynamic `containerClasses` variable here
+    <div className={containerClasses}> 
       {/* Message History Area (overflow-y-auto is the magic that adds a scrollbar only when needed) */}
       <div 
         ref={chatContainerRef} // Attach the "bookmark"!
@@ -73,28 +151,32 @@ function AIChatBox({ user }) {
       >
         <div className="space-y-4">
           {messages.map((msg, index) => (
-            <div
-              key={index}
-              className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-            >
               <div
-                className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                  msg.sender === 'user'
-                    ? 'bg-teal-600 text-white'
-                    : 'bg-gray-700 text-gray-300'
-                }`}
+                  key={index}
+                  className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
               >
-                {msg.text}
+                  {/* Conditional styling for the message content */}
+                  {msg.sender === 'user' ? (
+                      // Styles for user messages (chat bubble)
+                      <div
+                          className="max-w-xs lg:max-w-md px-4 py-2 rounded-lg text-lg bg-teal-600 text-white"
+                      >
+                          {msg.text}
+                      </div>
+                  ) : (
+                      // Styles for AI messages (full-width text)
+                      <div className="text-gray-300 w-full text-lg">
+                          <Typewriter key={msg.text} text={msg.text} baseSpeed={25} />
+                      </div>
+                  )}
               </div>
-            </div>
           ))}
+
           {/* Show a "typing" indicator while the AI is thinking */}
           {isLoading && (
-            <div className="flex justify-start">
-              <div className="max-w-xs lg:max-w-md px-4 py-2 rounded-lg bg-gray-700 text-gray-300">
-                <span className="animate-pulse">...</span>
+              <div className="flex justify-start p-4">
+                  <div className="w-3 h-3 bg-gray-200 rounded-full animate-pulse-heartbeat"></div>
               </div>
-            </div>
           )}
         </div>
       </div>

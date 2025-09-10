@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { getGameState } from '../services/api';
 import Onboarding from './Onboarding';
 import CreateDailyIntentionForm from './CreateDailyIntentionForm';
@@ -60,14 +60,24 @@ function Dashboard({ token, onLogout }) {
     const [stats, setStats] = useState(null);
     const [intention, setIntention] = useState(null);
     const [error, setError] = useState(null);
-    // New state to hold the unresoved intention from the grace day
-    const [unresolvedIntention, setUnresolvedIntention] = useState(null);
+    const [unresolvedIntention, setUnresolvedIntention] = useState(null); // The unresoved intention from the grace day
     const [isLoading, setIsLoading] = useState(true);
+    // // New state: Our "Master Switch" for the UI mode; Daily Intention
+    // const [isCreatingIntention, setIsCreatingIntention] = useState(false);
+    // No longer used! We will derive this state directly in the render logic, making
+    // this component more declarative. Less imperative force, more declarative flow
+    // Not everything needs to useState!
 
-    // This is our "Control Panel"
-    const refreshGameState = async () => {
-      // We don't set loading to true here, since this is for *updates*,
-      // not the initial screen-blocking load
+    // CHANGED: This is now our single, robust "Control Panel" for all data fetching.
+    // Wrap the entire function in useCallback.
+    // The empty dependency array `[]` means this function will be created ONLY ONCE
+    // for the entire life of the component, giving it a stable identity.
+    const refreshGameState = useCallback(async () => {
+      // Set loading to true at the beginning of ANY refresh.
+      // This prevents the UI from trying to render with partial or stale data.
+      // setIsLoading(true);
+      // UPDATED: We no longer set a loading state inside the refresh function.
+    // It will now just fetch data and update the props of the already-visible components.
       try {
         const gameState = await getGameState();
         setUser(gameState.user);
@@ -75,41 +85,79 @@ function Dashboard({ token, onLogout }) {
         // We now explicitly set both types of intentions
         setIntention(gameState.todays_intention);
         setUnresolvedIntention(gameState.unresolved_intention);
+
+        // Set our new mode state based on the fetched data.
+        // If there's no unresolved quest AND no intention for today, we are in creation mode.
+        // setIsCreatingIntention(!gameState.unresolved_intention && !gameState.todays_intention);
+        // No longer setting state here. We will derive this value below.
       } catch (err) {
         setError(err.message);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+      } 
+      // finally {
+      //   // Ensure loading is set to false after the operation is complete,
+      //   // whether it succeeded or failed.
+      //   setIsLoading(false);
+      // } No longer needed!
+    }, []);
 
-    // This is our "Embassy"
+    // This "Embassy" is now simpler. It just triggers the refresh.
+    // UPDATED: The initial fetch now also manages the initial loading state!
     useEffect(() => {
-        // Renamed for clarity
-        const fetchInitialGameState = async () => {
-            setIsLoading(true); // This is the initial load
-            try {
-                // The API service handles the token, URL, and error checking for us now!
-                // Using our new definitive endpoint for the game state
-                const gameState = await getGameState();
+        // // Renamed for clarity
+        // const fetchInitialGameState = async () => {
+        //     setIsLoading(true); // This is the initial load
+        //     // try {
+        //     //     // The API service handles the token, URL, and error checking for us now!
+        //     //     // Using our new definitive endpoint for the game state
+        //     //     const gameState = await getGameState();
                 
-                setUser(gameState.user);
-                setStats(gameState.stats);
-                setIntention(gameState.todays_intention);
-                setUnresolvedIntention(gameState.unresolved_intention);
+        //     //     setUser(gameState.user);
+        //     //     setStats(gameState.stats);
+        //     //     setIntention(gameState.todays_intention);
+        //     //     setUnresolvedIntention(gameState.unresolved_intention);
 
-            } catch (err) {
-                setError(err.message);
-            } finally {
-              setIsLoading(false); // Set loading false at the end
-            }
+        //     // } catch (err) {
+        //     //     setError(err.message);
+        //     // } finally {
+        //     //   setIsLoading(false); // Set loading false at the end
+        //     // }
+        //     // No try block or API call needed! Simply call the Control Panel!! Single source of truth
+        //     await refreshGameState();
+        //     setIsLoading(false);
+        // };
+        // fetchInitialGameState();
+        const fetchInitialData = async () => {
+            // No need to set isLoading(true) here, it's already true by default.
+            await refreshGameState();
+            setIsLoading(false); // Turn off the loader ONLY after the first load.
         };
-        fetchInitialGameState();
-    }, [token]); // Re-run this effect if the token changes. onLogout not used anymore and therefore removed
 
-    const handleOnboardingComplete = (updatedUser) => {
+        fetchInitialData();
+    }, []); // Run this effect only ONCE on mount.
+
+    const handleOnboardingComplete = () => {
         // Its only job is to refresh the game state after the final step.
         refreshGameState();
     };
+
+    // This function will be passed down to the chatbox to switch modes.
+    const handleIntentionCreated = () => {
+      refreshGameState(); // This will automatically set isCreatingIntention to false.
+    };
+
+
+    // --- DERIVE STATE: The Architect's Approach ---
+    // Instead of storing isCreatingIntention in state (the Handyman's patch),
+    // we derive it on every render. This is more "honest" with React and prevents
+    // our state from ever getting out of sync. This is our new single source of truth.
+    const isCreatingIntention = !unresolvedIntention && !intention;
+
+    // --- DERIVE THE CONTEXT FOR THE WELCOME MESSAGE ---
+    // Heuristic: If the user is in creation mode AND their streak is 1 AND xp is 0,
+    // we can be confident they just finished onboarding. Clearly separating a user who 
+    // has just completed onboarding versus a user who has a broken streak.
+    const isPostOnboarding = isCreatingIntention && user?.current_streak === 1 && stats?.xp === 0; // Use optional chaining
+    const creationContext = isPostOnboarding ? 'post_onboarding' : 'daily_check_in';
 
 
     if (isLoading) { // Use the new loading state
@@ -147,7 +195,7 @@ function Dashboard({ token, onLogout }) {
         <Sidebar user={user} stats={stats} />
 
         {/* Main content area */}
-        <div className="flex-grow min-h-[90vh] p-8 w-full">
+        <div className="flex flex-col flex-grow min-h-[90vh] p-8 w-full">
           {/* Conditional rendering logic remains here in the orchestrator */}
           {isLoading ? (
             <p className="text-gray-400">Loading your quest...</p>
@@ -164,13 +212,15 @@ function Dashboard({ token, onLogout }) {
               onQuestResolved={refreshGameState} 
             />
           ) : (
-            // Pass all necessary data and functions down to the MainContent area
-            <MainContent 
+            // Pass down the new mode and the handler function to MainContent
+            <MainContent
               user={user}
               token={token}
-              stats={stats}
               intention={intention}
+              isCreatingIntention={isCreatingIntention} // Now using our derived value
+              onIntentionCreated={handleIntentionCreated}
               refreshGameState={refreshGameState}
+              creationContext={creationContext}
             />
           )}
         </div>

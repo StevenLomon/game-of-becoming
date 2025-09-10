@@ -166,17 +166,24 @@ export async function sendChatMessage(messageText) {
 }
 
 /**
- * Creates a new Daily Intention.
- * @param {object} intentionData - The intention data, including text, target, and block count.
- * @returns {Promise<object>} - The newly created Daily Intention object from the backend.
+ * Creates a new Daily Intention through the new conversational endpoint.
+ * @param {string} userText - The text from the user's message.
+ * @param {string} currentStep - The current step of the conversation (e.g., 'AWAITING_TEXT').
+ * @returns {Promise<object>} - The new conversational response from the backend.
  */
-export async function createDailyIntention(intentionData) {
+export async function createDailyIntention(userText, currentStep) {
     const endpoint = '/api/intentions';
     const url = `${API_BASE_URL}${endpoint}`;
 
+    // The body now matches the IntentionCreationRequest schema on the backend
+    const requestBody = {
+      user_text: userText,
+      current_step: currentStep,
+    };
+
     const response = await authFetch(url, {
         method: 'POST',
-        body: JSON.stringify(intentionData),
+        body: JSON.stringify(requestBody),
     });
 
     return handleErrors(response).then(res => res.json());
