@@ -22,7 +22,7 @@ load_dotenv()
 
 # FastAPI app setup
 app = FastAPI(
-    title="xecute.app API",
+    title="Xecution.ai API",
     description="Gamify your business growth with AI-driven daily intentions and execution loops.",
     version="1.0.0",
     docs_url="/docs"
@@ -155,7 +155,7 @@ def get_owned_daily_result_by_result_id(
 def read_root():
     """Welcome root endpoint - the beginning of the transformational journey!"""
     return {
-        "message": "Welcome to the xecute.app API",
+        "message": "Welcome to the Xecution.ai API",
         "description": "Ready to turn your exectution blockers into breakthrough momentum?",
         "docs": "Visit /docs for interactive API documentation.",
     }
@@ -166,7 +166,7 @@ def health_check():
     return {
         "status": "healthy",
         "timestamp": datetime.now(timezone.utc),
-        "service": "xecute.app API",
+        "service": "Xecution.ai API",
         "version": "1.0.0"
     }
 
@@ -212,7 +212,7 @@ def register_user(user_data: schemas.UserCreate, db: Session = Depends(database.
     Register a new user and their associated records. 
     Also now creates their initial character stats
 
-    The user starts their xecute.app journey here
+    The user starts their Xecution.ai journey here
     """
 
     # Check if user already exists

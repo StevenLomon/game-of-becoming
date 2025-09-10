@@ -10,7 +10,7 @@ function Sidebar({ user, stats }) {
     return (
         // This will be our fixed sidebar
         <div className="w-1/4 bg-gray-900 p-6 rounded-l-lg text-white">
-            <h1 className="text-2xl font-bold">xecute.app</h1>
+            <h1 className="text-2xl font-bold">Xecution.ai</h1>
             
             <div className="mt-8">
                 <div className="flex justify-between text-sm text-gray-400">

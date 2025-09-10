@@ -9,7 +9,7 @@ def test_read_root():
     response = client.get("/")
     assert response.status_code == 200
     assert response.json() == {
-        "message": "Welcome to the xecute.app API!",
+        "message": "Welcome to the Xecution.ai API!",
         "description": "Ready to turn your exectution blockers into breakthrough momentum?",
         "docs": "Visit /docs for interactive API documentation.",
     }
