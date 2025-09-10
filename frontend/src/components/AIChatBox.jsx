@@ -58,7 +58,7 @@ function AIChatBox({ user, isFullScreen, onIntentionCreated, creationContext }) 
     if (isFullScreen) {
       // This is the creation mode. We set the initial welcome message.
       const welcomeText = (creationContext === 'post_onboarding')
-        ? `Thank you for letting me know more about your business, ${user.name.split(' ')[0]}. I am excited to act as your Clarity and Execution AI Oracle for this journey. To start off; let's forge your focus for today. What do you wish to set as your Daily Intention?`
+        ? `Thank you for letting me know more about your business, ${user.name.split(' ')[0]}. I am excited to act as your Clarity and Execution AI Oracle for this journey.\n\n To start off; let's forge your focus for today. What do you wish to set as your Daily Intention?\n\n An intention in line with your Highest Leverage Action that, if completed, would move you closer to your Stretch Goal?`
         : `Welcome, ${user.name.split(' ')[0]}. Let's forge your focus for today. What do you wish to set as your Daily Intention?`;
       
       setMessages(prevMessages => {
@@ -165,7 +165,7 @@ function AIChatBox({ user, isFullScreen, onIntentionCreated, creationContext }) 
                       </div>
                   ) : (
                       // Styles for AI messages (full-width text)
-                      <div className="text-gray-300 w-full text-lg">
+                      <div className="text-gray-300 w-full text-lg whitespace-pre-line">
                           <Typewriter key={msg.text} text={msg.text} baseSpeed={25} />
                       </div>
                   )}
