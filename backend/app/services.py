@@ -112,9 +112,32 @@ async def process_onboarding_step(db: Session, user: models.User, request_data: 
     Processes a single step in the V2 conversational onboarding flow.
     Acts as an AI-powered state machine based on the Theory of Constraints.
     """
-    llm_provider = get_llm_provider()
     current_step = request_data.current_step
     user_text = request_data.user_text
+
+    if os.getenv("DISABLE_AI_CALLS") == "True":
+        print(f"--- AI CALL DISABLED: Processing onboarding step: {current_step} ---")
+        
+        # This simple state machine simulates the conversation for testing
+        if current_step == schemas.OnboardingStepName.AWAITING_BUSINESS_STAGE:
+            return schemas.OnboardingV2Response(
+                next_step=schemas.OnboardingStepName.AWAITING_STRETCH_GOAL,
+                ai_message=f"Mock: Got it, you're running a '{user_text}'. What's your 6-12 month stretch goal?"
+            )
+        elif current_step == schemas.OnboardingStepName.AWAITING_STRETCH_GOAL:
+            return schemas.OnboardingV2Response(
+                next_step=schemas.OnboardingStepName.AWAITING_CONSTRAINT_CHOICE,
+                ai_message="Mock: That's a great goal. What's your #1 constraint: Traffic, Sales, or Fulfillment?"
+            )
+        # You can add more mock steps here as you build out the frontend
+        else:
+            return schemas.OnboardingV2Response(
+                next_step=schemas.OnboardingStepName.COMPLETE,
+                ai_message="Mock: Onboarding complete! Let's get to work.",
+                final_hla="Mock HLA: Execute daily outreach."
+            )
+        
+    llm_provider = get_llm_provider()
 
     # --- The AI's Job Description (System Prompt) ---
     system_prompt = f"""
