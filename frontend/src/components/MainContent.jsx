@@ -60,15 +60,17 @@ function MainContent({ user, token, intention, isCreatingIntention, onIntentionC
   const activeBlock = intention ? intention.focus_blocks.find(b => b.status === 'pending' || b.status === 'in_progress') : null;
 
   return (
-    // UPDATED: The root div is now a grid container that will handle the animation.
-    <div className={`grid h-full transition-[grid-template-rows] duration-1000 ease-in-out ${isCreatingIntention ? 'grid-rows-[0fr_1fr]' : 'grid-rows-[1fr_auto]'}`}>
-      {/* --- NEW STABLE LAYOUT --- */}
+  // UPDATED: The root div is now a grid container that will handle the animation.
+  <div className={`grid h-full transition-[grid-template-rows] duration-1000 ease-in-out ${isCreatingIntention ? 'grid-rows-[0fr_1fr]' : 'grid-rows-[1fr_auto]'}`}>
+    {/* --- NEW STABLE LAYOUT --- */}
 
-      {/* 1. This div wraps the content that appears and disappears. */}
-      {/* It will be placed in the first grid row, which animates its height. */}
-      <div className="overflow-hidden">
+    {/* 1. This div wraps the content that appears and disappears. */}
+    {/* It will be placed in the first grid row, which animates its height. */}
+    <div className="overflow-hidden">
 
-        {/* All the content from the old animated div goes here */}
+      {/* UPDATED: Single source of truth wrapper for the opacity transition */}
+      <div className={`transition-opacity duration-700 ease-in-out ${isCreatingIntention ? 'opacity-0' : 'opacity-100'}`}>
+        {/* All the previous content now lives inside the opacity wrapper, unchanged. */}
         {error && (
           <div className="bg-red-900 border-red-700 text-red-300 px-4 py-3 rounded-md mb-4">
             {error}
@@ -117,16 +119,17 @@ function MainContent({ user, token, intention, isCreatingIntention, onIntentionC
           <p>Loading your day...</p>
         )}
       </div>
-
-      {/* 2. The AIChatBox is ALWAYS rendered here, in the same position in the tree. */}
-      {/* It is now simply the second grid row. */}
-      <AIChatBox
-        user={user}
-        isFullScreen={isCreatingIntention}
-        onIntentionCreated={onIntentionCreated}
-        creationContext={creationContext}
-      />
     </div>
+
+    {/* 2. The AIChatBox is ALWAYS rendered here, in the same position in the tree. */}
+    {/* It is now simply the second grid row. */}
+    <AIChatBox
+      user={user}
+      isFullScreen={isCreatingIntention}
+      onIntentionCreated={onIntentionCreated}
+      creationContext={creationContext}
+    />
+  </div>
   );
 }
 
