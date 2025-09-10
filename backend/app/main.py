@@ -352,6 +352,9 @@ async def handle_onboarding_step(
         
         # If the service has determined the conversation is complete, start the user's streak.
         if response_data.next_step == schemas.OnboardingStepName.COMPLETE:
+            # Take the final HLA from the response and save it to the user.
+            current_user.hla = response_data.final_hla
+            
             services.update_user_streak(user=current_user)
             db.commit()
 
